@@ -14,16 +14,314 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      leads: {
+        Row: {
+          created_at: string
+          first_message: string
+          id: string
+          is_real: boolean
+          sender_phone_hash: string
+          status: Database["public"]["Enums"]["lead_status"]
+          tenant_id: string
+          ttclid: string | null
+          whatsapp_number_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          first_message: string
+          id?: string
+          is_real?: boolean
+          sender_phone_hash: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          tenant_id: string
+          ttclid?: string | null
+          whatsapp_number_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          first_message?: string
+          id?: string
+          is_real?: boolean
+          sender_phone_hash?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          tenant_id?: string
+          ttclid?: string | null
+          whatsapp_number_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_whatsapp_number_id_fkey"
+            columns: ["whatsapp_number_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_numbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          company_name: string
+          created_at: string
+          id: string
+          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          updated_at: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          id?: string
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          id?: string
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tiktok_accounts: {
+        Row: {
+          access_token: string
+          advertiser_id: string
+          advertiser_name: string | null
+          connected_at: string
+          id: string
+          refresh_token: string | null
+          tenant_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          advertiser_id: string
+          advertiser_name?: string | null
+          connected_at?: string
+          id?: string
+          refresh_token?: string | null
+          tenant_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          advertiser_id?: string
+          advertiser_name?: string | null
+          connected_at?: string
+          id?: string
+          refresh_token?: string | null
+          tenant_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiktok_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiktok_campaigns: {
+        Row: {
+          campaign_id: string
+          campaign_name: string
+          created_at: string
+          id: string
+          real_conversations: number | null
+          spend: number | null
+          tenant_id: string
+          tiktok_account_id: string | null
+          trash_conversations: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name: string
+          created_at?: string
+          id?: string
+          real_conversations?: number | null
+          spend?: number | null
+          tenant_id: string
+          tiktok_account_id?: string | null
+          trash_conversations?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string
+          created_at?: string
+          id?: string
+          real_conversations?: number | null
+          spend?: number | null
+          tenant_id?: string
+          tiktok_account_id?: string | null
+          trash_conversations?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiktok_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiktok_campaigns_tiktok_account_id_fkey"
+            columns: ["tiktok_account_id"]
+            isOneToOne: false
+            referencedRelation: "tiktok_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_numbers: {
+        Row: {
+          created_at: string
+          id: string
+          phone_number: string
+          phone_number_id: string
+          status: Database["public"]["Enums"]["whatsapp_status"]
+          tenant_id: string
+          updated_at: string
+          waba_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_number: string
+          phone_number_id: string
+          status?: Database["public"]["Enums"]["whatsapp_status"]
+          tenant_id: string
+          updated_at?: string
+          waba_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_number?: string
+          phone_number_id?: string
+          status?: Database["public"]["Enums"]["whatsapp_status"]
+          tenant_id?: string
+          updated_at?: string
+          waba_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_numbers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      user_belongs_to_tenant: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "admin" | "member"
+      lead_status: "verified" | "pending" | "trash"
+      subscription_plan: "free" | "starter" | "pro" | "enterprise"
+      whatsapp_status: "connected" | "disconnected" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +448,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "admin", "member"],
+      lead_status: ["verified", "pending", "trash"],
+      subscription_plan: ["free", "starter", "pro", "enterprise"],
+      whatsapp_status: ["connected", "disconnected", "pending"],
+    },
   },
 } as const
