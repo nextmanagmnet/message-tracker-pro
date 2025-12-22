@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Bell, Search, User } from "lucide-react";
+import { ClientSwitcher } from "@/components/ClientSwitcher";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -9,6 +11,8 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout = ({ children, title, subtitle }: DashboardLayoutProps) => {
+  const { profile } = useAuth();
+  
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -18,11 +22,14 @@ export const DashboardLayout = ({ children, title, subtitle }: DashboardLayoutPr
         {/* Header */}
         <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
           <div className="flex items-center justify-between px-8 py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-              {subtitle && (
-                <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
-              )}
+            <div className="flex items-center gap-6">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+                {subtitle && (
+                  <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+                )}
+              </div>
+              <ClientSwitcher />
             </div>
 
             <div className="flex items-center gap-4">
@@ -45,8 +52,8 @@ export const DashboardLayout = ({ children, title, subtitle }: DashboardLayoutPr
               {/* Profile */}
               <button className="flex items-center gap-3 pl-4 border-l border-border">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">John Doe</p>
-                  <p className="text-xs text-muted-foreground">Admin</p>
+                  <p className="text-sm font-medium text-foreground">{profile?.full_name || "User"}</p>
+                  <p className="text-xs text-muted-foreground">{profile?.email}</p>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                   <User className="w-4 h-4 text-primary-foreground" />

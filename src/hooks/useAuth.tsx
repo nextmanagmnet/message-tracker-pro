@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Profile {
   id: string;
-  tenant_id: string | null;
   email: string;
   full_name: string | null;
   avatar_url: string | null;
@@ -62,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, email, full_name, avatar_url")
         .eq("id", userId)
         .maybeSingle();
 
