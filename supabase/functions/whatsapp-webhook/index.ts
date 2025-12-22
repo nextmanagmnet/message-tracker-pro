@@ -108,15 +108,20 @@ serve(async (req) => {
           const value = change.value;
           const phoneNumberId = value.metadata?.phone_number_id;
           
-          // Find the WhatsApp number in our database
+          // Find the WhatsApp number in our database (now with client_id)
           const { data: whatsappNumber, error: numberError } = await supabase
             .from('whatsapp_numbers')
-            .select('id, tenant_id')
+            .select('id, client_id, tenant_id')
             .eq('phone_number_id', phoneNumberId)
             .single();
           
           if (numberError || !whatsappNumber) {
             console.log(`WhatsApp number ${phoneNumberId} not found in database`);
+            continue;
+          }
+          
+          if (!whatsappNumber.client_id) {
+            console.log(`WhatsApp number ${phoneNumberId} has no client_id`);
             continue;
           }
           
@@ -128,16 +133,16 @@ serve(async (req) => {
             const messageText = message.text?.body || '';
             const phoneHash = await hashPhone(senderPhone);
             
-            // Check if we already have a lead from this phone number (first message only)
+            // Check if we already have a lead from this phone number for this client
             const { data: existingLead } = await supabase
               .from('leads')
               .select('id')
-              .eq('tenant_id', whatsappNumber.tenant_id)
+              .eq('client_id', whatsappNumber.client_id)
               .eq('sender_phone_hash', phoneHash)
-              .single();
+              .maybeSingle();
             
             if (existingLead) {
-              console.log(`Already have a lead from ${phoneHash}, skipping`);
+              console.log(`Already have a lead from ${phoneHash} for client ${whatsappNumber.client_id}, skipping`);
               continue;
             }
             
@@ -145,11 +150,12 @@ serve(async (req) => {
             const isReal = isRealMessage(messageText);
             const ttclid = extractTtclid(messageText);
             
-            // Insert the lead
+            // Insert the lead with client_id
             const { data: newLead, error: insertError } = await supabase
               .from('leads')
               .insert({
-                tenant_id: whatsappNumber.tenant_id,
+                client_id: whatsappNumber.client_id,
+                tenant_id: whatsappNumber.tenant_id, // Keep for backwards compat
                 whatsapp_number_id: whatsappNumber.id,
                 sender_phone_hash: phoneHash,
                 ttclid: ttclid,
@@ -165,11 +171,11 @@ serve(async (req) => {
               continue;
             }
             
-            console.log(`Created lead ${newLead.id}, is_real: ${isReal}, ttclid: ${ttclid}`);
+            console.log(`Created lead ${newLead.id} for client ${whatsappNumber.client_id}, is_real: ${isReal}, ttclid: ${ttclid}`);
             
             // If real and has ttclid, send conversion event to TikTok
             if (isReal && ttclid) {
-              await sendTikTokConversion(supabase, whatsappNumber.tenant_id, phoneHash, ttclid);
+              await sendTikTokConversion(supabase, whatsappNumber.client_id, phoneHash, ttclid);
             }
           }
         }
@@ -196,33 +202,40 @@ serve(async (req) => {
 // Send conversion event to TikTok CAPI
 async function sendTikTokConversion(
   supabase: any,
-  tenantId: string,
+  clientId: string,
   phoneHash: string,
   ttclid: string
 ) {
   try {
-    // Get TikTok account for this tenant
+    // Get TikTok account for this client
     const { data: account, error } = await supabase
       .from('tiktok_accounts')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('client_id', clientId)
       .limit(1)
-      .single();
+      .maybeSingle();
     
     if (error || !account) {
-      console.log('No TikTok account found for tenant');
+      console.log('No TikTok account found for client');
       return;
     }
     
-    const pixelCode = Deno.env.get('TIKTOK_PIXEL_CODE');
-    if (!pixelCode) {
-      console.log('TikTok Pixel Code not configured');
+    // Get pixel for this client
+    const { data: pixel, error: pixelError } = await supabase
+      .from('tiktok_pixels')
+      .select('pixel_code')
+      .eq('client_id', clientId)
+      .limit(1)
+      .maybeSingle();
+    
+    if (pixelError || !pixel) {
+      console.log('No TikTok Pixel found for client');
       return;
     }
     
     // Send conversion event via TikTok Events API
     const eventData = {
-      pixel_code: pixelCode,
+      pixel_code: pixel.pixel_code,
       event: 'Contact',
       event_time: Math.floor(Date.now() / 1000),
       user: {
@@ -251,7 +264,7 @@ async function sendTikTokConversion(
     });
     
     const result = await response.json();
-    console.log('TikTok conversion event sent:', result);
+    console.log('TikTok conversion event sent for client:', clientId, result);
     
   } catch (error) {
     console.error('Error sending TikTok conversion:', error);

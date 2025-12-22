@@ -48,9 +48,16 @@ serve(async (req) => {
 
     // Handle OAuth callback - exchange code for tokens
     if (action === 'callback') {
-      const { code, tenantId, userId } = await req.json();
+      const { code, clientId } = await req.json();
       
-      console.log('Exchanging TikTok auth code for tokens');
+      if (!clientId) {
+        return new Response(
+          JSON.stringify({ error: 'Client ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('Exchanging TikTok auth code for tokens for client:', clientId);
       
       // Exchange authorization code for access token
       const tokenResponse = await fetch('https://business-api.tiktok.com/open_api/v1.3/oauth2/access_token/', {
@@ -80,6 +87,20 @@ serve(async (req) => {
       // Store each advertiser account
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
+      // Get client to verify it exists and get tenant_id for backwards compat
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('id, agency_id')
+        .eq('id', clientId)
+        .single();
+      
+      if (clientError || !client) {
+        return new Response(
+          JSON.stringify({ error: 'Client not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       const insertPromises = advertiser_ids.map(async (advertiserId: string) => {
         // Get advertiser info
         const infoResponse = await fetch(`https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${advertiserId}"]`, {
@@ -92,7 +113,8 @@ serve(async (req) => {
         const advertiserName = infoData.data?.list?.[0]?.name || 'Unknown';
         
         return supabase.from('tiktok_accounts').upsert({
-          tenant_id: tenantId,
+          client_id: clientId,
+          tenant_id: client.agency_id, // Keep for backwards compat
           advertiser_id: advertiserId,
           advertiser_name: advertiserName,
           access_token: access_token,
@@ -103,7 +125,7 @@ serve(async (req) => {
 
       await Promise.all(insertPromises);
       
-      console.log(`Connected ${advertiser_ids.length} TikTok advertiser accounts`);
+      console.log(`Connected ${advertiser_ids.length} TikTok advertiser accounts for client ${clientId}`);
       
       return new Response(
         JSON.stringify({ 
@@ -115,21 +137,42 @@ serve(async (req) => {
       );
     }
 
-    // Fetch campaigns for a tenant
+    // Fetch campaigns for a client
     if (action === 'fetch-campaigns') {
-      const { tenantId } = await req.json();
+      const { clientId } = await req.json();
+      
+      if (!clientId) {
+        return new Response(
+          JSON.stringify({ error: 'Client ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
-      // Get TikTok accounts for this tenant
+      // Get client info
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('id, agency_id')
+        .eq('id', clientId)
+        .single();
+      
+      if (clientError || !client) {
+        return new Response(
+          JSON.stringify({ error: 'Client not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Get TikTok accounts for this client
       const { data: accounts, error: accountsError } = await supabase
         .from('tiktok_accounts')
         .select('*')
-        .eq('tenant_id', tenantId);
+        .eq('client_id', clientId);
       
       if (accountsError || !accounts?.length) {
         return new Response(
-          JSON.stringify({ error: 'No TikTok accounts connected' }),
+          JSON.stringify({ error: 'No TikTok accounts connected for this client' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -152,7 +195,8 @@ serve(async (req) => {
           for (const campaign of campaignsData.data.list) {
             // Upsert campaign data
             await supabase.from('tiktok_campaigns').upsert({
-              tenant_id: tenantId,
+              client_id: clientId,
+              tenant_id: client.agency_id, // Keep for backwards compat
               tiktok_account_id: account.id,
               campaign_id: campaign.campaign_id,
               campaign_name: campaign.campaign_name,
@@ -169,7 +213,7 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Fetched ${allCampaigns.length} campaigns for tenant ${tenantId}`);
+      console.log(`Fetched ${allCampaigns.length} campaigns for client ${clientId}`);
 
       return new Response(
         JSON.stringify({ campaigns: allCampaigns }),

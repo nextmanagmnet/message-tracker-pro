@@ -14,8 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      agencies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agency_members: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["agency_role"]
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["agency_role"]
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["agency_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_members_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
+          client_id: string | null
           created_at: string
           first_message: string
           id: string
@@ -27,6 +113,7 @@ export type Database = {
           whatsapp_number_id: string | null
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           first_message: string
           id?: string
@@ -38,6 +125,7 @@ export type Database = {
           whatsapp_number_id?: string | null
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           first_message?: string
           id?: string
@@ -49,6 +137,13 @@ export type Database = {
           whatsapp_number_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -132,6 +227,7 @@ export type Database = {
           access_token: string
           advertiser_id: string
           advertiser_name: string | null
+          client_id: string | null
           connected_at: string
           id: string
           refresh_token: string | null
@@ -143,6 +239,7 @@ export type Database = {
           access_token: string
           advertiser_id: string
           advertiser_name?: string | null
+          client_id?: string | null
           connected_at?: string
           id?: string
           refresh_token?: string | null
@@ -154,6 +251,7 @@ export type Database = {
           access_token?: string
           advertiser_id?: string
           advertiser_name?: string | null
+          client_id?: string | null
           connected_at?: string
           id?: string
           refresh_token?: string | null
@@ -162,6 +260,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tiktok_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tiktok_accounts_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -175,6 +280,7 @@ export type Database = {
         Row: {
           campaign_id: string
           campaign_name: string
+          client_id: string | null
           created_at: string
           id: string
           real_conversations: number | null
@@ -187,6 +293,7 @@ export type Database = {
         Insert: {
           campaign_id: string
           campaign_name: string
+          client_id?: string | null
           created_at?: string
           id?: string
           real_conversations?: number | null
@@ -199,6 +306,7 @@ export type Database = {
         Update: {
           campaign_id?: string
           campaign_name?: string
+          client_id?: string | null
           created_at?: string
           id?: string
           real_conversations?: number | null
@@ -209,6 +317,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tiktok_campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tiktok_campaigns_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -221,6 +336,41 @@ export type Database = {
             columns: ["tiktok_account_id"]
             isOneToOne: false
             referencedRelation: "tiktok_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiktok_pixels: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          pixel_code: string
+          pixel_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          pixel_code: string
+          pixel_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          pixel_code?: string
+          pixel_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiktok_pixels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -259,6 +409,7 @@ export type Database = {
       }
       whatsapp_numbers: {
         Row: {
+          client_id: string | null
           created_at: string
           id: string
           phone_number: string
@@ -269,6 +420,7 @@ export type Database = {
           waba_id: string
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           id?: string
           phone_number: string
@@ -279,6 +431,7 @@ export type Database = {
           waba_id: string
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           id?: string
           phone_number?: string
@@ -289,6 +442,13 @@ export type Database = {
           waba_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_numbers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_numbers_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -303,7 +463,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_agency_id: { Args: { _user_id: string }; Returns: string }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
+      has_agency_role: {
+        Args: {
+          _agency_id: string
+          _role: Database["public"]["Enums"]["agency_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -316,8 +485,17 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      user_can_access_client: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_in_agency: {
+        Args: { _agency_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
+      agency_role: "owner" | "admin" | "viewer"
       app_role: "owner" | "admin" | "member"
       lead_status: "verified" | "pending" | "trash"
       subscription_plan: "free" | "starter" | "pro" | "enterprise"
@@ -449,6 +627,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agency_role: ["owner", "admin", "viewer"],
       app_role: ["owner", "admin", "member"],
       lead_status: ["verified", "pending", "trash"],
       subscription_plan: ["free", "starter", "pro", "enterprise"],
