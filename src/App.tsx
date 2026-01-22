@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import WhatsAppNumbers from "./pages/WhatsAppNumbers";
 import TikTokPerformance from "./pages/TikTokPerformance";
+import TikTokCallback from "./pages/TikTokCallback";
 import LiveFeed from "./pages/LiveFeed";
 import Settings from "./pages/Settings";
 import ClientsPage from "./pages/ClientsPage";
@@ -56,6 +57,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <TikTokPerformance />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tiktok/callback"
+                element={
+                  <ProtectedRoute>
+                    <TikTokCallback />
                   </ProtectedRoute>
                 }
               />
