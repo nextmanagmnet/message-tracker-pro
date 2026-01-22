@@ -14,7 +14,17 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get('action');
+    // Support action via query param (legacy) OR JSON body (preferred for function invoke)
+    let action = url.searchParams.get('action');
+    let parsedBody: any = null;
+    if (!action && req.method !== 'GET') {
+      try {
+        parsedBody = await req.json();
+        action = parsedBody?.action;
+      } catch {
+        // ignore body parse errors
+      }
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -31,7 +41,7 @@ serve(async (req) => {
 
     // Generate OAuth URL for TikTok login
     if (action === 'get-auth-url') {
-      const { redirectUri, state } = await req.json();
+      const { redirectUri, state } = parsedBody ?? (await req.json());
       
       const authUrl = new URL('https://business-api.tiktok.com/portal/auth');
       authUrl.searchParams.set('app_id', tiktokAppId);
@@ -48,7 +58,7 @@ serve(async (req) => {
 
     // Handle OAuth callback - exchange code for tokens
     if (action === 'callback') {
-      const { code, clientId } = await req.json();
+      const { code, clientId } = parsedBody ?? (await req.json());
       
       if (!clientId) {
         return new Response(
@@ -139,7 +149,7 @@ serve(async (req) => {
 
     // Fetch campaigns for a client
     if (action === 'fetch-campaigns') {
-      const { clientId } = await req.json();
+      const { clientId } = parsedBody ?? (await req.json());
       
       if (!clientId) {
         return new Response(

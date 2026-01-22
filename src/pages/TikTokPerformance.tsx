@@ -2,6 +2,10 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CampaignTable } from "@/components/dashboard/CampaignTable";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Button } from "@/components/ui/button";
+import { useAgency } from "@/hooks/useAgency";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
 import { 
   RefreshCw, 
   Download, 
@@ -60,7 +64,107 @@ const mockCampaigns = [
   },
 ];
 
+const STORAGE_KEY = "tiktok_oauth_pending";
+
+function createState(): string {
+  // Prefer crypto UUID; fallback to random.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyCrypto = globalThis.crypto as any;
+  if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 const TikTokPerformance = () => {
+  const { selectedClient } = useAgency();
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [connectedAccountCount, setConnectedAccountCount] = useState<number>(0);
+
+  const isConnected = connectedAccountCount > 0;
+
+  const redirectUri = useMemo(() => {
+    return `${window.location.origin}/tiktok/callback`;
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (!selectedClient?.id) {
+        setConnectedAccountCount(0);
+        setIsLoadingStatus(false);
+        return;
+      }
+
+      setIsLoadingStatus(true);
+      const { count, error } = await supabase
+        .from("tiktok_accounts")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", selectedClient.id);
+
+      if (error) {
+        console.error("Failed to load TikTok connection status:", error);
+        toast.error("Failed to load TikTok connection status");
+        setConnectedAccountCount(0);
+        setIsLoadingStatus(false);
+        return;
+      }
+
+      setConnectedAccountCount(count ?? 0);
+      setIsLoadingStatus(false);
+    })();
+  }, [selectedClient?.id]);
+
+  const handleConnect = async () => {
+    if (!selectedClient?.id) {
+      toast.error("Please select a client first");
+      return;
+    }
+
+    const state = createState();
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ clientId: selectedClient.id, state, createdAt: Date.now() })
+    );
+
+    const { data, error } = await supabase.functions.invoke("tiktok-oauth", {
+      body: {
+        action: "get-auth-url",
+        redirectUri,
+        state,
+      },
+    });
+
+    if (error) {
+      console.error("Failed to start TikTok connect:", error);
+      toast.error("Failed to start TikTok connection");
+      return;
+    }
+
+    if (!data?.authUrl) {
+      console.error("Missing authUrl:", data);
+      toast.error("TikTok auth URL was not returned");
+      return;
+    }
+
+    window.location.href = data.authUrl;
+  };
+
+  const handleSync = async () => {
+    if (!selectedClient?.id) {
+      toast.error("Please select a client first");
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("tiktok-oauth", {
+      body: { action: "fetch-campaigns", clientId: selectedClient.id },
+    });
+
+    if (error) {
+      console.error("Sync failed:", error);
+      toast.error("Sync failed");
+      return;
+    }
+
+    toast.success(`Synced ${data?.campaigns?.length ?? 0} campaign(s)`);
+  };
+
   return (
     <DashboardLayout
       title="TikTok Performance"
@@ -76,22 +180,39 @@ const TikTokPerformance = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-foreground">TikTok Ads Account</h3>
-                <span className="badge-verified">Connected</span>
+                {isLoadingStatus ? (
+                  <span className="badge-pending">Checking…</span>
+                ) : isConnected ? (
+                  <span className="badge-verified">Connected</span>
+                ) : (
+                  <span className="badge-pending">Not connected</span>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
-                Advertiser ID: 7234567890123456789
+                {selectedClient?.name ? (
+                  <>Client: {selectedClient.name}</>
+                ) : (
+                  <>Select a client to connect TikTok</>
+                )}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleSync} disabled={!isConnected}>
               <RefreshCw className="w-4 h-4" />
               Sync Data
             </Button>
-            <Button variant="outline" size="sm">
-              <ExternalLink className="w-4 h-4" />
-              Open TikTok Ads
-            </Button>
+            {isConnected ? (
+              <Button variant="outline" size="sm" disabled>
+                <ExternalLink className="w-4 h-4" />
+                Manage
+              </Button>
+            ) : (
+              <Button variant="glow" size="sm" onClick={handleConnect}>
+                <ExternalLink className="w-4 h-4" />
+                Connect
+              </Button>
+            )}
           </div>
         </div>
       </div>
