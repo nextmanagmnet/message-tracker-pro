@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WhatsAppNumberCard } from "@/components/dashboard/WhatsAppNumberCard";
+import { WhatsAppConnectDialog } from "@/components/whatsapp/WhatsAppConnectDialog";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
 import { useAgency } from "@/hooks/useAgency";
@@ -26,6 +27,7 @@ const WhatsAppNumbers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [numbers, setNumbers] = useState<DbWhatsAppNumber[]>([]);
   const [leads, setLeads] = useState<DbLead[]>([]);
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
 
   const statsByNumberId = useMemo(() => {
     const map = new Map<
@@ -146,7 +148,11 @@ const WhatsAppNumbers = () => {
         })}
 
         {/* Add New Card */}
-        <button className="glass-card p-6 border-2 border-dashed border-border hover:border-primary/50 transition-colors flex flex-col items-center justify-center gap-4 min-h-[240px] group">
+        <button 
+          className="glass-card p-6 border-2 border-dashed border-border hover:border-primary/50 transition-colors flex flex-col items-center justify-center gap-4 min-h-[240px] group"
+          onClick={() => setConnectDialogOpen(true)}
+          disabled={!selectedClient}
+        >
           <div className="p-4 rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
             <Plus className="w-8 h-8 text-primary" />
           </div>
@@ -158,6 +164,16 @@ const WhatsAppNumbers = () => {
           </div>
         </button>
       </div>
+
+      {/* Connect Dialog */}
+      {selectedClient && (
+        <WhatsAppConnectDialog
+          open={connectDialogOpen}
+          onOpenChange={setConnectDialogOpen}
+          clientId={selectedClient.id}
+          onSuccess={load}
+        />
+      )}
     </DashboardLayout>
   );
 };
