@@ -16,58 +16,18 @@ import {
   ExternalLink 
 } from "lucide-react";
 
-const mockCampaigns = [
-  {
-    id: "1",
-    name: "Summer Sale 2024",
-    spend: 2450,
-    realConversations: 156,
-    trashClicks: 42,
-    costPerConversation: 15.71,
-    change: 12,
-  },
-  {
-    id: "2",
-    name: "Product Launch",
-    spend: 1820,
-    realConversations: 98,
-    trashClicks: 65,
-    costPerConversation: 18.57,
-    change: -5,
-  },
-  {
-    id: "3",
-    name: "Brand Awareness",
-    spend: 3200,
-    realConversations: 210,
-    trashClicks: 38,
-    costPerConversation: 15.24,
-    change: 23,
-  },
-  {
-    id: "4",
-    name: "Holiday Promo",
-    spend: 1500,
-    realConversations: 85,
-    trashClicks: 28,
-    costPerConversation: 17.65,
-    change: 8,
-  },
-  {
-    id: "5",
-    name: "New Collection",
-    spend: 2100,
-    realConversations: 142,
-    trashClicks: 51,
-    costPerConversation: 14.79,
-    change: 15,
-  },
-];
+type DbCampaign = {
+  id: string;
+  campaign_id: string;
+  campaign_name: string;
+  spend: number | null;
+  real_conversations: number | null;
+  trash_conversations: number | null;
+};
 
 const STORAGE_KEY = "tiktok_oauth_pending";
 
 function createState(): string {
-  // Prefer crypto UUID; fallback to random.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyCrypto = globalThis.crypto as any;
   if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
@@ -77,7 +37,9 @@ function createState(): string {
 const TikTokPerformance = () => {
   const { selectedClient } = useAgency();
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true);
   const [connectedAccountCount, setConnectedAccountCount] = useState<number>(0);
+  const [campaigns, setCampaigns] = useState<DbCampaign[]>([]);
 
   const isConnected = connectedAccountCount > 0;
 
@@ -85,31 +47,84 @@ const TikTokPerformance = () => {
     return `${window.location.origin}/tiktok/callback`;
   }, []);
 
+  // Transform DB campaigns to table format
+  const tableCampaigns = useMemo(() => {
+    return campaigns.map((c) => {
+      const spend = c.spend ?? 0;
+      const realConversations = c.real_conversations ?? 0;
+      const trashClicks = c.trash_conversations ?? 0;
+      const costPerConversation = realConversations > 0 ? spend / realConversations : 0;
+      
+      return {
+        id: c.id,
+        name: c.campaign_name,
+        spend,
+        realConversations,
+        trashClicks,
+        costPerConversation: Math.round(costPerConversation * 100) / 100,
+        change: 0, // We don't have historical data yet
+      };
+    });
+  }, [campaigns]);
+
+  // Aggregate metrics
+  const metrics = useMemo(() => {
+    const totalSpend = campaigns.reduce((sum, c) => sum + (c.spend ?? 0), 0);
+    const totalReal = campaigns.reduce((sum, c) => sum + (c.real_conversations ?? 0), 0);
+    const totalTrash = campaigns.reduce((sum, c) => sum + (c.trash_conversations ?? 0), 0);
+    const avgCost = totalReal > 0 ? totalSpend / totalReal : 0;
+
+    return {
+      totalSpend,
+      totalReal,
+      totalTrash,
+      avgCost: Math.round(avgCost * 100) / 100,
+      capiEvents: totalReal, // CAPI events = real conversations
+    };
+  }, [campaigns]);
+
   useEffect(() => {
-    (async () => {
+    const loadData = async () => {
       if (!selectedClient?.id) {
         setConnectedAccountCount(0);
+        setCampaigns([]);
         setIsLoadingStatus(false);
+        setIsLoadingCampaigns(false);
         return;
       }
 
       setIsLoadingStatus(true);
-      const { count, error } = await supabase
-        .from("tiktok_accounts")
-        .select("id", { count: "exact", head: true })
-        .eq("client_id", selectedClient.id);
+      setIsLoadingCampaigns(true);
 
-      if (error) {
-        console.error("Failed to load TikTok connection status:", error);
+      // Load connection status and campaigns in parallel
+      const [accountResult, campaignsResult] = await Promise.all([
+        supabase
+          .from("tiktok_accounts")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", selectedClient.id),
+        supabase
+          .from("tiktok_campaigns")
+          .select("id, campaign_id, campaign_name, spend, real_conversations, trash_conversations")
+          .eq("client_id", selectedClient.id)
+          .order("spend", { ascending: false }),
+      ]);
+
+      if (accountResult.error) {
+        console.error("Failed to load TikTok connection status:", accountResult.error);
         toast.error("Failed to load TikTok connection status");
-        setConnectedAccountCount(0);
-        setIsLoadingStatus(false);
-        return;
       }
-
-      setConnectedAccountCount(count ?? 0);
+      setConnectedAccountCount(accountResult.count ?? 0);
       setIsLoadingStatus(false);
-    })();
+
+      if (campaignsResult.error) {
+        console.error("Failed to load campaigns:", campaignsResult.error);
+        toast.error("Failed to load campaign data");
+      }
+      setCampaigns((campaignsResult.data as DbCampaign[]) || []);
+      setIsLoadingCampaigns(false);
+    };
+
+    loadData();
   }, [selectedClient?.id]);
 
   const handleConnect = async () => {
@@ -163,6 +178,24 @@ const TikTokPerformance = () => {
     }
 
     toast.success(`Synced ${data?.campaigns?.length ?? 0} campaign(s)`);
+    
+    // Reload campaigns after sync
+    const { data: refreshed } = await supabase
+      .from("tiktok_campaigns")
+      .select("id, campaign_id, campaign_name, spend, real_conversations, trash_conversations")
+      .eq("client_id", selectedClient.id)
+      .order("spend", { ascending: false });
+    
+    setCampaigns((refreshed as DbCampaign[]) || []);
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   return (
@@ -221,29 +254,29 @@ const TikTokPerformance = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
           title="Total Spend"
-          value="$11,070"
-          change={15}
+          value={formatCurrency(metrics.totalSpend)}
+          change={0}
           icon={<DollarSign className="w-5 h-5" />}
           trend="up"
         />
         <MetricCard
           title="Real Conversions"
-          value="691"
-          change={22}
+          value={metrics.totalReal.toLocaleString()}
+          change={0}
           icon={<Target className="w-5 h-5" />}
           trend="up"
         />
         <MetricCard
           title="Avg. Cost / Conv."
-          value="$16.02"
-          change={-8}
+          value={formatCurrency(metrics.avgCost)}
+          change={0}
           icon={<TrendingUp className="w-5 h-5" />}
           trend="up"
         />
         <MetricCard
           title="CAPI Events Sent"
-          value="691"
-          change={22}
+          value={metrics.capiEvents.toLocaleString()}
+          change={0}
           icon={<Zap className="w-5 h-5" />}
           trend="up"
         />
@@ -267,7 +300,21 @@ const TikTokPerformance = () => {
       </div>
 
       {/* Campaign Table */}
-      <CampaignTable campaigns={mockCampaigns} />
+      {isLoadingCampaigns ? (
+        <div className="glass-card p-8 text-center">
+          <p className="text-muted-foreground">Loading campaigns...</p>
+        </div>
+      ) : tableCampaigns.length > 0 ? (
+        <CampaignTable campaigns={tableCampaigns} />
+      ) : (
+        <div className="glass-card p-8 text-center">
+          <p className="text-muted-foreground">
+            {isConnected 
+              ? "No campaigns found. Click 'Sync Data' to fetch campaigns from TikTok."
+              : "Connect your TikTok Ads account to see campaign data."}
+          </p>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

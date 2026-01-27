@@ -1,21 +1,56 @@
-import { Phone, CheckCircle, XCircle, MessageCircle, TrendingUp } from "lucide-react";
+import { Phone, CheckCircle, XCircle, MessageCircle, TrendingUp, MoreVertical, Unplug, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 interface WhatsAppNumberCardProps {
+  id: string;
   phoneNumber: string;
   status: "connected" | "disconnected";
   realMessages: number;
   trashMessages: number;
   lastMessage?: string;
+  onDisconnect?: (id: string) => Promise<void>;
+  onRemove?: (id: string) => Promise<void>;
 }
 
 export const WhatsAppNumberCard = ({
+  id,
   phoneNumber,
   status,
   realMessages,
   trashMessages,
   lastMessage,
+  onDisconnect,
+  onRemove,
 }: WhatsAppNumberCardProps) => {
   const isConnected = status === "connected";
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleDisconnect = async () => {
+    if (!onDisconnect) return;
+    setIsLoading(true);
+    try {
+      await onDisconnect(id);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!onRemove) return;
+    setIsLoading(true);
+    try {
+      await onRemove(id);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="glass-card p-6 hover:border-primary/30 transition-all duration-300 group">
@@ -42,7 +77,33 @@ export const WhatsAppNumberCard = ({
           </div>
         </div>
 
-        {isConnected && <div className="pulse-dot" />}
+        <div className="flex items-center gap-2">
+          {isConnected && <div className="pulse-dot" />}
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLoading}>
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isConnected && (
+                <DropdownMenuItem onClick={handleDisconnect} disabled={isLoading}>
+                  <Unplug className="w-4 h-4 mr-2" />
+                  Disconnect
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem 
+                onClick={handleRemove} 
+                disabled={isLoading}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">

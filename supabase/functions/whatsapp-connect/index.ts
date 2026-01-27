@@ -245,6 +245,64 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "disconnect": {
+        const { numberId } = body;
+        if (!numberId) {
+          return new Response(JSON.stringify({ error: "numberId is required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Update status to disconnected
+        const { error: updateError } = await supabase
+          .from("whatsapp_numbers")
+          .update({ status: "disconnected" })
+          .eq("id", numberId)
+          .eq("client_id", clientId);
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "remove": {
+        const { numberId } = body;
+        if (!numberId) {
+          return new Response(JSON.stringify({ error: "numberId is required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Delete the WhatsApp number
+        const { error: deleteError } = await supabase
+          .from("whatsapp_numbers")
+          .delete()
+          .eq("id", numberId)
+          .eq("client_id", clientId);
+
+        if (deleteError) {
+          return new Response(
+            JSON.stringify({ error: deleteError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,

@@ -93,6 +93,48 @@ const WhatsAppNumbers = () => {
     setIsLoading(false);
   };
 
+  const handleDisconnect = async (numberId: string) => {
+    if (!selectedClient?.id) return;
+
+    const { error } = await supabase.functions.invoke("whatsapp-connect", {
+      body: {
+        action: "disconnect",
+        clientId: selectedClient.id,
+        numberId,
+      },
+    });
+
+    if (error) {
+      console.error("Failed to disconnect:", error);
+      toast.error("Failed to disconnect number");
+      return;
+    }
+
+    toast.success("Number disconnected");
+    load();
+  };
+
+  const handleRemove = async (numberId: string) => {
+    if (!selectedClient?.id) return;
+
+    const { error } = await supabase.functions.invoke("whatsapp-connect", {
+      body: {
+        action: "remove",
+        clientId: selectedClient.id,
+        numberId,
+      },
+    });
+
+    if (error) {
+      console.error("Failed to remove:", error);
+      toast.error("Failed to remove number");
+      return;
+    }
+
+    toast.success("Number removed");
+    load();
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,7 +164,8 @@ const WhatsAppNumbers = () => {
           </Button>
           <Button
             variant="glow"
-            onClick={() => toast.info("WhatsApp number connection UI is next — we’ll add Embedded Signup here.")}
+            onClick={() => setConnectDialogOpen(true)}
+            disabled={!selectedClient}
           >
             <Plus className="w-4 h-4" />
             Add Number
@@ -138,11 +181,14 @@ const WhatsAppNumbers = () => {
           return (
             <WhatsAppNumberCard
               key={n.id}
+              id={n.id}
               phoneNumber={n.phone_number}
               status={status}
               realMessages={stats?.real ?? 0}
               trashMessages={stats?.trash ?? 0}
               lastMessage={stats?.lastMessage}
+              onDisconnect={handleDisconnect}
+              onRemove={handleRemove}
             />
           );
         })}
