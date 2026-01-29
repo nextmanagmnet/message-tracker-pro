@@ -135,6 +135,32 @@ const WhatsAppNumbers = () => {
     load();
   };
 
+  const handleReconnect = async (numberId: string) => {
+    if (!selectedClient?.id) return;
+
+    const { data, error } = await supabase.functions.invoke("whatsapp-connect", {
+      body: {
+        action: "reconnect",
+        clientId: selectedClient.id,
+        numberId,
+      },
+    });
+
+    if (error) {
+      console.error("Failed to reconnect:", error);
+      toast.error("Failed to reconnect number");
+      return;
+    }
+
+    if (data?.error) {
+      toast.error(data.error);
+      return;
+    }
+
+    toast.success("Number reconnected successfully");
+    load();
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,6 +215,7 @@ const WhatsAppNumbers = () => {
               lastMessage={stats?.lastMessage}
               onDisconnect={handleDisconnect}
               onRemove={handleRemove}
+              onReconnect={handleReconnect}
             />
           );
         })}

@@ -1,4 +1,4 @@
-import { Phone, CheckCircle, XCircle, MessageCircle, TrendingUp, MoreVertical, Unplug, Trash2 } from "lucide-react";
+import { Phone, CheckCircle, XCircle, MessageCircle, TrendingUp, MoreVertical, Unplug, Trash2, PlugZap } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ interface WhatsAppNumberCardProps {
   lastMessage?: string;
   onDisconnect?: (id: string) => Promise<void>;
   onRemove?: (id: string) => Promise<void>;
+  onReconnect?: (id: string) => Promise<void>;
 }
 
 export const WhatsAppNumberCard = ({
@@ -28,6 +29,7 @@ export const WhatsAppNumberCard = ({
   lastMessage,
   onDisconnect,
   onRemove,
+  onReconnect,
 }: WhatsAppNumberCardProps) => {
   const isConnected = status === "connected";
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +49,16 @@ export const WhatsAppNumberCard = ({
     setIsLoading(true);
     try {
       await onRemove(id);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReconnect = async () => {
+    if (!onReconnect) return;
+    setIsLoading(true);
+    try {
+      await onReconnect(id);
     } finally {
       setIsLoading(false);
     }
@@ -87,10 +99,15 @@ export const WhatsAppNumberCard = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isConnected && (
+              {isConnected ? (
                 <DropdownMenuItem onClick={handleDisconnect} disabled={isLoading}>
                   <Unplug className="w-4 h-4 mr-2" />
                   Disconnect
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={handleReconnect} disabled={isLoading}>
+                  <PlugZap className="w-4 h-4 mr-2" />
+                  Reconnect
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem 

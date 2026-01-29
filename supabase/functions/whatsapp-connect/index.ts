@@ -274,6 +274,71 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "reconnect": {
+        const { numberId } = body;
+        if (!numberId) {
+          return new Response(JSON.stringify({ error: "numberId is required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Validate the token is still valid
+        const tokenValidRes = await fetch(`${GRAPH_BASE}/me?access_token=${whatsappToken}`);
+        if (!tokenValidRes.ok) {
+          return new Response(
+            JSON.stringify({ error: "WhatsApp token is no longer valid. Please contact support." }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get the number details to verify it still exists in Meta
+        const { data: numberData, error: numberError } = await supabase
+          .from("whatsapp_numbers")
+          .select("phone_number_id, waba_id")
+          .eq("id", numberId)
+          .eq("client_id", clientId)
+          .single();
+
+        if (numberError || !numberData) {
+          return new Response(
+            JSON.stringify({ error: "Number not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Verify the phone number still exists in Meta
+        const phoneRes = await fetch(
+          `${GRAPH_BASE}/${numberData.phone_number_id}?fields=display_phone_number,verified_name&access_token=${whatsappToken}`
+        );
+
+        if (!phoneRes.ok) {
+          return new Response(
+            JSON.stringify({ error: "Phone number no longer exists in your Meta account. Please add it again." }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Update status to connected
+        const { error: updateError } = await supabase
+          .from("whatsapp_numbers")
+          .update({ status: "connected" })
+          .eq("id", numberId)
+          .eq("client_id", clientId);
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "remove": {
         const { numberId } = body;
         if (!numberId) {
