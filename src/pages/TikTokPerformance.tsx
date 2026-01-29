@@ -15,6 +15,7 @@ import {
   Zap,
   ExternalLink 
 } from "lucide-react";
+import { DateRangePicker, DateRange, getDefaultDateRange } from "@/components/dashboard/DateRangePicker";
 
 type DbCampaign = {
   id: string;
@@ -40,6 +41,7 @@ const TikTokPerformance = () => {
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true);
   const [connectedAccountCount, setConnectedAccountCount] = useState<number>(0);
   const [campaigns, setCampaigns] = useState<DbCampaign[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
 
   const isConnected = connectedAccountCount > 0;
 
@@ -283,15 +285,10 @@ const TikTokPerformance = () => {
       </div>
 
       {/* Action Bar */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Showing data for:</span>
-          <select className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
-            <option>This month</option>
-            <option>Last month</option>
-          </select>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
         <Button variant="outline">
           <Download className="w-4 h-4" />
