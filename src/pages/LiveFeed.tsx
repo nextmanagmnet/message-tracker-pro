@@ -6,6 +6,7 @@ import { Filter, Pause, Play, Bell, BellOff, Loader2 } from "lucide-react";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DateRangePicker, DateRange, getDefaultDateRange } from "@/components/dashboard/DateRangePicker";
 
 type Lead = {
   id: string;
@@ -25,8 +26,9 @@ const LiveFeed = () => {
   const [filter, setFilter] = useState<"all" | "verified" | "pending" | "trash">("all");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
 
-  // Initial load
+  // Initial load with date filtering
   useEffect(() => {
     if (!selectedClient?.id) {
       setLeads([]);
@@ -40,6 +42,8 @@ const LiveFeed = () => {
         .from("leads")
         .select("id, first_message, sender_phone_hash, status, is_real, created_at, whatsapp_number_id, ttclid")
         .eq("client_id", selectedClient.id)
+        .gte("created_at", dateRange.from.toISOString())
+        .lte("created_at", dateRange.to.toISOString())
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -53,7 +57,7 @@ const LiveFeed = () => {
     };
 
     loadLeads();
-  }, [selectedClient?.id]);
+  }, [selectedClient?.id, dateRange]);
 
   // Realtime subscription
   useEffect(() => {
@@ -141,7 +145,7 @@ const LiveFeed = () => {
     >
       {/* Status Bar */}
       <div className="glass-card p-4 mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               {!isPaused && <div className="pulse-dot" />}
@@ -163,7 +167,8 @@ const LiveFeed = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
             <Button
               variant="outline"
               size="sm"
