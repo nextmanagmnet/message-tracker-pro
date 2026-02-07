@@ -169,8 +169,16 @@ const TikTokPerformance = () => {
       toast.error("Please select a client first");
       return;
     }
+    
+    toast.info("Syncing campaign data from TikTok...");
+    
     const { data, error } = await supabase.functions.invoke("tiktok-oauth", {
-      body: { action: "fetch-campaigns", clientId: selectedClient.id },
+      body: { 
+        action: "fetch-campaigns", 
+        clientId: selectedClient.id,
+        dateFrom: dateRange.from.toISOString().split('T')[0],
+        dateTo: dateRange.to.toISOString().split('T')[0],
+      },
     });
 
     if (error) {
@@ -179,7 +187,7 @@ const TikTokPerformance = () => {
       return;
     }
 
-    toast.success(`Synced ${data?.campaigns?.length ?? 0} campaign(s)`);
+    toast.success(`Synced ${data?.campaigns?.length ?? 0} campaign(s) with spend data`);
     
     // Reload campaigns after sync
     const { data: refreshed } = await supabase

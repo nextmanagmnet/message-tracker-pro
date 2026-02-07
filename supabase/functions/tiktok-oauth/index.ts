@@ -147,9 +147,9 @@ serve(async (req) => {
       );
     }
 
-    // Fetch campaigns for a client
+    // Fetch campaigns for a client with real spend data
     if (action === 'fetch-campaigns') {
-      const { clientId } = parsedBody ?? (await req.json());
+      const { clientId, dateFrom, dateTo } = parsedBody ?? (await req.json());
       
       if (!clientId) {
         return new Response(
@@ -187,9 +187,14 @@ serve(async (req) => {
         );
       }
 
+      // Default date range: last 30 days
+      const endDate = dateTo || new Date().toISOString().split('T')[0];
+      const startDate = dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
       const allCampaigns = [];
 
       for (const account of accounts) {
+        // First fetch campaign list
         const campaignsResponse = await fetch(
           `https://business-api.tiktok.com/open_api/v1.3/campaign/get/?advertiser_id=${account.advertiser_id}&page_size=100`,
           {
@@ -201,29 +206,82 @@ serve(async (req) => {
 
         const campaignsData = await campaignsResponse.json();
         
-        if (campaignsData.code === 0 && campaignsData.data?.list) {
-          for (const campaign of campaignsData.data.list) {
-            // Upsert campaign data
-            await supabase.from('tiktok_campaigns').upsert({
-              client_id: clientId,
-              tenant_id: client.agency_id, // Keep for backwards compat
-              tiktok_account_id: account.id,
-              campaign_id: campaign.campaign_id,
-              campaign_name: campaign.campaign_name,
-            }, {
-              onConflict: 'tenant_id,campaign_id',
-            });
-            
-            allCampaigns.push({
-              id: campaign.campaign_id,
-              name: campaign.campaign_name,
-              status: campaign.status,
+        if (campaignsData.code !== 0 || !campaignsData.data?.list) {
+          console.error('Failed to fetch campaigns:', campaignsData);
+          continue;
+        }
+
+        const campaignIds = campaignsData.data.list.map((c: any) => c.campaign_id);
+        
+        if (campaignIds.length === 0) continue;
+
+        // Fetch spend data from TikTok reporting API
+        const reportResponse = await fetch(
+          'https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Token': account.access_token,
+            },
+            body: JSON.stringify({
+              advertiser_id: account.advertiser_id,
+              report_type: 'BASIC',
+              dimensions: ['campaign_id'],
+              data_level: 'AUCTION_CAMPAIGN',
+              metrics: ['spend', 'clicks', 'impressions', 'reach', 'conversion'],
+              start_date: startDate,
+              end_date: endDate,
+              page_size: 200,
+              filtering: {
+                campaign_ids: campaignIds,
+              },
+            }),
+          }
+        );
+
+        const reportData = await reportResponse.json();
+        
+        // Build a map of campaign_id -> spend data
+        const spendMap = new Map<string, { spend: number; clicks: number; conversions: number }>();
+        
+        if (reportData.code === 0 && reportData.data?.list) {
+          for (const row of reportData.data.list) {
+            const metrics = row.metrics;
+            spendMap.set(row.dimensions.campaign_id, {
+              spend: parseFloat(metrics.spend) || 0,
+              clicks: parseInt(metrics.clicks) || 0,
+              conversions: parseInt(metrics.conversion) || 0,
             });
           }
         }
+        
+        // Upsert campaigns with spend data
+        for (const campaign of campaignsData.data.list) {
+          const spendInfo = spendMap.get(campaign.campaign_id) || { spend: 0, clicks: 0, conversions: 0 };
+          
+          await supabase.from('tiktok_campaigns').upsert({
+            client_id: clientId,
+            tenant_id: client.agency_id,
+            tiktok_account_id: account.id,
+            campaign_id: campaign.campaign_id,
+            campaign_name: campaign.campaign_name,
+            spend: spendInfo.spend,
+            // Note: real_conversations and trash_conversations come from WhatsApp webhook
+          }, {
+            onConflict: 'tenant_id,campaign_id',
+          });
+          
+          allCampaigns.push({
+            id: campaign.campaign_id,
+            name: campaign.campaign_name,
+            status: campaign.status,
+            spend: spendInfo.spend,
+          });
+        }
       }
 
-      console.log(`Fetched ${allCampaigns.length} campaigns for client ${clientId}`);
+      console.log(`Fetched ${allCampaigns.length} campaigns with spend data for client ${clientId}`);
 
       return new Response(
         JSON.stringify({ campaigns: allCampaigns }),
