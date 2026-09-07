@@ -99,38 +99,125 @@ export type Database = {
           },
         ]
       }
-      leads: {
+      integration_jobs: {
         Row: {
+          agency_id: string | null
           client_id: string | null
           created_at: string
+          details: Json
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          details?: Json
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          details?: Json
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_jobs_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integration_jobs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          attribution_source: string
+          click_to_message_seconds: number | null
+          client_id: string | null
+          created_at: string
+          ctwa_clid: string | null
           first_message: string
           id: string
           is_real: boolean
+          is_repeat_lead: boolean
+          message_received_at: string | null
+          quality_score: number
+          quality_signals: Json
+          referral_headline: string | null
           sender_phone_hash: string
+          source_id: string | null
+          source_type: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tenant_id: string
           ttclid: string | null
           whatsapp_number_id: string | null
         }
         Insert: {
+          attribution_source?: string
+          click_to_message_seconds?: number | null
           client_id?: string | null
           created_at?: string
+          ctwa_clid?: string | null
           first_message: string
           id?: string
           is_real?: boolean
+          is_repeat_lead?: boolean
+          message_received_at?: string | null
+          quality_score?: number
+          quality_signals?: Json
+          referral_headline?: string | null
           sender_phone_hash: string
+          source_id?: string | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tenant_id: string
           ttclid?: string | null
           whatsapp_number_id?: string | null
         }
         Update: {
+          attribution_source?: string
+          click_to_message_seconds?: number | null
           client_id?: string | null
           created_at?: string
+          ctwa_clid?: string | null
           first_message?: string
           id?: string
           is_real?: boolean
+          is_repeat_lead?: boolean
+          message_received_at?: string | null
+          quality_score?: number
+          quality_signals?: Json
+          referral_headline?: string | null
           sender_phone_hash?: string
+          source_id?: string | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tenant_id?: string
           ttclid?: string | null
