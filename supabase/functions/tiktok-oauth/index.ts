@@ -136,6 +136,8 @@ serve(async (req) => {
           advertiser_id: advertiserId,
           advertiser_name: advertiserName,
           access_token: access_token,
+          refresh_token: refresh_token ?? null,
+          token_expires_at: tokenExpiresAt,
         }, {
           onConflict: 'tenant_id,advertiser_id',
         });
