@@ -92,7 +92,15 @@ serve(async (req) => {
         );
       }
 
-      const { access_token, advertiser_ids } = tokenData.data;
+      const {
+        access_token,
+        advertiser_ids,
+        refresh_token,
+        access_token_expire_in,
+      } = tokenData.data;
+      const tokenExpiresAt = access_token_expire_in
+        ? new Date(Date.now() + Number(access_token_expire_in) * 1000).toISOString()
+        : null;
       
       // Store each advertiser account
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -128,6 +136,8 @@ serve(async (req) => {
           advertiser_id: advertiserId,
           advertiser_name: advertiserName,
           access_token: access_token,
+          refresh_token: refresh_token ?? null,
+          token_expires_at: tokenExpiresAt,
         }, {
           onConflict: 'tenant_id,advertiser_id',
         });
