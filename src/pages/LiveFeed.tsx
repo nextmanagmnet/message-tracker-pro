@@ -57,7 +57,7 @@ const LiveFeed = () => {
         console.error("Failed to load leads:", error);
         toast.error("Failed to load leads");
       } else {
-        setLeads((data as Lead[]) || []);
+        setLeads(((data ?? []) as unknown) as Lead[]);
       }
       setIsLoading(false);
     };
