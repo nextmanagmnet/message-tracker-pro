@@ -17,6 +17,12 @@ type Lead = {
   created_at: string;
   whatsapp_number_id: string | null;
   ttclid: string | null;
+  quality_score: number;
+  quality_signals: Record<string, unknown> | null;
+  attribution_source: string;
+  referral_headline: string | null;
+  is_repeat_lead: boolean;
+  click_to_message_seconds: number | null;
 };
 
 const LiveFeed = () => {
@@ -40,7 +46,7 @@ const LiveFeed = () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("leads")
-        .select("id, first_message, sender_phone_hash, status, is_real, created_at, whatsapp_number_id, ttclid")
+        .select("id, first_message, sender_phone_hash, status, is_real, created_at, whatsapp_number_id, ttclid, quality_score, quality_signals, attribution_source, referral_headline, is_repeat_lead, click_to_message_seconds")
         .eq("client_id", selectedClient.id)
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString())
@@ -253,7 +259,12 @@ const LiveFeed = () => {
                 message={lead.first_message}
                 timestamp={formatTimestamp(lead.created_at)}
                 status={lead.status}
-                campaign={lead.ttclid ? "TikTok Ad" : undefined}
+                campaign={lead.referral_headline ?? undefined}
+                qualityScore={lead.quality_score}
+                attributionSource={lead.attribution_source}
+                signals={lead.quality_signals}
+                isRepeat={lead.is_repeat_lead}
+                clickToMessageSeconds={lead.click_to_message_seconds}
               />
             ))}
           </div>
