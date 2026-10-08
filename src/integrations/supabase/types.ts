@@ -247,6 +247,33 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          campaign_alerts: boolean
+          daily_summary: boolean
+          new_verified: boolean
+          number_status: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_alerts?: boolean
+          daily_summary?: boolean
+          new_verified?: boolean
+          number_status?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_alerts?: boolean
+          daily_summary?: boolean
+          new_verified?: boolean
+          number_status?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -284,6 +311,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduler_config: {
+        Row: {
+          created_at: string
+          cron_token: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          cron_token?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          cron_token?: string
+          id?: number
+        }
+        Relationships: []
       }
       tenants: {
         Row: {
@@ -550,6 +595,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_agency_members: {
+        Args: { _agency_id: string }
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          member_id: string
+          role: Database["public"]["Enums"]["agency_role"]
+          user_id: string
+        }[]
+      }
       get_user_agency_id: { Args: { _user_id: string }; Returns: string }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_agency_role: {
