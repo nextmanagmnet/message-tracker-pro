@@ -4,14 +4,23 @@ export const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-/** Scheduled functions are only callable with the platform cron secret. */
-export function isAuthorizedCron(req: Request): boolean {
-  const expected = Deno.env.get("CRON_SECRET");
-  if (!expected) return false;
+/**
+ * Scheduled functions accept either the platform CRON_SECRET or the
+ * database scheduler token (stored in a service-role-only table).
+ */
+export async function isAuthorizedCron(req: Request, supabase: any): Promise<boolean> {
   const provided =
     req.headers.get("x-cron-secret") ??
     new URL(req.url).searchParams.get("cron_secret");
-  return provided === expected;
+  if (!provided) return false;
+  const envSecret = Deno.env.get("CRON_SECRET");
+  if (envSecret && provided === envSecret) return true;
+  const { data } = await supabase
+    .from("scheduler_config")
+    .select("cron_token")
+    .eq("id", 1)
+    .maybeSingle();
+  return Boolean(data?.cron_token) && provided === data.cron_token;
 }
 
 export function json(body: unknown, status = 200) {
