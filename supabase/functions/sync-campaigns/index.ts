@@ -12,14 +12,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  if (!isAuthorizedCron(req)) {
-    return json({ error: "Unauthorized" }, 401);
-  }
-
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+  if (!(await isAuthorizedCron(req, supabase))) {
+    return json({ error: "Unauthorized" }, 401);
+  }
 
   let onlyClientId: string | null = null;
   let days = 7;
