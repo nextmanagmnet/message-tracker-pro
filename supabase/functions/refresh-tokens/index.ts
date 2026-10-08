@@ -7,14 +7,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  if (!isAuthorizedCron(req)) {
-    return json({ error: "Unauthorized" }, 401);
-  }
-
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+  if (!(await isAuthorizedCron(req, supabase))) {
+    return json({ error: "Unauthorized" }, 401);
+  }
 
   const appId = Deno.env.get("TIKTOK_APP_ID");
   const appSecret = Deno.env.get("TIKTOK_APP_SECRET");
