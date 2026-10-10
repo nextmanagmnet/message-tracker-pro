@@ -10,14 +10,18 @@ import {
   ChevronRight,
   Zap,
   Users,
+  Building2,
+  FileText,
 } from "lucide-react";
 
 const navItems = [
+  { icon: Building2, label: "All Clients", path: "/agency" },
   { icon: LayoutDashboard, label: "Overview", path: "/" },
   { icon: Users, label: "Clients", path: "/clients" },
   { icon: MessageCircle, label: "WhatsApp Numbers", path: "/whatsapp" },
   { icon: TrendingUp, label: "TikTok Performance", path: "/tiktok" },
   { icon: Radio, label: "Live Feed", path: "/feed" },
+  { icon: FileText, label: "Reports", path: "/reports" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 

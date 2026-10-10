@@ -15,6 +15,8 @@ import LiveFeed from "./pages/LiveFeed";
 import Settings from "./pages/Settings";
 import ClientsPage from "./pages/ClientsPage";
 import NotFound from "./pages/NotFound";
+import AgencyOverview from "./pages/AgencyOverview";
+import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +86,8 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route path="/agency" element={<ProtectedRoute><AgencyOverview /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
