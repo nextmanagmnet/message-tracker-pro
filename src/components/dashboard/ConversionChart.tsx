@@ -1,21 +1,14 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const data = [
-  { date: "Mon", real: 24, trash: 12 },
-  { date: "Tue", real: 35, trash: 18 },
-  { date: "Wed", real: 42, trash: 15 },
-  { date: "Thu", real: 38, trash: 22 },
-  { date: "Fri", real: 55, trash: 19 },
-  { date: "Sat", real: 48, trash: 25 },
-  { date: "Sun", real: 62, trash: 21 },
-];
+export type ChartPoint = { date: string; real: number; trash: number };
 
-export const ConversionChart = () => {
+export const ConversionChart = ({ data }: { data: ChartPoint[] }) => {
+  const empty = data.every((d) => d.real === 0 && d.trash === 0);
   return (
     <div className="glass-card p-6">
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-foreground">Conversion Trends</h3>
-        <p className="text-sm text-muted-foreground">Real vs trash conversations over time</p>
+        <p className="text-sm text-muted-foreground">Real vs trash conversations per day</p>
       </div>
 
       <div className="flex items-center gap-6 mb-6">
@@ -25,59 +18,41 @@ export const ConversionChart = () => {
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-destructive" />
-          <span className="text-sm text-muted-foreground">Trash Clicks</span>
+          <span className="text-sm text-muted-foreground">Trash</span>
         </div>
       </div>
 
-      <div className="h-[300px]">
+      <div className="h-[300px] relative">
+        {empty && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <p className="text-sm text-muted-foreground">No conversations in this period yet</p>
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorReal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(173, 80%, 50%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(173, 80%, 50%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorTrash" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 47%, 16%)" vertical={false} />
-            <XAxis
-              dataKey="date"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+            <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(222, 47%, 10%)",
-                border: "1px solid hsl(222, 47%, 16%)",
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
                 borderRadius: "8px",
-                color: "hsl(210, 40%, 98%)",
+                color: "hsl(var(--foreground))",
               }}
             />
-            <Area
-              type="monotone"
-              dataKey="real"
-              stroke="hsl(173, 80%, 50%)"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#colorReal)"
-            />
-            <Area
-              type="monotone"
-              dataKey="trash"
-              stroke="hsl(0, 84%, 60%)"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#colorTrash)"
-            />
+            <Area type="monotone" dataKey="real" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorReal)" />
+            <Area type="monotone" dataKey="trash" stroke="hsl(var(--destructive))" strokeWidth={2} fillOpacity={1} fill="url(#colorTrash)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
