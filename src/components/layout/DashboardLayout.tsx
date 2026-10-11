@@ -15,12 +15,12 @@ export const DashboardLayout = ({ children, title, subtitle }: DashboardLayoutPr
   
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
+      <div className="print:hidden"><Sidebar /></div>
       
       {/* Main Content */}
-      <div className="ml-64 transition-all duration-300">
+      <div className="ml-64 print:ml-0 transition-all duration-300">
         {/* Header */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
+        <header className="print:hidden sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
           <div className="flex items-center justify-between px-8 py-4">
             <div className="flex items-center gap-6">
               <div>
