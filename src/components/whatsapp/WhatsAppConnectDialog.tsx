@@ -108,9 +108,9 @@ export function WhatsAppConnectDialog({
 
       setWabas(wabasRes.data.wabas);
       setStep("select-waba");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error:", err);
-      setError(err.message || "An error occurred");
+      setError(err instanceof Error ? err.message : "An error occurred");
       setStep("error");
     }
   };
@@ -139,9 +139,9 @@ export function WhatsAppConnectDialog({
       // Auto-select all by default
       setSelectedPhones(new Set(res.data.phoneNumbers.map((p: PhoneNumber) => p.id)));
       setStep("select-numbers");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error:", err);
-      setError(err.message || "An error occurred");
+      setError(err instanceof Error ? err.message : "An error occurred");
       setStep("error");
     }
   };
@@ -188,9 +188,9 @@ export function WhatsAppConnectDialog({
       
       // Close after a brief delay
       setTimeout(() => onOpenChange(false), 1500);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error:", err);
-      setError(err.message || "An error occurred");
+      setError(err instanceof Error ? err.message : "An error occurred");
       setStep("error");
     }
   };

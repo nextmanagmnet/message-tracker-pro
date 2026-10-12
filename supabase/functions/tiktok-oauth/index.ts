@@ -12,6 +12,56 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate JWT and get the calling user (mirrors whatsapp-connect).
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const anonClient = createClient(
+    supabaseUrl,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  const userId = claimsData.claims.sub as string;
+
+  // Any action that targets a specific client must be checked against that
+  // user's agency membership before we touch tiktok_accounts/tiktok_campaigns.
+  async function assertClientAccess(clientId: string | undefined): Promise<Response | null> {
+    if (!clientId) {
+      return new Response(JSON.stringify({ error: 'Client ID is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { data: canAccess } = await supabase.rpc('user_can_access_client', {
+      _user_id: userId,
+      _client_id: clientId,
+    });
+    if (!canAccess) {
+      return new Response(JSON.stringify({ error: 'Access denied' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    return null;
+  }
+
   try {
     const url = new URL(req.url);
     // Support action via query param (legacy) OR JSON body (preferred for function invoke)
@@ -26,8 +76,6 @@ serve(async (req) => {
       }
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const tiktokAppId = Deno.env.get('TIKTOK_APP_ID');
     const tiktokAppSecret = Deno.env.get('TIKTOK_APP_SECRET');
 
@@ -59,14 +107,10 @@ serve(async (req) => {
     // Handle OAuth callback - exchange code for tokens
     if (action === 'callback') {
       const { code, clientId } = parsedBody ?? (await req.json());
-      
-      if (!clientId) {
-        return new Response(
-          JSON.stringify({ error: 'Client ID is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
+
+      const accessDenied = await assertClientAccess(clientId);
+      if (accessDenied) return accessDenied;
+
       console.log('Exchanging TikTok auth code for tokens for client:', clientId);
       
       // Exchange authorization code for access token
@@ -101,10 +145,7 @@ serve(async (req) => {
       const tokenExpiresAt = access_token_expire_in
         ? new Date(Date.now() + Number(access_token_expire_in) * 1000).toISOString()
         : null;
-      
-      // Store each advertiser account
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
+
       // Get client to verify it exists and get tenant_id for backwards compat
       const { data: client, error: clientError } = await supabase
         .from('clients')
@@ -160,16 +201,10 @@ serve(async (req) => {
     // Fetch campaigns for a client with real spend data
     if (action === 'fetch-campaigns') {
       const { clientId, dateFrom, dateTo } = parsedBody ?? (await req.json());
-      
-      if (!clientId) {
-        return new Response(
-          JSON.stringify({ error: 'Client ID is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
+
+      const accessDenied = await assertClientAccess(clientId);
+      if (accessDenied) return accessDenied;
+
       // Get client info
       const { data: client, error: clientError } = await supabase
         .from('clients')

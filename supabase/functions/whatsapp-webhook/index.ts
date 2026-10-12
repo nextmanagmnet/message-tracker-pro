@@ -15,6 +15,51 @@ async function hashPhone(phone: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+/**
+ * Meta signs every webhook delivery with HMAC-SHA256 of the raw body, keyed
+ * by the app secret, in the `X-Hub-Signature-256: sha256=<hex>` header.
+ * Without this check anyone who finds the URL can post fabricated leads.
+ */
+async function verifyMetaSignature(rawBody: string, signatureHeader: string | null): Promise<boolean> {
+  const appSecret = Deno.env.get('WHATSAPP_APP_SECRET');
+  if (!appSecret) {
+    console.error('WHATSAPP_APP_SECRET not configured; refusing to process webhook');
+    return false;
+  }
+  if (!signatureHeader?.startsWith('sha256=')) return false;
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(appSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  const expectedHex = Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const providedHex = signatureHeader.slice('sha256='.length);
+  if (providedHex.length !== expectedHex.length) return false;
+  return timingSafeEqual(hexToBytes(providedHex), hexToBytes(expectedHex));
+}
+
 // Legacy fallback only: some setups pre-fill the wa.me text with the click id.
 function extractClidFromText(message: string): string | null {
   const m = message.match(/(?:ttclid|ctwa_clid)[=:]?\s*([a-zA-Z0-9_.-]+)/i);
@@ -67,8 +112,22 @@ Deno.serve(async (req) => {
 
   if (req.method === 'POST') {
     try {
-      const body = await req.json();
-      console.log('Received WhatsApp webhook:', JSON.stringify(body));
+      const rawBody = await req.text();
+
+      const signatureValid = await verifyMetaSignature(
+        rawBody,
+        req.headers.get('x-hub-signature-256')
+      );
+      if (!signatureValid) {
+        console.error('WhatsApp webhook signature verification failed');
+        return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const body = JSON.parse(rawBody);
+      console.log(`Received WhatsApp webhook: ${body.entry?.length ?? 0} entry(ies)`);
 
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,

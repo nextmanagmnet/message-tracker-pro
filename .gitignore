@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+
+# graphify tooling output/cache
+graphify-out/
+
+# Environment variables
+.env
 
 # Editor directories and files
 .vscode/*

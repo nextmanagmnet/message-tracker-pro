@@ -178,7 +178,11 @@ const Settings = () => {
     setSavingCompany(true);
     const { error } = await supabase.from("agencies").update({ name: companyName.trim() }).eq("id", agency.id);
     setSavingCompany(false);
-    error ? toast.error("Couldn't save company name") : toast.success("Company name saved");
+    if (error) {
+      toast.error("Couldn't save company name");
+    } else {
+      toast.success("Company name saved");
+    }
   };
 
   const changeRole = async (memberId: string, role: Member["role"]) => {
