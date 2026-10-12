@@ -71,3 +71,35 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Environment variables
+
+Copy `.env.example` to `.env` and fill in your Supabase project's URL/anon key
+(Project Settings > API in the Supabase dashboard). These are safe to expose
+to the browser — they're the public anon key, not a secret.
+
+## Supabase Edge Function secrets
+
+Set these via the Supabase dashboard (Edge Functions > Secrets) or
+`supabase secrets set <NAME>=<value>`. `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically and don't need to
+be set manually.
+
+| Secret | Used by | Notes |
+|---|---|---|
+| `WHATSAPP_VERIFY_TOKEN` | `whatsapp-webhook` | Shared secret for Meta's webhook subscription handshake (`hub.verify_token`). |
+| `WHATSAPP_APP_SECRET` | `whatsapp-webhook` | Meta App Secret — verifies the `X-Hub-Signature-256` header on every delivery. **Required**; the webhook rejects all POSTs with 401 until this is set. |
+| `WHATSAPP_ACCESS_TOKEN` | `whatsapp-connect`, `refresh-tokens` | WhatsApp Business system-user access token. |
+| `TIKTOK_APP_ID` / `TIKTOK_APP_SECRET` | `tiktok-oauth`, `refresh-tokens`, `sync-campaigns` | TikTok for Business app credentials. |
+| `CRON_SECRET` | `refresh-tokens`, `sync-campaigns` | Optional static override for the scheduled-job auth check. If unset, the DB-generated token in `scheduler_config.cron_token` is used instead (see `drizzle/migrations/0000_scheduler_setup.sql`). |
+
+## Database migrations
+
+Schema changes live in two places that both need to be applied to a fresh
+database, in this order:
+
+1. `supabase/migrations/*.sql` — via the Supabase CLI (`supabase db push`) or
+   pasted into the SQL editor.
+2. `drizzle/migrations/*.sql` — applied against `LOVABLE_DB_MIGRATION_URL`
+   (see `drizzle.config.ts`); this is where `scheduler_config`,
+   `notification_preferences`, and the `pg_cron`/`pg_net` extensions come from.

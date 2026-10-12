@@ -69,11 +69,16 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
 
-      // Get user's agency membership
+      // Get user's agency membership. A user could in principle belong to more
+      // than one agency (agency_members has no unique constraint on user_id
+      // alone) — there's no multi-agency switcher yet, so just pick one
+      // deterministically rather than letting maybeSingle() error on >1 row.
       const { data: membershipData, error: membershipError } = await supabase
         .from("agency_members")
         .select("*")
         .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       if (membershipError) {
