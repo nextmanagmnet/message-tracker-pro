@@ -171,17 +171,35 @@ serve(async (req) => {
         const infoData = await infoResponse.json();
         const advertiserName = infoData.data?.list?.[0]?.name || 'Unknown';
         
-        return supabase.from('tiktok_accounts').upsert({
-          client_id: clientId,
-          tenant_id: client.agency_id, // Keep for backwards compat
-          advertiser_id: advertiserId,
-          advertiser_name: advertiserName,
-          access_token: access_token,
-          refresh_token: refresh_token ?? null,
-          token_expires_at: tokenExpiresAt,
-        }, {
-          onConflict: 'tenant_id,advertiser_id',
+        // Upsert the row first (no tokens yet) to get a stable id, then write
+        // the tokens through to Vault instead of storing them in the row.
+        const { data: upserted, error: upsertError } = await supabase
+          .from('tiktok_accounts')
+          .upsert({
+            client_id: clientId,
+            tenant_id: client.agency_id, // Keep for backwards compat
+            advertiser_id: advertiserId,
+            advertiser_name: advertiserName,
+            token_expires_at: tokenExpiresAt,
+          }, {
+            onConflict: 'tenant_id,advertiser_id',
+          })
+          .select('id')
+          .single();
+
+        if (upsertError || !upserted) {
+          console.error('Failed to upsert tiktok_accounts row:', upsertError);
+          return;
+        }
+
+        const { error: tokenError } = await supabase.rpc('set_tiktok_tokens', {
+          _account_id: upserted.id,
+          _access_token: access_token,
+          _refresh_token: refresh_token ?? null,
         });
+        if (tokenError) {
+          console.error('Failed to store TikTok tokens in Vault:', tokenError);
+        }
       });
 
       await Promise.all(insertPromises);
@@ -219,12 +237,10 @@ serve(async (req) => {
         );
       }
       
-      // Get TikTok accounts for this client
+      // Get TikTok accounts for this client, tokens decrypted from Vault
       const { data: accounts, error: accountsError } = await supabase
-        .from('tiktok_accounts')
-        .select('*')
-        .eq('client_id', clientId);
-      
+        .rpc('get_tiktok_tokens_for_client', { _client_id: clientId });
+
       if (accountsError || !accounts?.length) {
         return new Response(
           JSON.stringify({ error: 'No TikTok accounts connected for this client' }),

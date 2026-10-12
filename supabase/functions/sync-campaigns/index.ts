@@ -35,13 +35,12 @@ Deno.serve(async (req) => {
     .toISOString()
     .split("T")[0];
 
-  let query = supabase
-    .from("tiktok_accounts")
-    .select("id, client_id, tenant_id, advertiser_id, access_token");
-  if (onlyClientId) query = query.eq("client_id", onlyClientId);
-
-  const { data: accounts, error } = await query;
+  // Tokens are Vault-encrypted; this RPC decrypts them for every account.
+  const { data: allAccounts, error } = await supabase.rpc("get_all_tiktok_tokens");
   if (error) return json({ error: error.message }, 500);
+  const accounts = onlyClientId
+    ? (allAccounts ?? []).filter((a) => a.client_id === onlyClientId)
+    : allAccounts;
 
   let synced = 0;
   const failures: Record<string, string> = {};

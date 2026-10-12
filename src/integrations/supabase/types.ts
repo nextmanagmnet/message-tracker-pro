@@ -356,37 +356,37 @@ export type Database = {
       }
       tiktok_accounts: {
         Row: {
-          access_token: string
+          access_token_secret_id: string | null
           advertiser_id: string
           advertiser_name: string | null
           client_id: string | null
           connected_at: string
           id: string
-          refresh_token: string | null
+          refresh_token_secret_id: string | null
           tenant_id: string
           token_expires_at: string | null
           updated_at: string
         }
         Insert: {
-          access_token: string
+          access_token_secret_id?: string | null
           advertiser_id: string
           advertiser_name?: string | null
           client_id?: string | null
           connected_at?: string
           id?: string
-          refresh_token?: string | null
+          refresh_token_secret_id?: string | null
           tenant_id: string
           token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
-          access_token?: string
+          access_token_secret_id?: string | null
           advertiser_id?: string
           advertiser_name?: string | null
           client_id?: string | null
           connected_at?: string
           id?: string
-          refresh_token?: string | null
+          refresh_token_secret_id?: string | null
           tenant_id?: string
           token_expires_at?: string | null
           updated_at?: string

@@ -103,3 +103,15 @@ database, in this order:
 2. `drizzle/migrations/*.sql` — applied against `LOVABLE_DB_MIGRATION_URL`
    (see `drizzle.config.ts`); this is where `scheduler_config`,
    `notification_preferences`, and the `pg_cron`/`pg_net` extensions come from.
+
+After applying migrations that change the schema, regenerate
+`src/integrations/supabase/types.ts` (`supabase gen types typescript
+--project-id <id> > src/integrations/supabase/types.ts`, or let Lovable
+resync it) — it's hand-kept-accurate in the meantime but is meant to be
+generated, not maintained by hand.
+
+`supabase/migrations/20261012130000_vault_encrypt_tiktok_tokens.sql` requires
+Vault to be enabled for the project first (Dashboard > Database > Vault >
+Enable Vault) and drops the plaintext `tiktok_accounts.access_token` /
+`refresh_token` columns after backfilling them into Vault — test it against a
+branch/staging project before running on production data.
