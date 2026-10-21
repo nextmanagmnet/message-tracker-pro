@@ -119,32 +119,76 @@ Deno.serve(async (req) => {
       }
 
       case "fetch-wabas": {
-        // Fetch all WABAs the token has access to
-        const wabasRes = await fetch(
-          `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${whatsappToken}`
-        );
-        if (!wabasRes.ok) {
-          const errData = await wabasRes.json();
-          return new Response(
-            JSON.stringify({ error: errData.error?.message || "Failed to fetch WABAs" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const wabasData = await wabasRes.json();
-        
-        // Flatten WABAs from all businesses
+        // Find WABAs via the token's granted asset IDs (needs only whatsapp_business_management).
+        // /me/businesses requires business_management, which system-user tokens often lack.
         const wabas: Array<{ id: string; name: string; businessId: string; businessName: string; status: string }> = [];
-        for (const business of wabasData.data || []) {
-          const owned = business.owned_whatsapp_business_accounts?.data || [];
-          for (const waba of owned) {
-            wabas.push({
-              id: waba.id,
-              name: waba.name || "Unnamed WABA",
-              businessId: business.id,
-              businessName: business.name,
-              status: waba.account_review_status || "unknown",
-            });
+        const seen = new Set<string>();
+
+        const debugRes = await fetch(
+          `${GRAPH_BASE}/debug_token?input_token=${whatsappToken}&access_token=${whatsappToken}`
+        );
+        const debugData = await debugRes.json().catch(() => ({}));
+        const wabaIds: string[] = [];
+        for (const s of debugData?.data?.granular_scopes || []) {
+          if (s.scope === "whatsapp_business_management" || s.scope === "whatsapp_business_messaging") {
+            for (const id of s.target_ids || []) if (!wabaIds.includes(id)) wabaIds.push(id);
           }
+        }
+
+        for (const id of wabaIds) {
+          const r = await fetch(
+            `${GRAPH_BASE}/${id}?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+          );
+          if (!r.ok) {
+            console.error(`WABA ${id} lookup failed`, r.status, await r.text());
+            continue;
+          }
+          const w = await r.json();
+          seen.add(w.id);
+          wabas.push({
+            id: w.id,
+            name: w.name || "Unnamed WABA",
+            businessId: w.owner_business_info?.id || "",
+            businessName: w.owner_business_info?.name || "",
+            status: w.account_review_status || "unknown",
+          });
+        }
+
+        // Fallback: business listing (only works if token has business_management)
+        let fallbackError: string | null = null;
+        if (wabas.length === 0) {
+          const wabasRes = await fetch(
+            `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${whatsappToken}`
+          );
+          const wabasData = await wabasRes.json().catch(() => ({}));
+          if (!wabasRes.ok) {
+            fallbackError = wabasData?.error?.message || "Failed to fetch WABAs";
+          } else {
+            for (const business of wabasData.data || []) {
+              for (const waba of business.owned_whatsapp_business_accounts?.data || []) {
+                if (seen.has(waba.id)) continue;
+                wabas.push({
+                  id: waba.id,
+                  name: waba.name || "Unnamed WABA",
+                  businessId: business.id,
+                  businessName: business.name,
+                  status: waba.account_review_status || "unknown",
+                });
+              }
+            }
+          }
+        }
+
+        if (wabas.length === 0) {
+          return new Response(
+            JSON.stringify({
+              wabas: [],
+              error:
+                "No WhatsApp Business Accounts are shared with the platform token. In Meta Business Settings, assign the WhatsApp account to the system user (Full control) and regenerate the token with whatsapp_business_management." +
+                (fallbackError ? ` (Meta: ${fallbackError})` : ""),
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
 
         return new Response(

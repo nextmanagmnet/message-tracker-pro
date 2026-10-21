@@ -103,7 +103,7 @@ export function WhatsAppConnectDialog({
       }
 
       if (!wabasRes.data?.wabas || wabasRes.data.wabas.length === 0) {
-        throw new Error("No WhatsApp Business Accounts found. Make sure your token has access to a WABA.");
+        throw new Error(wabasRes.data?.error || "No WhatsApp Business Accounts found. Make sure your token has access to a WABA.");
       }
 
       setWabas(wabasRes.data.wabas);
