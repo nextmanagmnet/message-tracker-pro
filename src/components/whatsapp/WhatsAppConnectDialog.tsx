@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check, Phone, Building2, AlertCircle } from "lucide-react";
@@ -49,6 +50,8 @@ export function WhatsAppConnectDialog({
   const [selectedWaba, setSelectedWaba] = useState<Waba | null>(null);
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [selectedPhones, setSelectedPhones] = useState<Set<string>>(new Set());
+  const [manualWabaId, setManualWabaId] = useState("");
+  const [manualLoading, setManualLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -207,6 +210,50 @@ export function WhatsAppConnectDialog({
     });
   };
 
+  const lookupManualWaba = async () => {
+    const id = manualWabaId.trim();
+    if (!/^\d{5,25}$/.test(id)) {
+      toast.error("Enter the numeric WhatsApp Business Account ID");
+      return;
+    }
+    setManualLoading(true);
+    try {
+      const authHeader = await getAuthHeader();
+      const res = await supabase.functions.invoke("whatsapp-connect", {
+        body: { action: "lookup-waba", clientId, wabaId: id },
+        headers: { Authorization: authHeader },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (!res.data?.waba) throw new Error(res.data?.error || "Account not found");
+      setError(null);
+      await fetchPhoneNumbers(res.data.waba);
+    } catch (err: any) {
+      toast.error(err.message || "Could not open this account");
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
+  const manualForm = (
+    <div className="w-full space-y-2 pt-4 border-t border-border">
+      <p className="text-xs text-muted-foreground">
+        Or enter your WhatsApp Business Account ID (found in Meta WhatsApp Manager → Account settings):
+      </p>
+      <div className="flex gap-2">
+        <Input
+          value={manualWabaId}
+          onChange={(e) => setManualWabaId(e.target.value)}
+          placeholder="e.g. 102290129340398"
+          inputMode="numeric"
+          maxLength={25}
+        />
+        <Button onClick={lookupManualWaba} disabled={manualLoading || !manualWabaId.trim()}>
+          {manualLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -229,7 +276,7 @@ export function WhatsAppConnectDialog({
           )}
 
           {step === "error" && (
-            <div className="flex flex-col items-center justify-center py-8 gap-4">
+            <div className="flex flex-col items-center justify-center py-6 gap-4">
               <div className="p-3 rounded-full bg-destructive/10">
                 <AlertCircle className="w-8 h-8 text-destructive" />
               </div>
@@ -237,6 +284,7 @@ export function WhatsAppConnectDialog({
               <Button variant="outline" onClick={validateAndFetchWabas}>
                 Try Again
               </Button>
+              {manualForm}
             </div>
           )}
 
@@ -271,6 +319,7 @@ export function WhatsAppConnectDialog({
                   </button>
                 ))}
               </div>
+              {manualForm}
             </div>
           )}
 

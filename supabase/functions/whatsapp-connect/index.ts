@@ -154,6 +154,30 @@ Deno.serve(async (req) => {
           });
         }
 
+        // System users: assets assigned directly to the token's user
+        if (wabas.length === 0) {
+          const meRes = await fetch(`${GRAPH_BASE}/me?fields=id&access_token=${whatsappToken}`);
+          const me = await meRes.json().catch(() => ({}));
+          if (me?.id) {
+            const aRes = await fetch(
+              `${GRAPH_BASE}/${me.id}/assigned_whatsapp_business_accounts?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+            );
+            const aData = await aRes.json().catch(() => ({}));
+            if (!aRes.ok) console.error("assigned WABAs lookup failed", aRes.status, JSON.stringify(aData));
+            for (const w of aData?.data || []) {
+              if (seen.has(w.id)) continue;
+              seen.add(w.id);
+              wabas.push({
+                id: w.id,
+                name: w.name || "Unnamed WABA",
+                businessId: w.owner_business_info?.id || "",
+                businessName: w.owner_business_info?.name || "",
+                status: w.account_review_status || "unknown",
+              });
+            }
+          }
+        }
+
         // Fallback: business listing (only works if token has business_management)
         let fallbackError: string | null = null;
         if (wabas.length === 0) {
@@ -193,6 +217,37 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify({ wabas }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "lookup-waba": {
+        if (!wabaId || !/^\d{5,25}$/.test(String(wabaId))) {
+          return new Response(JSON.stringify({ error: "Enter a valid numeric WhatsApp Business Account ID" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const r = await fetch(
+          `${GRAPH_BASE}/${wabaId}?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+        );
+        const w = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          return new Response(
+            JSON.stringify({ error: `Meta could not open this account: ${w?.error?.message || "unknown error"}` }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            waba: {
+              id: w.id,
+              name: w.name || "Unnamed WABA",
+              businessId: w.owner_business_info?.id || "",
+              businessName: w.owner_business_info?.name || "",
+              status: w.account_review_status || "unknown",
+            },
+          }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
