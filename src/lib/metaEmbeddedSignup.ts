@@ -48,7 +48,7 @@ export async function launchEmbeddedSignup(): Promise<SignupResult> {
       window.FB.login(
         (res: any) => res?.authResponse?.code ? resolve(res.authResponse.code) : reject(new Error("Signup was closed before finishing.")),
         { config_id: CONFIG_ID, response_type: "code", override_default_response_type: true,
-          extras: { setup: {}, featureType: "", sessionInfoVersion: "3" } }
+          extras: { setup: {}, featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" } }
       );
     });
     // session message may arrive slightly after the login callback
