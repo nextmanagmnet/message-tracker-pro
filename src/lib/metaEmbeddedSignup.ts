@@ -35,7 +35,7 @@ export async function launchEmbeddedSignup(): Promise<SignupResult> {
     try {
       const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
       if (d?.type !== "WA_EMBEDDED_SIGNUP") return;
-      if (d.event === "FINISH" || d.event === "FINISH_ONLY_WABA") {
+      if (typeof d.event === "string" && d.event.startsWith("FINISH")) {
         session = { wabaId: d.data?.waba_id, phoneNumberId: d.data?.phone_number_id };
       } else if (d.event === "CANCEL") {
         cancelled = d.data?.current_step || "cancelled";
