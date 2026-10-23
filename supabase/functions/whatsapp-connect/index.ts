@@ -287,6 +287,53 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "embedded-signup": {
+        const { code, phoneNumberId: esPhoneId, wabaId: esWabaId } = body;
+        const appId = Deno.env.get("META_APP_ID") || "1635724714898789";
+        const appSecret = Deno.env.get("META_APP_SECRET");
+        const json = (o: unknown, s = 200) =>
+          new Response(JSON.stringify(o), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (!appSecret) return json({ error: "Meta App Secret is not configured" });
+        if (typeof code !== "string" || !/^\d{5,25}$/.test(String(esWabaId)) || !/^\d{5,25}$/.test(String(esPhoneId))) {
+          return json({ error: "Signup did not return the WhatsApp account. Please try again." });
+        }
+        // Exchange code for the business's token (validates the signup)
+        const tRes = await fetch(
+          `${GRAPH_BASE}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}`
+        );
+        const tData = await tRes.json().catch(() => ({}));
+        if (!tRes.ok || !tData.access_token) {
+          console.error("Code exchange failed", tRes.status, tData?.error?.message);
+          return json({ error: `Meta signup could not be completed: ${tData?.error?.message || "unknown error"}` });
+        }
+        const bizToken = tData.access_token as string;
+        // Subscribe our app to the WABA's webhooks
+        const subRes = await fetch(`${GRAPH_BASE}/${esWabaId}/subscribed_apps`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${bizToken}` },
+        });
+        if (!subRes.ok) console.error("subscribed_apps failed", await subRes.text());
+        // Read phone number details
+        const pRes = await fetch(
+          `${GRAPH_BASE}/${esPhoneId}?fields=display_phone_number,verified_name`,
+          { headers: { Authorization: `Bearer ${bizToken}` } }
+        );
+        const p = await pRes.json().catch(() => ({}));
+        const display = p.display_phone_number || esPhoneId;
+
+        const { data: existing } = await supabase
+          .from("whatsapp_numbers").select("id")
+          .eq("phone_number_id", esPhoneId).eq("client_id", clientId).maybeSingle();
+        const { error: upErr } = existing
+          ? await supabase.from("whatsapp_numbers").update({ status: "connected", waba_id: esWabaId }).eq("id", existing.id)
+          : await supabase.from("whatsapp_numbers").insert({
+              client_id: clientId, tenant_id: tenantId, phone_number: display,
+              phone_number_id: esPhoneId, waba_id: esWabaId, status: "connected",
+            });
+        if (upErr) return json({ error: upErr.message });
+        return json({ success: true, phoneNumber: display });
+      }
+
       case "import-numbers": {
         if (!wabaId || !phoneNumbers || !Array.isArray(phoneNumbers)) {
           return new Response(
