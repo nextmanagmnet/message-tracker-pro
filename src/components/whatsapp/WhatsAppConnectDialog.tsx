@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Check, Phone, Building2, AlertCircle } from "lucide-react";
+import { launchEmbeddedSignup } from "@/lib/metaEmbeddedSignup";
 
 interface Waba {
   id: string;
@@ -52,6 +53,7 @@ export function WhatsAppConnectDialog({
   const [selectedPhones, setSelectedPhones] = useState<Set<string>>(new Set());
   const [manualWabaId, setManualWabaId] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
+  const [fbLoading, setFbLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -254,6 +256,30 @@ export function WhatsAppConnectDialog({
     </div>
   );
 
+  const connectWithFacebook = async () => {
+    setFbLoading(true);
+    try {
+      const result = await launchEmbeddedSignup();
+      setStep("importing");
+      const res = await supabase.functions.invoke("whatsapp-connect", {
+        body: { action: "embedded-signup", clientId, ...result },
+        headers: { Authorization: await getAuthHeader() },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success(`Connected ${res.data.phoneNumber}`);
+      setStep("done");
+      onSuccess();
+      setTimeout(() => onOpenChange(false), 1500);
+    } catch (err: any) {
+      toast.error(err.message || "Could not connect WhatsApp");
+      setStep((s) => (s === "importing" ? "error" : s));
+      setError(err.message);
+    } finally {
+      setFbLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -263,11 +289,17 @@ export function WhatsAppConnectDialog({
             Connect WhatsApp Numbers
           </DialogTitle>
           <DialogDescription>
-            Import phone numbers from your WhatsApp Business Account
+            Log in with Facebook, enter your phone number and the code Meta sends you.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4">
+        <Button className="w-full mt-4" variant="glow" onClick={connectWithFacebook} disabled={fbLoading}>
+          {fbLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+          Connect WhatsApp with Facebook
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">Or pick an account already shared with the platform:</p>
+
+        <div className="mt-2">
           {step === "loading" && (
             <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
