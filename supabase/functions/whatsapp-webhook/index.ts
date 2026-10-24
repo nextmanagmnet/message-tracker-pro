@@ -15,20 +15,15 @@ async function hashPhone(phone: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Legacy fallback only: some setups pre-fill the wa.me text with the click id.
+// Pre-filled wa.me text carries the TikTok click id (QR/linked-device path).
 function extractClidFromText(message: string): string | null {
-  const m = message.match(/(?:ttclid|ctwa_clid)[=:]?\s*([a-zA-Z0-9_.-]+)/i);
+  const m = message.match(/(?:ttclid|ctwa_clid|clid)[=:]?\s*([a-zA-Z0-9_.-]{6,})/i);
   if (m) return m[1];
   const urlMatch = message.match(/[?&]tt?clid=([^&\s]+)/i);
   if (urlMatch) return urlMatch[1];
   return null;
 }
 
-/**
- * Meta Click-to-WhatsApp ads attach a `referral` object to the first inbound
- * message. It carries the click id and the source ad, with no dependence on
- * the message body at all — this is the primary attribution path.
- */
 function readReferral(message: any) {
   const ref = message?.referral ?? message?.context?.referral ?? null;
   if (!ref) return null;
@@ -39,7 +34,145 @@ function readReferral(message: any) {
     sourceUrl: ref.source_url ?? null,
     headline: ref.headline ?? null,
     body: ref.body ?? null,
+    clickTs: ref.click_timestamp ?? null,
   };
+}
+
+type Referral = ReturnType<typeof readReferral>;
+
+async function processMessage(
+  supabase: any,
+  whatsappNumber: { id: string; client_id: string; tenant_id: string },
+  messageText: string,
+  senderPhone: string,
+  referral: Referral,
+  messageTs: Date,
+) {
+  const phoneHash = await hashPhone(senderPhone);
+  const textClid = extractClidFromText(messageText);
+  const ctwaClid = referral?.ctwaClid ?? textClid ?? null;
+  const attributionSource = referral?.ctwaClid
+    ? 'referral'
+    : referral
+    ? 'referral_partial'
+    : textClid
+    ? 'message_text'
+    : 'none';
+
+  // Only the FIRST message per phone number per client counts.
+  const { data: existingLead } = await supabase
+    .from('leads').select('id')
+    .eq('client_id', whatsappNumber.client_id)
+    .eq('sender_phone_hash', phoneHash)
+    .maybeSingle();
+  if (existingLead) return;
+
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const [velocityRes, senderRes, dupRes] = await Promise.all([
+    supabase.from('leads').select('id', { count: 'exact', head: true })
+      .eq('client_id', whatsappNumber.client_id).gte('created_at', tenMinAgo),
+    supabase.from('leads').select('source_id, ctwa_clid')
+      .eq('sender_phone_hash', phoneHash).limit(50),
+    supabase.from('leads').select('id', { count: 'exact', head: true })
+      .eq('client_id', whatsappNumber.client_id).eq('first_message', messageText),
+  ]);
+
+  const senderLeads = senderRes.data ?? [];
+  const distinctSources = new Set(senderLeads.map((l: any) => l.source_id).filter(Boolean)).size;
+
+  let clickToMessageSeconds: number | null = null;
+  if (referral?.clickTs) {
+    clickToMessageSeconds = Math.max(0, Math.round((messageTs.getTime() - Number(referral.clickTs) * 1000) / 1000));
+  }
+
+  const scored = scoreLead({
+    message: messageText,
+    hasReferral: Boolean(referral),
+    ctwaClid,
+    clickToMessageSeconds,
+    clientVelocity10m: velocityRes.count ?? 0,
+    senderLeadCount: senderLeads.length,
+    senderDistinctSources: distinctSources,
+    duplicateMessageText: (dupRes.count ?? 0) > 0,
+  });
+
+  const { data: newLead, error: insertError } = await supabase
+    .from('leads')
+    .insert({
+      client_id: whatsappNumber.client_id,
+      tenant_id: whatsappNumber.tenant_id,
+      whatsapp_number_id: whatsappNumber.id,
+      sender_phone_hash: phoneHash,
+      ttclid: ctwaClid,
+      ctwa_clid: ctwaClid,
+      source_id: referral?.sourceId ?? null,
+      source_type: referral?.sourceType ?? null,
+      referral_headline: referral?.headline ?? null,
+      attribution_source: attributionSource,
+      first_message: messageText,
+      status: scored.status,
+      is_real: scored.isReal,
+      quality_score: scored.score,
+      quality_signals: scored.signals,
+      is_repeat_lead: senderLeads.length > 0,
+      message_received_at: messageTs.toISOString(),
+      click_to_message_seconds: clickToMessageSeconds,
+    })
+    .select().single();
+
+  if (insertError) {
+    console.error('Error inserting lead:', insertError);
+    return;
+  }
+  console.log(`Lead ${newLead.id} client=${whatsappNumber.client_id} score=${scored.score} status=${scored.status} attribution=${attributionSource}`);
+
+  if (scored.isReal && ctwaClid) {
+    await sendTikTokConversion(supabase, whatsappNumber.client_id, phoneHash, ctwaClid);
+  }
+}
+
+async function findNumber(supabase: any, key: string) {
+  const { data } = await supabase
+    .from('whatsapp_numbers').select('id, client_id, tenant_id, status')
+    .eq('phone_number_id', key).maybeSingle();
+  return data?.client_id ? data : null;
+}
+
+// Green-API (QR / linked device) notifications
+async function handleGreen(supabase: any, body: any, req: Request) {
+  const expected = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
+  const auth = req.headers.get('Authorization') || '';
+  if (expected && auth !== `Bearer ${expected}`) {
+    console.error('Gateway webhook token mismatch');
+    return;
+  }
+  const key = String(body.instanceData?.idInstance ?? '');
+  const num = await findNumber(supabase, key);
+  if (!num) {
+    console.log(`Gateway instance not mapped to a client, skipping`);
+    return;
+  }
+
+  if (body.typeWebhook === 'stateInstanceChanged') {
+    const s = body.stateInstance;
+    await supabase.from('whatsapp_numbers')
+      .update({ status: s === 'authorized' ? 'connected' : 'disconnected' }).eq('id', num.id);
+    return;
+  }
+  if (body.typeWebhook !== 'incomingMessageReceived') return;
+
+  const chatId: string = body.senderData?.chatId || '';
+  if (!chatId.endsWith('@c.us')) return; // ignore groups, broadcasts, status
+
+  const md = body.messageData || {};
+  const messageText: string =
+    md.textMessageData?.textMessage ??
+    md.extendedTextMessageData?.text ??
+    md.fileMessageData?.caption ??
+    `[${md.typeMessage || 'message'}]`;
+
+  const messageTs = body.timestamp ? new Date(Number(body.timestamp) * 1000) : new Date();
+  await processMessage(supabase, num, messageText, chatId.split('@')[0], null, messageTs);
 }
 
 Deno.serve(async (req) => {
@@ -49,177 +182,47 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
 
-  // WhatsApp webhook verification (GET request)
+  // Meta webhook verification (GET request)
   if (req.method === 'GET') {
     const mode = url.searchParams.get('hub.mode');
     const token = url.searchParams.get('hub.verify_token');
     const challenge = url.searchParams.get('hub.challenge');
-    const verifyToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
-
-    if (mode === 'subscribe' && token === verifyToken) {
-      console.log('WhatsApp webhook verified');
+    if (mode === 'subscribe' && token === Deno.env.get('WHATSAPP_VERIFY_TOKEN')) {
       return new Response(challenge, { status: 200 });
     }
-
-    console.error('WhatsApp webhook verification failed');
     return new Response('Forbidden', { status: 403 });
   }
 
   if (req.method === 'POST') {
     try {
       const body = await req.json();
-      console.log('Received WhatsApp webhook:', JSON.stringify(body));
-
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
+      if (body?.typeWebhook) {
+        await handleGreen(supabase, body, req);
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Meta Cloud API format
       for (const entry of body.entry || []) {
         for (const change of entry.changes || []) {
           if (change.field !== 'messages') continue;
-
           const value = change.value;
-          const phoneNumberId = value.metadata?.phone_number_id;
-
-          const { data: whatsappNumber, error: numberError } = await supabase
-            .from('whatsapp_numbers')
-            .select('id, client_id, tenant_id')
-            .eq('phone_number_id', phoneNumberId)
-            .maybeSingle();
-
-          if (numberError || !whatsappNumber?.client_id) {
-            console.log(`WhatsApp number ${phoneNumberId} not mapped to a client, skipping`);
-            continue;
-          }
+          const num = await findNumber(supabase, value.metadata?.phone_number_id);
+          if (!num) continue;
 
           for (const message of value.messages || []) {
             const messageText =
               message.type === 'text'
                 ? (message.text?.body || '')
                 : (message.button?.text || message.interactive?.list_reply?.title || `[${message.type}]`);
-
-            const senderPhone = message.from;
-            const phoneHash = await hashPhone(senderPhone);
-
-            // ---- Attribution: referral object first, message text as fallback
-            const referral = readReferral(message);
-            const textClid = extractClidFromText(messageText);
-            const ctwaClid = referral?.ctwaClid ?? textClid ?? null;
-            const attributionSource = referral?.ctwaClid
-              ? 'referral'
-              : referral
-              ? 'referral_partial'
-              : textClid
-              ? 'message_text'
-              : 'none';
-
-            const messageTs = message.timestamp
-              ? new Date(Number(message.timestamp) * 1000)
-              : new Date();
-
-            // Only the FIRST message per phone number per client counts.
-            const { data: existingLead } = await supabase
-              .from('leads')
-              .select('id')
-              .eq('client_id', whatsappNumber.client_id)
-              .eq('sender_phone_hash', phoneHash)
-              .maybeSingle();
-
-            if (existingLead) {
-              console.log(`Lead already exists for ${phoneHash} / client ${whatsappNumber.client_id}`);
-              continue;
-            }
-
-            // ---- Behavioural signals
-            const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-            const [velocityRes, senderRes, dupRes] = await Promise.all([
-              supabase
-                .from('leads')
-                .select('id', { count: 'exact', head: true })
-                .eq('client_id', whatsappNumber.client_id)
-                .gte('created_at', tenMinAgo),
-              supabase
-                .from('leads')
-                .select('source_id, ctwa_clid')
-                .eq('sender_phone_hash', phoneHash)
-                .limit(50),
-              supabase
-                .from('leads')
-                .select('id', { count: 'exact', head: true })
-                .eq('client_id', whatsappNumber.client_id)
-                .eq('first_message', messageText),
-            ]);
-
-            const senderLeads = senderRes.data ?? [];
-            const distinctSources = new Set(
-              senderLeads.map((l: any) => l.source_id).filter(Boolean)
-            ).size;
-
-            // click-to-message gap, when the referral carried a click time
-            let clickToMessageSeconds: number | null = null;
-            const refClickTs = (message as any)?.referral?.click_timestamp;
-            if (refClickTs) {
-              clickToMessageSeconds = Math.max(
-                0,
-                Math.round((messageTs.getTime() - Number(refClickTs) * 1000) / 1000)
-              );
-            }
-
-            const scored = scoreLead({
-              message: messageText,
-              hasReferral: Boolean(referral),
-              ctwaClid,
-              clickToMessageSeconds,
-              clientVelocity10m: velocityRes.count ?? 0,
-              senderLeadCount: senderLeads.length,
-              senderDistinctSources: distinctSources,
-              duplicateMessageText: (dupRes.count ?? 0) > 0,
-            });
-
-            const { data: newLead, error: insertError } = await supabase
-              .from('leads')
-              .insert({
-                client_id: whatsappNumber.client_id,
-                tenant_id: whatsappNumber.tenant_id,
-                whatsapp_number_id: whatsappNumber.id,
-                sender_phone_hash: phoneHash,
-                ttclid: ctwaClid,
-                ctwa_clid: ctwaClid,
-                source_id: referral?.sourceId ?? null,
-                source_type: referral?.sourceType ?? null,
-                referral_headline: referral?.headline ?? null,
-                attribution_source: attributionSource,
-                first_message: messageText,
-                status: scored.status,
-                is_real: scored.isReal,
-                quality_score: scored.score,
-                quality_signals: scored.signals,
-                is_repeat_lead: senderLeads.length > 0,
-                message_received_at: messageTs.toISOString(),
-                click_to_message_seconds: clickToMessageSeconds,
-              })
-              .select()
-              .single();
-
-            if (insertError) {
-              console.error('Error inserting lead:', insertError);
-              continue;
-            }
-
-            console.log(
-              `Lead ${newLead.id} client=${whatsappNumber.client_id} score=${scored.score} status=${scored.status} attribution=${attributionSource}`
-            );
-
-            // Only genuine, attributable conversations go back to TikTok.
-            if (scored.isReal && ctwaClid) {
-              await sendTikTokConversion(
-                supabase,
-                whatsappNumber.client_id,
-                phoneHash,
-                ctwaClid
-              );
-            }
+            const messageTs = message.timestamp ? new Date(Number(message.timestamp) * 1000) : new Date();
+            await processMessage(supabase, num, messageText, message.from, readReferral(message), messageTs);
           }
         }
       }
@@ -241,64 +244,33 @@ Deno.serve(async (req) => {
 });
 
 // Send conversion event to TikTok CAPI
-async function sendTikTokConversion(
-  supabase: any,
-  clientId: string,
-  phoneHash: string,
-  clid: string
-) {
+async function sendTikTokConversion(supabase: any, clientId: string, phoneHash: string, clid: string) {
   try {
     const { data: account } = await supabase
-      .from('tiktok_accounts')
-      .select('*')
-      .eq('client_id', clientId)
-      .limit(1)
-      .maybeSingle();
-
-    if (!account) {
-      console.log('No TikTok account found for client');
-      return;
-    }
+      .from('tiktok_accounts').select('*').eq('client_id', clientId).limit(1).maybeSingle();
+    if (!account) return;
 
     const { data: pixel } = await supabase
-      .from('tiktok_pixels')
-      .select('pixel_code')
-      .eq('client_id', clientId)
-      .limit(1)
-      .maybeSingle();
-
-    if (!pixel) {
-      console.log('No TikTok Pixel found for client');
-      return;
-    }
+      .from('tiktok_pixels').select('pixel_code').eq('client_id', clientId).limit(1).maybeSingle();
+    if (!pixel) return;
 
     const eventData = {
       pixel_code: pixel.pixel_code,
       event: 'Contact',
       event_time: Math.floor(Date.now() / 1000),
-      user: {
-        ttclid: clid,
-        phone: [phoneHash], // Already SHA256 hashed
-      },
-      properties: {
-        content_type: 'product',
-        description: 'WhatsApp real conversation',
-      },
+      user: { ttclid: clid, phone: [phoneHash] },
+      properties: { content_type: 'product', description: 'WhatsApp real conversation' },
       page: { url: 'https://wa.me/' },
       event_source: 'whatsapp',
     };
 
     const response = await fetch('https://business-api.tiktok.com/open_api/v1.3/pixel/track/', {
       method: 'POST',
-      headers: {
-        'Access-Token': account.access_token,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Access-Token': account.access_token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: [eventData] }),
     });
-
     const result = await response.json();
-    console.log('TikTok conversion event sent for client:', clientId, result);
+    console.log('TikTok conversion event sent for client:', clientId, result?.code);
   } catch (error) {
     console.error('Error sending TikTok conversion:', error);
   }
