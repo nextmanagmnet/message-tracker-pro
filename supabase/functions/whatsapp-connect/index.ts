@@ -16,14 +16,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const whatsappToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-
-  if (!whatsappToken) {
-    return new Response(
-      JSON.stringify({ error: "WHATSAPP_ACCESS_TOKEN not configured" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  const whatsappToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN") || "";
 
   // Validate JWT and get user
   const authHeader = req.headers.get("Authorization");
@@ -100,7 +93,80 @@ Deno.serve(async (req) => {
     // The tenant_id column exists for legacy compatibility
     const tenantId = clientData.agency_id;
 
+    const greenId = Deno.env.get("GREEN_API_INSTANCE_ID");
+    const greenToken = Deno.env.get("GREEN_API_TOKEN");
+    const greenBase = Deno.env.get("GREEN_API_URL") ||
+      (greenId ? `https://${greenId.slice(0, 4)}.api.greenapi.com` : "");
+    const green = async (method: string, init?: RequestInit) => {
+      const r = await fetch(`${greenBase}/waInstance${greenId}/${method}/${greenToken}`, init);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(`WhatsApp gateway error (${r.status})`);
+      return d;
+    };
+    const ok = (o: unknown) =>
+      new Response(JSON.stringify(o), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    if (action?.startsWith("qr-") && (!greenId || !greenToken)) {
+      return ok({ error: "WhatsApp gateway is not configured yet." });
+    }
+
     switch (action) {
+      case "qr-start": {
+        // Point the gateway's incoming messages at our webhook
+        await green("setSettings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            webhookUrl: `${supabaseUrl}/functions/v1/whatsapp-webhook`,
+            webhookUrlToken: Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "",
+            incomingWebhook: "yes",
+            outgoingWebhook: "no",
+            outgoingMessageWebhook: "no",
+            outgoingAPIMessageWebhook: "no",
+            stateWebhook: "yes",
+          }),
+        }).catch((e) => console.error("setSettings failed", e));
+        const state = await green("getStateInstance");
+        if (state.stateInstance === "authorized") return ok({ state: "authorized" });
+        const qr = await green("qr");
+        if (qr.type === "alreadyLogged") return ok({ state: "authorized" });
+        if (qr.type !== "qrCode") return ok({ state: state.stateInstance, error: qr.message || "QR not ready, try again" });
+        return ok({ state: "qr", qr: qr.message });
+      }
+
+      case "qr-status": {
+        const state = await green("getStateInstance");
+        if (state.stateInstance !== "authorized") {
+          const qr = await green("qr").catch(() => ({}));
+          return ok({ state: state.stateInstance, qr: qr?.type === "qrCode" ? qr.message : null });
+        }
+        const s = await green("getWaSettings");
+        const phone = s.phone ? `+${String(s.phone).replace(/\D/g, "")}` : "WhatsApp";
+        const instanceKey = String(greenId);
+
+        // One gateway instance belongs to one client only
+        const { data: other } = await supabase.from("whatsapp_numbers").select("id, client_id")
+          .eq("phone_number_id", instanceKey).maybeSingle();
+        if (other && other.client_id !== clientId) {
+          return ok({ state: "authorized", error: "This WhatsApp line is already linked to another client." });
+        }
+        const { error: upErr } = other
+          ? await supabase.from("whatsapp_numbers").update({ status: "connected", phone_number: phone }).eq("id", other.id)
+          : await supabase.from("whatsapp_numbers").insert({
+              client_id: clientId, tenant_id: tenantId, phone_number: phone,
+              phone_number_id: instanceKey, waba_id: "green-api", status: "connected",
+            });
+        if (upErr) return ok({ state: "authorized", error: upErr.message });
+        return ok({ state: "connected", phoneNumber: phone });
+      }
+
+      case "qr-logout": {
+        await green("logout");
+        await supabase.from("whatsapp_numbers").update({ status: "disconnected" })
+          .eq("phone_number_id", String(greenId)).eq("client_id", clientId);
+        return ok({ success: true });
+      }
+
       case "validate-token": {
         // Validate the WhatsApp token by fetching business info
         const meRes = await fetch(`${GRAPH_BASE}/me?access_token=${whatsappToken}`);
