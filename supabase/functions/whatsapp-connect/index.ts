@@ -466,6 +466,12 @@ Deno.serve(async (req) => {
           });
         }
 
+        const { data: dNum } = await supabase.from("whatsapp_numbers").select("waba_id")
+          .eq("id", numberId).eq("client_id", clientId).maybeSingle();
+        if (dNum?.waba_id === "green-api" && greenId && greenToken) {
+          await green("logout").catch((e) => console.error("logout failed", e));
+        }
+
         // Update status to disconnected
         const { error: updateError } = await supabase
           .from("whatsapp_numbers")
@@ -493,6 +499,18 @@ Deno.serve(async (req) => {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        const { data: gNum } = await supabase.from("whatsapp_numbers").select("waba_id")
+          .eq("id", numberId).eq("client_id", clientId).maybeSingle();
+        if (gNum?.waba_id === "green-api") {
+          const st = greenId ? await green("getStateInstance").catch(() => ({})) : {};
+          if (st?.stateInstance !== "authorized") {
+            return new Response(JSON.stringify({ error: "Please click Add Number and scan the QR code again." }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          await supabase.from("whatsapp_numbers").update({ status: "connected" }).eq("id", numberId);
+          return ok({ success: true });
         }
 
         // Validate the token is still valid
