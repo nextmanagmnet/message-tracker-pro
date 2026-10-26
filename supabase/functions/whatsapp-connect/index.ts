@@ -93,60 +93,87 @@ Deno.serve(async (req) => {
     // The tenant_id column exists for legacy compatibility
     const tenantId = clientData.agency_id;
 
-    const greenId = Deno.env.get("GREEN_API_INSTANCE_ID");
-    const greenToken = Deno.env.get("GREEN_API_TOKEN");
-    const greenBase = Deno.env.get("GREEN_API_URL") ||
-      (greenId ? `https://${greenId.slice(0, 4)}.api.greenapi.com` : "");
-    const green = async (method: string, init?: RequestInit) => {
-      const r = await fetch(`${greenBase}/waInstance${greenId}/${method}/${greenToken}`, init);
+    // Evolution API gateway: one instance per WhatsApp line, owned by one client
+    const evoBase = (Deno.env.get("EVOLUTION_API_URL") || "").replace(/\/+$/, "");
+    const evoKey = Deno.env.get("EVOLUTION_API_KEY") || "";
+    const evo = async (path: string, init?: RequestInit) => {
+      const r = await fetch(`${evoBase}${path}`, {
+        ...init,
+        headers: { "Content-Type": "application/json", apikey: evoKey, ...(init?.headers || {}) },
+      });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(`WhatsApp gateway error (${r.status})`);
+      if (!r.ok) {
+        console.error("Evolution error", r.status, JSON.stringify(d));
+        throw new Error(`WhatsApp gateway error (${r.status})`);
+      }
       return d;
     };
     const ok = (o: unknown) =>
       new Response(JSON.stringify(o), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const clientPrefix = `wc_${String(clientId).replace(/-/g, "")}_`;
+    const stripQr = (b: unknown) =>
+      typeof b === "string" && b ? b.replace(/^data:image\/\w+;base64,/, "") : null;
+    const reqInstance = typeof body.instance === "string" ? body.instance : null;
+    const ownInstance = (n: string | null) => !!n && n.startsWith(clientPrefix) && /^[a-z0-9_]+$/.test(n);
+    const evoState = async (n: string) => {
+      const s = await evo(`/instance/connectionState/${n}`).catch(() => ({}));
+      return (s?.instance?.state || s?.state || "close") as string;
+    };
 
-    if (action?.startsWith("qr-") && (!greenId || !greenToken)) {
+    if (action?.startsWith("qr-") && (!evoBase || !evoKey)) {
       return ok({ error: "WhatsApp gateway is not configured yet." });
+    }
+    if ((action === "qr-status" || action === "qr-logout") && !ownInstance(reqInstance)) {
+      return ok({ error: "Session expired, please try again." });
     }
 
     switch (action) {
       case "qr-start": {
-        // Point the gateway's incoming messages at our webhook
-        await green("setSettings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            webhookUrl: `${supabaseUrl}/functions/v1/whatsapp-webhook`,
-            webhookUrlToken: Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "",
-            incomingWebhook: "yes",
-            outgoingWebhook: "no",
-            outgoingMessageWebhook: "no",
-            outgoingAPIMessageWebhook: "no",
-            stateWebhook: "yes",
-          }),
-        }).catch((e) => console.error("setSettings failed", e));
-        const state = await green("getStateInstance");
-        if (state.stateInstance === "authorized") return ok({ state: "authorized" });
-        const qr = await green("qr");
-        if (qr.type === "alreadyLogged") return ok({ state: "authorized" });
-        if (qr.type !== "qrCode") return ok({ state: state.stateInstance, error: qr.message || "QR not ready, try again" });
-        return ok({ state: "qr", qr: qr.message });
+        const name = ownInstance(reqInstance)
+          ? reqInstance!
+          : `${clientPrefix}${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+        let qr: string | null = null;
+        if (!ownInstance(reqInstance)) {
+          const created = await evo("/instance/create", {
+            method: "POST",
+            body: JSON.stringify({
+              instanceName: name,
+              qrcode: true,
+              integration: "WHATSAPP-BAILEYS",
+              webhook: {
+                url: `${supabaseUrl}/functions/v1/whatsapp-webhook`,
+                byEvents: false,
+                base64: false,
+                headers: { authorization: `Bearer ${Deno.env.get("WHATSAPP_VERIFY_TOKEN") || ""}` },
+                events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+              },
+            }),
+          });
+          qr = stripQr(created?.qrcode?.base64);
+        }
+        if (!qr) {
+          const c = await evo(`/instance/connect/${name}`).catch(() => ({}));
+          qr = stripQr(c?.base64);
+        }
+        if ((await evoState(name)) === "open") return ok({ instance: name, state: "authorized" });
+        if (!qr) return ok({ instance: name, error: "QR not ready, try again" });
+        return ok({ instance: name, state: "qr", qr });
       }
 
       case "qr-status": {
-        const state = await green("getStateInstance");
-        if (state.stateInstance !== "authorized") {
-          const qr = await green("qr").catch(() => ({}));
-          return ok({ state: state.stateInstance, qr: qr?.type === "qrCode" ? qr.message : null });
+        const name = reqInstance!;
+        const state = await evoState(name);
+        if (state !== "open") {
+          const c = await evo(`/instance/connect/${name}`).catch(() => ({}));
+          return ok({ instance: name, state, qr: stripQr(c?.base64) });
         }
-        const s = await green("getWaSettings");
-        const phone = s.phone ? `+${String(s.phone).replace(/\D/g, "")}` : "WhatsApp";
-        const instanceKey = String(greenId);
+        const list = await evo(`/instance/fetchInstances?instanceName=${name}`).catch(() => []);
+        const info = Array.isArray(list) ? list[0] : list;
+        const owner = String(info?.ownerJid || info?.instance?.owner || info?.number || "").split("@")[0];
+        const phone = owner ? `+${owner.replace(/\D/g, "")}` : "WhatsApp";
 
-        // One gateway instance belongs to one client only
         const { data: other } = await supabase.from("whatsapp_numbers").select("id, client_id")
-          .eq("phone_number_id", instanceKey).maybeSingle();
+          .eq("phone_number_id", name).maybeSingle();
         if (other && other.client_id !== clientId) {
           return ok({ state: "authorized", error: "This WhatsApp line is already linked to another client." });
         }
@@ -154,16 +181,16 @@ Deno.serve(async (req) => {
           ? await supabase.from("whatsapp_numbers").update({ status: "connected", phone_number: phone }).eq("id", other.id)
           : await supabase.from("whatsapp_numbers").insert({
               client_id: clientId, tenant_id: tenantId, phone_number: phone,
-              phone_number_id: instanceKey, waba_id: "green-api", status: "connected",
+              phone_number_id: name, waba_id: "evolution", status: "connected",
             });
         if (upErr) return ok({ state: "authorized", error: upErr.message });
-        return ok({ state: "connected", phoneNumber: phone });
+        return ok({ instance: name, state: "connected", phoneNumber: phone });
       }
 
       case "qr-logout": {
-        await green("logout");
+        await evo(`/instance/logout/${reqInstance}`, { method: "DELETE" }).catch(() => ({}));
         await supabase.from("whatsapp_numbers").update({ status: "disconnected" })
-          .eq("phone_number_id", String(greenId)).eq("client_id", clientId);
+          .eq("phone_number_id", reqInstance).eq("client_id", clientId);
         return ok({ success: true });
       }
 
