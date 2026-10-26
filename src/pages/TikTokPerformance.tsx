@@ -259,6 +259,10 @@ const TikTokPerformance = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={handleTestEvent} disabled={!isConnected}>
+              <Zap className="w-4 h-4 mr-2" />
+              Send Test Event
+            </Button>
             <Button variant="outline" size="sm" onClick={handleSync} disabled={!isConnected}>
               <RefreshCw className="w-4 h-4" />
               Sync Data
