@@ -26,6 +26,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
   const [qr, setQr] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
+  const instance = useRef<string | null>(null);
 
   const stopPolling = () => {
     if (timer.current) window.clearInterval(timer.current);
@@ -33,8 +34,11 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
   };
 
   const call = async (action: string) => {
-    const res = await supabase.functions.invoke("whatsapp-connect", { body: { action, clientId } });
+    const res = await supabase.functions.invoke("whatsapp-connect", {
+      body: { action, clientId, instance: instance.current },
+    });
     if (res.error) throw new Error(res.error.message);
+    if (res.data?.instance) instance.current = res.data.instance;
     return res.data;
   };
 
@@ -85,6 +89,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
       stopPolling();
       setQr(null);
       setPhone(null);
+      instance.current = null;
     }
     return stopPolling;
     // eslint-disable-next-line react-hooks/exhaustive-deps
