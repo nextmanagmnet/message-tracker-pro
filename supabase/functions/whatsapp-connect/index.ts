@@ -493,10 +493,11 @@ Deno.serve(async (req) => {
           });
         }
 
-        const { data: dNum } = await supabase.from("whatsapp_numbers").select("waba_id")
+        const { data: dNum } = await supabase.from("whatsapp_numbers").select("waba_id, phone_number_id")
           .eq("id", numberId).eq("client_id", clientId).maybeSingle();
-        if (dNum?.waba_id === "green-api" && greenId && greenToken) {
-          await green("logout").catch((e) => console.error("logout failed", e));
+        if (dNum?.waba_id === "evolution" && evoBase && evoKey) {
+          await evo(`/instance/logout/${dNum.phone_number_id}`, { method: "DELETE" })
+            .catch((e) => console.error("logout failed", e));
         }
 
         // Update status to disconnected
@@ -528,11 +529,11 @@ Deno.serve(async (req) => {
           });
         }
 
-        const { data: gNum } = await supabase.from("whatsapp_numbers").select("waba_id")
+        const { data: gNum } = await supabase.from("whatsapp_numbers").select("waba_id, phone_number_id")
           .eq("id", numberId).eq("client_id", clientId).maybeSingle();
-        if (gNum?.waba_id === "green-api") {
-          const st = greenId ? await green("getStateInstance").catch(() => ({})) : {};
-          if (st?.stateInstance !== "authorized") {
+        if (gNum?.waba_id === "evolution" || gNum?.waba_id === "green-api") {
+          const st = gNum.waba_id === "evolution" && evoBase ? await evoState(gNum.phone_number_id) : "close";
+          if (st !== "open") {
             return new Response(JSON.stringify({ error: "Please click Add Number and scan the QR code again." }),
               { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
