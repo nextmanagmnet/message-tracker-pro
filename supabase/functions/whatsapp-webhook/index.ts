@@ -138,6 +138,56 @@ async function findNumber(supabase: any, key: string) {
   return data?.client_id ? data : null;
 }
 
+// Evolution API (QR / linked device) events
+async function handleEvolution(supabase: any, body: any, req: Request) {
+  const expected = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
+  const auth = req.headers.get('authorization') || '';
+  if (expected && auth !== `Bearer ${expected}`) {
+    console.error('Gateway webhook token mismatch');
+    return;
+  }
+  const num = await findNumber(supabase, String(body.instance));
+  if (!num) {
+    console.log('Gateway instance not mapped to a client, skipping');
+    return;
+  }
+  const event = String(body.event).toLowerCase().replace(/_/g, '.');
+
+  if (event === 'connection.update') {
+    const s = body.data?.state;
+    if (s === 'open' || s === 'close') {
+      await supabase.from('whatsapp_numbers')
+        .update({ status: s === 'open' ? 'connected' : 'disconnected' }).eq('id', num.id);
+    }
+    return;
+  }
+  if (event !== 'messages.upsert') return;
+
+  const items = Array.isArray(body.data) ? body.data : [body.data];
+  for (const d of items) {
+    const key = d?.key || {};
+    if (key.fromMe) continue;
+    // Prefer the real phone JID when WhatsApp hides it behind a @lid id
+    const jid: string = [key.remoteJid, key.remoteJidAlt, key.senderPn]
+      .find((j: any) => typeof j === 'string' && j.endsWith('@s.whatsapp.net')) || '';
+    if (!jid) continue; // groups, broadcasts, status, or unresolved lid
+
+    const m = d.message || {};
+    const messageText: string =
+      m.conversation ??
+      m.extendedTextMessage?.text ??
+      m.imageMessage?.caption ??
+      m.videoMessage?.caption ??
+      m.buttonsResponseMessage?.selectedDisplayText ??
+      m.listResponseMessage?.title ??
+      `[${d.messageType || 'message'}]`;
+
+    const ts = Number(d.messageTimestamp);
+    const messageTs = ts ? new Date(ts * 1000) : new Date();
+    await processMessage(supabase, num, messageText, jid.split('@')[0], null, messageTs);
+  }
+}
+
 // Green-API (QR / linked device) notifications
 async function handleGreen(supabase: any, body: any, req: Request) {
   const expected = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
@@ -200,6 +250,13 @@ Deno.serve(async (req) => {
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
+
+      if (typeof body?.event === 'string' && body?.instance) {
+        await handleEvolution(supabase, body, req);
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       if (body?.typeWebhook) {
         await handleGreen(supabase, body, req);
