@@ -164,6 +164,24 @@ const TikTokPerformance = () => {
     window.location.href = data.authUrl;
   };
 
+  const handleTestEvent = async () => {
+    if (!selectedClient?.id) {
+      toast.error("Please select a client first");
+      return;
+    }
+    const testEventCode = window.prompt("Paste the Test Event Code from TikTok Events Manager (Pixel → Test Events). Leave empty to send a live event.") ?? undefined;
+    if (testEventCode === undefined) return;
+    const { data, error } = await supabase.functions.invoke("tiktok-oauth", {
+      body: { action: "test-event", clientId: selectedClient.id, testEventCode },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "Test event failed");
+      return;
+    }
+    if (data?.accepted) toast.success("TikTok accepted the test Contact event");
+    else toast.error(`TikTok rejected the event: ${data?.message ?? "unknown error"}`);
+  };
+
   const handleSync = async () => {
     if (!selectedClient?.id) {
       toast.error("Please select a client first");

@@ -255,21 +255,21 @@ async function sendTikTokConversion(supabase: any, clientId: string, phoneHash: 
     if (!pixel) return;
 
     const eventData = {
-      pixel_code: pixel.pixel_code,
       event: 'Contact',
       event_time: Math.floor(Date.now() / 1000),
-      user: { ttclid: clid, phone: [phoneHash] },
+      event_id: `wa_${phoneHash.slice(0, 16)}_${clid.slice(0, 24)}`,
+      user: { ttclid: clid, phone: phoneHash },
       properties: { content_type: 'product', description: 'WhatsApp real conversation' },
       page: { url: 'https://wa.me/' },
-      event_source: 'whatsapp',
     };
 
-    const response = await fetch('https://business-api.tiktok.com/open_api/v1.3/pixel/track/', {
+    const response = await fetch('https://business-api.tiktok.com/open_api/v1.3/event/track/', {
       method: 'POST',
       headers: { 'Access-Token': account.access_token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: [eventData] }),
+      body: JSON.stringify({ event_source: 'web', event_source_id: pixel.pixel_code, data: [eventData] }),
     });
     const result = await response.json();
+    if (result?.code !== 0) console.error('TikTok Events API rejected event:', result);
     console.log('TikTok conversion event sent for client:', clientId, result?.code);
   } catch (error) {
     console.error('Error sending TikTok conversion:', error);

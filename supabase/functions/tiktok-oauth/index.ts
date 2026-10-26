@@ -39,9 +39,54 @@ serve(async (req) => {
       );
     }
 
+    // Send a test Contact event via Events API 2.0 (requires signed-in user with client access)
+    if (action === 'test-event') {
+      const { clientId, testEventCode } = parsedBody ?? {};
+      if (typeof clientId !== 'string' || !clientId) {
+        return new Response(JSON.stringify({ error: 'Client ID is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+      const { data: visible } = await userClient.from('clients').select('id').eq('id', clientId).maybeSingle();
+      if (!visible) {
+        return new Response(JSON.stringify({ error: 'Not allowed for this client' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const admin = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: account } = await admin.from('tiktok_accounts').select('access_token').eq('client_id', clientId).limit(1).maybeSingle();
+      const { data: pixel } = await admin.from('tiktok_pixels').select('pixel_code').eq('client_id', clientId).limit(1).maybeSingle();
+      if (!account || !pixel) {
+        return new Response(JSON.stringify({ error: !account ? 'No TikTok account connected' : 'No Pixel ID saved in Settings' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const body: Record<string, unknown> = {
+        event_source: 'web',
+        event_source_id: pixel.pixel_code,
+        data: [{
+          event: 'Contact',
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: `test_${crypto.randomUUID()}`,
+          page: { url: 'https://wa.me/' },
+          properties: { description: 'WhatsConnect test event' },
+        }],
+      };
+      if (typeof testEventCode === 'string' && testEventCode.trim()) body.test_event_code = testEventCode.trim();
+      const resp = await fetch('https://business-api.tiktok.com/open_api/v1.3/event/track/', {
+        method: 'POST',
+        headers: { 'Access-Token': account.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await resp.json();
+      console.log('TikTok test event result:', result?.code, result?.message);
+      return new Response(JSON.stringify({ accepted: result?.code === 0, code: result?.code, message: result?.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Generate OAuth URL for TikTok login
     if (action === 'get-auth-url') {
       const { redirectUri, state } = parsedBody ?? (await req.json());
+      const allowed = ['https://message-tracker-pro.lovable.app/tiktok/callback'];
+      const isPreview = typeof redirectUri === 'string' && /^https:\/\/[a-z0-9-]+\.lovable\.app\/tiktok\/callback$/.test(redirectUri);
+      if (!allowed.includes(redirectUri) && !isPreview) {
+        return new Response(JSON.stringify({ error: 'Redirect URI not allowed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       
       const authUrl = new URL('https://business-api.tiktok.com/portal/auth');
       authUrl.searchParams.set('app_id', tiktokAppId);
