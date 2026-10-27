@@ -92,6 +92,35 @@ be set manually.
 | `WHATSAPP_ACCESS_TOKEN` | `whatsapp-connect`, `refresh-tokens` | WhatsApp Business system-user access token. |
 | `TIKTOK_APP_ID` / `TIKTOK_APP_SECRET` | `tiktok-oauth`, `refresh-tokens`, `sync-campaigns` | TikTok for Business app credentials. |
 | `CRON_SECRET` | `refresh-tokens`, `sync-campaigns` | Optional static override for the scheduled-job auth check. If unset, the DB-generated token in `scheduler_config.cron_token` is used instead (see `drizzle/migrations/0000_scheduler_setup.sql`). |
+| `EVOLUTION_API_URL` | `whatsapp-qr`, `whatsapp-webhook-evolution` | Base URL of your self-hosted Evolution API instance (e.g. `https://wa.yourdomain.com`). **Must be HTTPS** — Evolution's API key and every message go over this. |
+| `EVOLUTION_API_KEY` | `whatsapp-qr`, `whatsapp-webhook-evolution` | Evolution API's global `apikey`. Rotate it if it was ever shared in chat/plaintext. |
+| `EVOLUTION_WEBHOOK_SECRET` | `whatsapp-qr`, `whatsapp-webhook-evolution` | A secret you generate (e.g. `openssl rand -hex 32`) that `whatsapp-qr` registers as the webhook's `Authorization` header when creating an instance, and `whatsapp-webhook-evolution` checks on every delivery. **Required**; the webhook rejects everything with 401 until this is set. |
+
+### WhatsApp via self-hosted QR pairing (Evolution API / Baileys)
+
+The "Add Number" button on the WhatsApp Numbers page connects a client's
+WhatsApp by QR code, instead of Meta's WABA import, by talking to an
+Evolution API instance you run on your own VPS:
+
+- `whatsapp-qr` creates/looks up one Evolution "instance" per client
+  (`wc_<clientId>`), fetches its QR code, and polls `connectionState` until
+  the client scans it, at which point it marks the `whatsapp_numbers` row
+  `connected`.
+- Evolution pushes `MESSAGES_UPSERT`/`CONNECTION_UPDATE` events to
+  `whatsapp-webhook-evolution`, which feeds them through the same lead-scoring
+  and TikTok-conversion pipeline as the Meta webhook (shared in
+  `supabase/functions/_shared/leadIngest.ts`).
+- **The field names Evolution returns (QR code location, phone number on
+  connect, webhook payload shape) vary across Evolution API versions.** The
+  code picks the most common field names for each, but you should do one real
+  scan-and-message test after deploying and check the function logs — if the
+  connected phone number or incoming messages don't show up, the actual field
+  names in your version's responses are logged there to adjust against.
+- TikTok doesn't attach click-tracking metadata to WhatsApp messages the way
+  Meta's Click-to-WhatsApp ads do, so attribution for this path depends
+  entirely on the TikTok ad's prefilled WhatsApp message containing a
+  `ttclid`/campaign code (parsed by `extractClidFromText`) — a plain `wa.me`
+  link with no prefilled text will never attribute.
 
 ## Database migrations
 

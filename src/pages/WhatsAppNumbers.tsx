@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WhatsAppNumberCard } from "@/components/dashboard/WhatsAppNumberCard";
 import { WhatsAppConnectDialog } from "@/components/whatsapp/WhatsAppConnectDialog";
+import { WhatsAppQRDialog } from "@/components/whatsapp/WhatsAppQRDialog";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
 import { useAgency } from "@/hooks/useAgency";
@@ -28,6 +29,7 @@ const WhatsAppNumbers = () => {
   const [numbers, setNumbers] = useState<DbWhatsAppNumber[]>([]);
   const [leads, setLeads] = useState<DbLead[]>([]);
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
 
   const statsByNumberId = useMemo(() => {
     const map = new Map<
@@ -189,8 +191,15 @@ const WhatsAppNumbers = () => {
             Refresh Status
           </Button>
           <Button
-            variant="glow"
+            variant="outline"
             onClick={() => setConnectDialogOpen(true)}
+            disabled={!selectedClient}
+          >
+            Import from Meta Business
+          </Button>
+          <Button
+            variant="glow"
+            onClick={() => setQrDialogOpen(true)}
             disabled={!selectedClient}
           >
             <Plus className="w-4 h-4" />
@@ -221,9 +230,9 @@ const WhatsAppNumbers = () => {
         })}
 
         {/* Add New Card */}
-        <button 
+        <button
           className="glass-card p-6 border-2 border-dashed border-border hover:border-primary/50 transition-colors flex flex-col items-center justify-center gap-4 min-h-[240px] group"
-          onClick={() => setConnectDialogOpen(true)}
+          onClick={() => setQrDialogOpen(true)}
           disabled={!selectedClient}
         >
           <div className="p-4 rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -232,20 +241,28 @@ const WhatsAppNumbers = () => {
           <div className="text-center">
             <p className="font-semibold text-foreground">Add WhatsApp Number</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Connect via Meta Business
+              Scan a QR code to connect instantly
             </p>
           </div>
         </button>
       </div>
 
-      {/* Connect Dialog */}
+      {/* Connect Dialogs */}
       {selectedClient && (
-        <WhatsAppConnectDialog
-          open={connectDialogOpen}
-          onOpenChange={setConnectDialogOpen}
-          clientId={selectedClient.id}
-          onSuccess={load}
-        />
+        <>
+          <WhatsAppQRDialog
+            open={qrDialogOpen}
+            onOpenChange={setQrDialogOpen}
+            clientId={selectedClient.id}
+            onSuccess={load}
+          />
+          <WhatsAppConnectDialog
+            open={connectDialogOpen}
+            onOpenChange={setConnectDialogOpen}
+            clientId={selectedClient.id}
+            onSuccess={load}
+          />
+        </>
       )}
     </DashboardLayout>
   );
