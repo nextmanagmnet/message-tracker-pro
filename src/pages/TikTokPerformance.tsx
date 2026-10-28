@@ -164,6 +164,24 @@ const TikTokPerformance = () => {
     window.location.href = data.authUrl;
   };
 
+  const handleTestEvent = async () => {
+    if (!selectedClient?.id) {
+      toast.error("Please select a client first");
+      return;
+    }
+    const testEventCode = window.prompt("Paste the Test Event Code from TikTok Events Manager (Pixel → Test Events). Leave empty to send a live event.") ?? undefined;
+    if (testEventCode === undefined) return;
+    const { data, error } = await supabase.functions.invoke("tiktok-oauth", {
+      body: { action: "test-event", clientId: selectedClient.id, testEventCode },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "Test event failed");
+      return;
+    }
+    if (data?.accepted) toast.success("TikTok accepted the test Contact event");
+    else toast.error(`TikTok rejected the event: ${data?.message ?? "unknown error"}`);
+  };
+
   const handleSync = async () => {
     if (!selectedClient?.id) {
       toast.error("Please select a client first");
@@ -241,6 +259,10 @@ const TikTokPerformance = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={handleTestEvent} disabled={!isConnected}>
+              <Zap className="w-4 h-4 mr-2" />
+              Send Test Event
+            </Button>
             <Button variant="outline" size="sm" onClick={handleSync} disabled={!isConnected}>
               <RefreshCw className="w-4 h-4" />
               Sync Data

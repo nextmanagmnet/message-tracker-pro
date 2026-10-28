@@ -16,14 +16,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const whatsappToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-
-  if (!whatsappToken) {
-    return new Response(
-      JSON.stringify({ error: "WHATSAPP_ACCESS_TOKEN not configured" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  const whatsappToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN") || "";
 
   // Validate JWT and get user
   const authHeader = req.headers.get("Authorization");
@@ -100,7 +93,107 @@ Deno.serve(async (req) => {
     // The tenant_id column exists for legacy compatibility
     const tenantId = clientData.agency_id;
 
+    // Evolution API gateway: one instance per WhatsApp line, owned by one client
+    const evoBase = (Deno.env.get("EVOLUTION_API_URL") || "").replace(/\/+$/, "");
+    const evoKey = Deno.env.get("EVOLUTION_API_KEY") || "";
+    const evo = async (path: string, init?: RequestInit) => {
+      const r = await fetch(`${evoBase}${path}`, {
+        ...init,
+        headers: { "Content-Type": "application/json", apikey: evoKey, ...(init?.headers || {}) },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        console.error("Evolution error", r.status, JSON.stringify(d));
+        throw new Error(`WhatsApp gateway error (${r.status})`);
+      }
+      return d;
+    };
+    const ok = (o: unknown) =>
+      new Response(JSON.stringify(o), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const clientPrefix = `wc_${String(clientId).replace(/-/g, "")}_`;
+    const stripQr = (b: unknown) =>
+      typeof b === "string" && b ? b.replace(/^data:image\/\w+;base64,/, "") : null;
+    const reqInstance = typeof body.instance === "string" ? body.instance : null;
+    const ownInstance = (n: string | null) => !!n && n.startsWith(clientPrefix) && /^[a-z0-9_]+$/.test(n);
+    const evoState = async (n: string) => {
+      const s = await evo(`/instance/connectionState/${n}`).catch(() => ({}));
+      return (s?.instance?.state || s?.state || "close") as string;
+    };
+
+    if (action?.startsWith("qr-") && (!evoBase || !evoKey)) {
+      return ok({ error: "WhatsApp gateway is not configured yet." });
+    }
+    if ((action === "qr-status" || action === "qr-logout") && !ownInstance(reqInstance)) {
+      return ok({ error: "Session expired, please try again." });
+    }
+
     switch (action) {
+      case "qr-start": {
+        const name = ownInstance(reqInstance)
+          ? reqInstance!
+          : `${clientPrefix}${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+        let qr: string | null = null;
+        if (!ownInstance(reqInstance)) {
+          const created = await evo("/instance/create", {
+            method: "POST",
+            body: JSON.stringify({
+              instanceName: name,
+              qrcode: true,
+              integration: "WHATSAPP-BAILEYS",
+              webhook: {
+                url: `${supabaseUrl}/functions/v1/whatsapp-webhook`,
+                byEvents: false,
+                base64: false,
+                headers: { authorization: `Bearer ${Deno.env.get("WHATSAPP_VERIFY_TOKEN") || ""}` },
+                events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+              },
+            }),
+          });
+          qr = stripQr(created?.qrcode?.base64);
+        }
+        if (!qr) {
+          const c = await evo(`/instance/connect/${name}`).catch(() => ({}));
+          qr = stripQr(c?.base64);
+        }
+        if ((await evoState(name)) === "open") return ok({ instance: name, state: "authorized" });
+        if (!qr) return ok({ instance: name, error: "QR not ready, try again" });
+        return ok({ instance: name, state: "qr", qr });
+      }
+
+      case "qr-status": {
+        const name = reqInstance!;
+        const state = await evoState(name);
+        if (state !== "open") {
+          const c = await evo(`/instance/connect/${name}`).catch(() => ({}));
+          return ok({ instance: name, state, qr: stripQr(c?.base64) });
+        }
+        const list = await evo(`/instance/fetchInstances?instanceName=${name}`).catch(() => []);
+        const info = Array.isArray(list) ? list[0] : list;
+        const owner = String(info?.ownerJid || info?.instance?.owner || info?.number || "").split("@")[0];
+        const phone = owner ? `+${owner.replace(/\D/g, "")}` : "WhatsApp";
+
+        const { data: other } = await supabase.from("whatsapp_numbers").select("id, client_id")
+          .eq("phone_number_id", name).maybeSingle();
+        if (other && other.client_id !== clientId) {
+          return ok({ state: "authorized", error: "This WhatsApp line is already linked to another client." });
+        }
+        const { error: upErr } = other
+          ? await supabase.from("whatsapp_numbers").update({ status: "connected", phone_number: phone }).eq("id", other.id)
+          : await supabase.from("whatsapp_numbers").insert({
+              client_id: clientId, tenant_id: tenantId, phone_number: phone,
+              phone_number_id: name, waba_id: "evolution", status: "connected",
+            });
+        if (upErr) return ok({ state: "authorized", error: upErr.message });
+        return ok({ instance: name, state: "connected", phoneNumber: phone });
+      }
+
+      case "qr-logout": {
+        await evo(`/instance/logout/${reqInstance}`, { method: "DELETE" }).catch(() => ({}));
+        await supabase.from("whatsapp_numbers").update({ status: "disconnected" })
+          .eq("phone_number_id", reqInstance).eq("client_id", clientId);
+        return ok({ success: true });
+      }
+
       case "validate-token": {
         // Validate the WhatsApp token by fetching business info
         const meRes = await fetch(`${GRAPH_BASE}/me?access_token=${whatsappToken}`);
@@ -119,36 +212,135 @@ Deno.serve(async (req) => {
       }
 
       case "fetch-wabas": {
-        // Fetch all WABAs the token has access to
-        const wabasRes = await fetch(
-          `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${whatsappToken}`
-        );
-        if (!wabasRes.ok) {
-          const errData = await wabasRes.json();
-          return new Response(
-            JSON.stringify({ error: errData.error?.message || "Failed to fetch WABAs" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const wabasData = await wabasRes.json();
-        
-        // Flatten WABAs from all businesses
+        // Find WABAs via the token's granted asset IDs (needs only whatsapp_business_management).
+        // /me/businesses requires business_management, which system-user tokens often lack.
         const wabas: Array<{ id: string; name: string; businessId: string; businessName: string; status: string }> = [];
-        for (const business of wabasData.data || []) {
-          const owned = business.owned_whatsapp_business_accounts?.data || [];
-          for (const waba of owned) {
-            wabas.push({
-              id: waba.id,
-              name: waba.name || "Unnamed WABA",
-              businessId: business.id,
-              businessName: business.name,
-              status: waba.account_review_status || "unknown",
-            });
+        const seen = new Set<string>();
+
+        const debugRes = await fetch(
+          `${GRAPH_BASE}/debug_token?input_token=${whatsappToken}&access_token=${whatsappToken}`
+        );
+        const debugData = await debugRes.json().catch(() => ({}));
+        const wabaIds: string[] = [];
+        for (const s of debugData?.data?.granular_scopes || []) {
+          if (s.scope === "whatsapp_business_management" || s.scope === "whatsapp_business_messaging") {
+            for (const id of s.target_ids || []) if (!wabaIds.includes(id)) wabaIds.push(id);
           }
+        }
+
+        for (const id of wabaIds) {
+          const r = await fetch(
+            `${GRAPH_BASE}/${id}?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+          );
+          if (!r.ok) {
+            console.error(`WABA ${id} lookup failed`, r.status, await r.text());
+            continue;
+          }
+          const w = await r.json();
+          seen.add(w.id);
+          wabas.push({
+            id: w.id,
+            name: w.name || "Unnamed WABA",
+            businessId: w.owner_business_info?.id || "",
+            businessName: w.owner_business_info?.name || "",
+            status: w.account_review_status || "unknown",
+          });
+        }
+
+        // System users: assets assigned directly to the token's user
+        if (wabas.length === 0) {
+          const meRes = await fetch(`${GRAPH_BASE}/me?fields=id&access_token=${whatsappToken}`);
+          const me = await meRes.json().catch(() => ({}));
+          if (me?.id) {
+            const aRes = await fetch(
+              `${GRAPH_BASE}/${me.id}/assigned_whatsapp_business_accounts?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+            );
+            const aData = await aRes.json().catch(() => ({}));
+            if (!aRes.ok) console.error("assigned WABAs lookup failed", aRes.status, JSON.stringify(aData));
+            for (const w of aData?.data || []) {
+              if (seen.has(w.id)) continue;
+              seen.add(w.id);
+              wabas.push({
+                id: w.id,
+                name: w.name || "Unnamed WABA",
+                businessId: w.owner_business_info?.id || "",
+                businessName: w.owner_business_info?.name || "",
+                status: w.account_review_status || "unknown",
+              });
+            }
+          }
+        }
+
+        // Fallback: business listing (only works if token has business_management)
+        let fallbackError: string | null = null;
+        if (wabas.length === 0) {
+          const wabasRes = await fetch(
+            `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${whatsappToken}`
+          );
+          const wabasData = await wabasRes.json().catch(() => ({}));
+          if (!wabasRes.ok) {
+            fallbackError = wabasData?.error?.message || "Failed to fetch WABAs";
+          } else {
+            for (const business of wabasData.data || []) {
+              for (const waba of business.owned_whatsapp_business_accounts?.data || []) {
+                if (seen.has(waba.id)) continue;
+                wabas.push({
+                  id: waba.id,
+                  name: waba.name || "Unnamed WABA",
+                  businessId: business.id,
+                  businessName: business.name,
+                  status: waba.account_review_status || "unknown",
+                });
+              }
+            }
+          }
+        }
+
+        if (wabas.length === 0) {
+          return new Response(
+            JSON.stringify({
+              wabas: [],
+              error:
+                "No WhatsApp Business Accounts are shared with the platform token. In Meta Business Settings, assign the WhatsApp account to the system user (Full control) and regenerate the token with whatsapp_business_management." +
+                (fallbackError ? ` (Meta: ${fallbackError})` : ""),
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
 
         return new Response(
           JSON.stringify({ wabas }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "lookup-waba": {
+        if (!wabaId || !/^\d{5,25}$/.test(String(wabaId))) {
+          return new Response(JSON.stringify({ error: "Enter a valid numeric WhatsApp Business Account ID" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const r = await fetch(
+          `${GRAPH_BASE}/${wabaId}?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+        );
+        const w = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          return new Response(
+            JSON.stringify({ error: `Meta could not open this account: ${w?.error?.message || "unknown error"}` }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            waba: {
+              id: w.id,
+              name: w.name || "Unnamed WABA",
+              businessId: w.owner_business_info?.id || "",
+              businessName: w.owner_business_info?.name || "",
+              status: w.account_review_status || "unknown",
+            },
+          }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -186,6 +378,53 @@ Deno.serve(async (req) => {
           JSON.stringify({ phoneNumbers: phones }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      case "embedded-signup": {
+        const { code, phoneNumberId: esPhoneId, wabaId: esWabaId } = body;
+        const appId = Deno.env.get("META_APP_ID") || "1635724714898789";
+        const appSecret = Deno.env.get("META_APP_SECRET");
+        const json = (o: unknown, s = 200) =>
+          new Response(JSON.stringify(o), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (!appSecret) return json({ error: "Meta App Secret is not configured" });
+        if (typeof code !== "string" || !/^\d{5,25}$/.test(String(esWabaId)) || !/^\d{5,25}$/.test(String(esPhoneId))) {
+          return json({ error: "Signup did not return the WhatsApp account. Please try again." });
+        }
+        // Exchange code for the business's token (validates the signup)
+        const tRes = await fetch(
+          `${GRAPH_BASE}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}`
+        );
+        const tData = await tRes.json().catch(() => ({}));
+        if (!tRes.ok || !tData.access_token) {
+          console.error("Code exchange failed", tRes.status, tData?.error?.message);
+          return json({ error: `Meta signup could not be completed: ${tData?.error?.message || "unknown error"}` });
+        }
+        const bizToken = tData.access_token as string;
+        // Subscribe our app to the WABA's webhooks
+        const subRes = await fetch(`${GRAPH_BASE}/${esWabaId}/subscribed_apps`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${bizToken}` },
+        });
+        if (!subRes.ok) console.error("subscribed_apps failed", await subRes.text());
+        // Read phone number details
+        const pRes = await fetch(
+          `${GRAPH_BASE}/${esPhoneId}?fields=display_phone_number,verified_name`,
+          { headers: { Authorization: `Bearer ${bizToken}` } }
+        );
+        const p = await pRes.json().catch(() => ({}));
+        const display = p.display_phone_number || esPhoneId;
+
+        const { data: existing } = await supabase
+          .from("whatsapp_numbers").select("id")
+          .eq("phone_number_id", esPhoneId).eq("client_id", clientId).maybeSingle();
+        const { error: upErr } = existing
+          ? await supabase.from("whatsapp_numbers").update({ status: "connected", waba_id: esWabaId }).eq("id", existing.id)
+          : await supabase.from("whatsapp_numbers").insert({
+              client_id: clientId, tenant_id: tenantId, phone_number: display,
+              phone_number_id: esPhoneId, waba_id: esWabaId, status: "connected",
+            });
+        if (upErr) return json({ error: upErr.message });
+        return json({ success: true, phoneNumber: display });
       }
 
       case "import-numbers": {
@@ -254,6 +493,13 @@ Deno.serve(async (req) => {
           });
         }
 
+        const { data: dNum } = await supabase.from("whatsapp_numbers").select("waba_id, phone_number_id")
+          .eq("id", numberId).eq("client_id", clientId).maybeSingle();
+        if (dNum?.waba_id === "evolution" && evoBase && evoKey) {
+          await evo(`/instance/logout/${dNum.phone_number_id}`, { method: "DELETE" })
+            .catch((e) => console.error("logout failed", e));
+        }
+
         // Update status to disconnected
         const { error: updateError } = await supabase
           .from("whatsapp_numbers")
@@ -281,6 +527,18 @@ Deno.serve(async (req) => {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        const { data: gNum } = await supabase.from("whatsapp_numbers").select("waba_id, phone_number_id")
+          .eq("id", numberId).eq("client_id", clientId).maybeSingle();
+        if (gNum?.waba_id === "evolution" || gNum?.waba_id === "green-api") {
+          const st = gNum.waba_id === "evolution" && evoBase ? await evoState(gNum.phone_number_id) : "close";
+          if (st !== "open") {
+            return new Response(JSON.stringify({ error: "Please click Add Number and scan the QR code again." }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          await supabase.from("whatsapp_numbers").update({ status: "connected" }).eq("id", numberId);
+          return ok({ success: true });
         }
 
         // Validate the token is still valid

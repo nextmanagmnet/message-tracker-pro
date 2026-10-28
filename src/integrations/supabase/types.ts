@@ -232,13 +232,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "leads_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "leads_whatsapp_number_id_fkey"
             columns: ["whatsapp_number_id"]
             isOneToOne: false
@@ -356,37 +349,37 @@ export type Database = {
       }
       tiktok_accounts: {
         Row: {
-          access_token_secret_id: string | null
+          access_token: string
           advertiser_id: string
           advertiser_name: string | null
           client_id: string | null
           connected_at: string
           id: string
-          refresh_token_secret_id: string | null
+          refresh_token: string | null
           tenant_id: string
           token_expires_at: string | null
           updated_at: string
         }
         Insert: {
-          access_token_secret_id?: string | null
+          access_token: string
           advertiser_id: string
           advertiser_name?: string | null
           client_id?: string | null
           connected_at?: string
           id?: string
-          refresh_token_secret_id?: string | null
+          refresh_token?: string | null
           tenant_id: string
           token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
-          access_token_secret_id?: string | null
+          access_token?: string
           advertiser_id?: string
           advertiser_name?: string | null
           client_id?: string | null
           connected_at?: string
           id?: string
-          refresh_token_secret_id?: string | null
+          refresh_token?: string | null
           tenant_id?: string
           token_expires_at?: string | null
           updated_at?: string
@@ -397,13 +390,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tiktok_accounts_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -454,13 +440,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tiktok_campaigns_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -579,13 +558,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "whatsapp_numbers_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

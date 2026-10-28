@@ -20,8 +20,9 @@ Deno.serve(async (req) => {
   const results: Record<string, unknown>[] = [];
 
   // ---- 1. TikTok advertiser tokens ------------------------------------
-  // Tokens are Vault-encrypted; this RPC decrypts them for every account.
-  const { data: accounts } = await supabase.rpc("get_all_tiktok_tokens");
+  const { data: accounts } = await supabase
+    .from("tiktok_accounts")
+    .select("id, client_id, advertiser_id, access_token, refresh_token, token_expires_at");
 
   for (const account of accounts ?? []) {
     // Refresh anything expiring within the next 7 days (or unknown expiry).
@@ -69,16 +70,13 @@ Deno.serve(async (req) => {
       await supabase
         .from("tiktok_accounts")
         .update({
+          access_token: data.data.access_token,
+          refresh_token: data.data.refresh_token ?? account.refresh_token,
           token_expires_at: expiresIn
             ? new Date(Date.now() + expiresIn * 1000).toISOString()
             : null,
         })
         .eq("id", account.id);
-      await supabase.rpc("set_tiktok_tokens", {
-        _account_id: account.id,
-        _access_token: data.data.access_token,
-        _refresh_token: data.data.refresh_token ?? account.refresh_token,
-      });
 
       await logJob(supabase, "refresh-tokens", {
         clientId: account.client_id,

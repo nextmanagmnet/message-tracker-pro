@@ -83,7 +83,12 @@ const TikTokCallback = () => {
         }
 
         sessionStorage.removeItem(STORAGE_KEY);
-        toast.success("TikTok connected successfully");
+        if (!data?.advertiserCount) {
+          toast.error("No TikTok ad account was linked. Please try again.");
+          navigate("/tiktok", { replace: true });
+          return;
+        }
+        toast.success(`TikTok connected: ${data.advertiserCount} ad account(s)`);
         navigate("/tiktok", { replace: true });
       } finally {
         setIsWorking(false);

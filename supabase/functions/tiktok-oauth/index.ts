@@ -12,56 +12,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate JWT and get the calling user (mirrors whatsapp-connect).
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const anonClient = createClient(
-    supabaseUrl,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-  if (claimsError || !claimsData?.claims) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-  const userId = claimsData.claims.sub as string;
-
-  // Any action that targets a specific client must be checked against that
-  // user's agency membership before we touch tiktok_accounts/tiktok_campaigns.
-  async function assertClientAccess(clientId: string | undefined): Promise<Response | null> {
-    if (!clientId) {
-      return new Response(JSON.stringify({ error: 'Client ID is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const { data: canAccess } = await supabase.rpc('user_can_access_client', {
-      _user_id: userId,
-      _client_id: clientId,
-    });
-    if (!canAccess) {
-      return new Response(JSON.stringify({ error: 'Access denied' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    return null;
-  }
-
   try {
     const url = new URL(req.url);
     // Support action via query param (legacy) OR JSON body (preferred for function invoke)
@@ -76,6 +26,8 @@ serve(async (req) => {
       }
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const tiktokAppId = Deno.env.get('TIKTOK_APP_ID');
     const tiktokAppSecret = Deno.env.get('TIKTOK_APP_SECRET');
 
@@ -87,9 +39,54 @@ serve(async (req) => {
       );
     }
 
+    // Send a test Contact event via Events API 2.0 (requires signed-in user with client access)
+    if (action === 'test-event') {
+      const { clientId, testEventCode } = parsedBody ?? {};
+      if (typeof clientId !== 'string' || !clientId) {
+        return new Response(JSON.stringify({ error: 'Client ID is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+      const { data: visible } = await userClient.from('clients').select('id').eq('id', clientId).maybeSingle();
+      if (!visible) {
+        return new Response(JSON.stringify({ error: 'Not allowed for this client' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const admin = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: account } = await admin.from('tiktok_accounts').select('access_token').eq('client_id', clientId).limit(1).maybeSingle();
+      const { data: pixel } = await admin.from('tiktok_pixels').select('pixel_code').eq('client_id', clientId).limit(1).maybeSingle();
+      if (!account || !pixel) {
+        return new Response(JSON.stringify({ error: !account ? 'No TikTok account connected' : 'No Pixel ID saved in Settings' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const body: Record<string, unknown> = {
+        event_source: 'web',
+        event_source_id: pixel.pixel_code,
+        data: [{
+          event: 'Contact',
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: `test_${crypto.randomUUID()}`,
+          page: { url: 'https://wa.me/' },
+          properties: { description: 'WhatsConnect test event' },
+        }],
+      };
+      if (typeof testEventCode === 'string' && testEventCode.trim()) body.test_event_code = testEventCode.trim();
+      const resp = await fetch('https://business-api.tiktok.com/open_api/v1.3/event/track/', {
+        method: 'POST',
+        headers: { 'Access-Token': account.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await resp.json();
+      console.log('TikTok test event result:', result?.code, result?.message);
+      return new Response(JSON.stringify({ accepted: result?.code === 0, code: result?.code, message: result?.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Generate OAuth URL for TikTok login
     if (action === 'get-auth-url') {
       const { redirectUri, state } = parsedBody ?? (await req.json());
+      const allowed = ['https://message-tracker-pro.lovable.app/tiktok/callback'];
+      const isPreview = typeof redirectUri === 'string' && /^https:\/\/[a-z0-9-]+\.lovable\.app\/tiktok\/callback$/.test(redirectUri);
+      if (!allowed.includes(redirectUri) && !isPreview) {
+        return new Response(JSON.stringify({ error: 'Redirect URI not allowed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       
       const authUrl = new URL('https://business-api.tiktok.com/portal/auth');
       authUrl.searchParams.set('app_id', tiktokAppId);
@@ -107,10 +104,14 @@ serve(async (req) => {
     // Handle OAuth callback - exchange code for tokens
     if (action === 'callback') {
       const { code, clientId } = parsedBody ?? (await req.json());
-
-      const accessDenied = await assertClientAccess(clientId);
-      if (accessDenied) return accessDenied;
-
+      
+      if (!clientId) {
+        return new Response(
+          JSON.stringify({ error: 'Client ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       console.log('Exchanging TikTok auth code for tokens for client:', clientId);
       
       // Exchange authorization code for access token
@@ -138,7 +139,6 @@ serve(async (req) => {
 
       const {
         access_token,
-        advertiser_ids,
         refresh_token,
         access_token_expire_in,
       } = tokenData.data;
@@ -146,72 +146,87 @@ serve(async (req) => {
         ? new Date(Date.now() + Number(access_token_expire_in) * 1000).toISOString()
         : null;
 
-      // Get client to verify it exists and get tenant_id for backwards compat
+      // Collect advertisers: token response + authorized ad accounts endpoint
+      const advertisers = new Map<string, string>();
+      for (const id of (tokenData.data.advertiser_ids ?? []) as unknown[]) advertisers.set(String(id), 'Unknown');
+      try {
+        const listUrl = new URL('https://business-api.tiktok.com/open_api/v1.3/oauth2/advertiser/get/');
+        listUrl.searchParams.set('app_id', tiktokAppId!);
+        listUrl.searchParams.set('secret', tiktokAppSecret!);
+        const listResp = await fetch(listUrl, { headers: { 'Access-Token': access_token } });
+        const listData = await listResp.json();
+        console.log('advertiser/get result:', listData?.code, listData?.message, listData?.data?.list?.length ?? 0);
+        for (const a of listData?.data?.list ?? []) {
+          advertisers.set(String(a.advertiser_id), a.advertiser_name || 'Unknown');
+        }
+      } catch (e) {
+        console.error('advertiser/get failed:', e);
+      }
+
+      if (advertisers.size === 0) {
+        return new Response(
+          JSON.stringify({ error: 'TikTok did not share any ad accounts. Log in with the TikTok account that owns or has admin access to your Ads Manager account, then try again.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .select('id, agency_id')
         .eq('id', clientId)
         .single();
-      
+
       if (clientError || !client) {
         return new Response(
           JSON.stringify({ error: 'Client not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      const insertPromises = advertiser_ids.map(async (advertiserId: string) => {
-        // Get advertiser info
-        const infoResponse = await fetch(`https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${advertiserId}"]`, {
-          headers: {
-            'Access-Token': access_token,
-          },
-        });
-        
-        const infoData = await infoResponse.json();
-        const advertiserName = infoData.data?.list?.[0]?.name || 'Unknown';
-        
-        // Upsert the row first (no tokens yet) to get a stable id, then write
-        // the tokens through to Vault instead of storing them in the row.
-        const { data: upserted, error: upsertError } = await supabase
-          .from('tiktok_accounts')
-          .upsert({
-            client_id: clientId,
-            tenant_id: client.agency_id, // Keep for backwards compat
-            advertiser_id: advertiserId,
-            advertiser_name: advertiserName,
-            token_expires_at: tokenExpiresAt,
-          }, {
-            onConflict: 'tenant_id,advertiser_id',
-          })
-          .select('id')
-          .single();
 
-        if (upsertError || !upserted) {
-          console.error('Failed to upsert tiktok_accounts row:', upsertError);
-          return;
+      let saved = 0;
+      for (const [advertiserId, listedName] of advertisers) {
+        let advertiserName = listedName;
+        if (advertiserName === 'Unknown') {
+          try {
+            const infoResponse = await fetch(`https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${advertiserId}"]`, {
+              headers: { 'Access-Token': access_token },
+            });
+            const infoData = await infoResponse.json();
+            advertiserName = infoData.data?.list?.[0]?.name || 'Unknown';
+          } catch { /* keep Unknown */ }
         }
 
-        const { error: tokenError } = await supabase.rpc('set_tiktok_tokens', {
-          _account_id: upserted.id,
-          _access_token: access_token,
-          _refresh_token: refresh_token ?? null,
-        });
-        if (tokenError) {
-          console.error('Failed to store TikTok tokens in Vault:', tokenError);
-        }
-      });
+        const { data: existing } = await supabase
+          .from('tiktok_accounts').select('id')
+          .eq('client_id', clientId).eq('advertiser_id', advertiserId).maybeSingle();
+        const row = {
+          client_id: clientId,
+          tenant_id: client.agency_id,
+          advertiser_id: advertiserId,
+          advertiser_name: advertiserName,
+          access_token,
+          refresh_token: refresh_token ?? null,
+          token_expires_at: tokenExpiresAt,
+        };
+        const { error: saveError } = existing
+          ? await supabase.from('tiktok_accounts').update(row).eq('id', existing.id)
+          : await supabase.from('tiktok_accounts').insert(row);
+        if (saveError) console.error('Failed to save advertiser', advertiserId, saveError);
+        else saved++;
+      }
 
-      await Promise.all(insertPromises);
-      
-      console.log(`Connected ${advertiser_ids.length} TikTok advertiser accounts for client ${clientId}`);
-      
+      console.log(`Connected ${saved} TikTok advertiser accounts for client ${clientId}`);
+
+      if (saved === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Could not save your TikTok ad account. Please try again.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: `Connected ${advertiser_ids.length} advertiser account(s)`,
-          advertiserCount: advertiser_ids.length 
-        }),
+        JSON.stringify({ success: true, message: `Connected ${saved} advertiser account(s)`, advertiserCount: saved }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -219,10 +234,16 @@ serve(async (req) => {
     // Fetch campaigns for a client with real spend data
     if (action === 'fetch-campaigns') {
       const { clientId, dateFrom, dateTo } = parsedBody ?? (await req.json());
-
-      const accessDenied = await assertClientAccess(clientId);
-      if (accessDenied) return accessDenied;
-
+      
+      if (!clientId) {
+        return new Response(
+          JSON.stringify({ error: 'Client ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
       // Get client info
       const { data: client, error: clientError } = await supabase
         .from('clients')
@@ -237,10 +258,12 @@ serve(async (req) => {
         );
       }
       
-      // Get TikTok accounts for this client, tokens decrypted from Vault
+      // Get TikTok accounts for this client
       const { data: accounts, error: accountsError } = await supabase
-        .rpc('get_tiktok_tokens_for_client', { _client_id: clientId });
-
+        .from('tiktok_accounts')
+        .select('*')
+        .eq('client_id', clientId);
+      
       if (accountsError || !accounts?.length) {
         return new Response(
           JSON.stringify({ error: 'No TikTok accounts connected for this client' }),
