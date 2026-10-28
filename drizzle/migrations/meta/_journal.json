@@ -8,6 +8,13 @@
       "when": 1791449650304,
       "tag": "0000_scheduler_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793169222515,
+      "tag": "0001_drop_legacy_tenant_fks",
+      "breakpoints": true
     }
   ]
 }
