@@ -139,65 +139,94 @@ serve(async (req) => {
 
       const {
         access_token,
-        advertiser_ids,
         refresh_token,
         access_token_expire_in,
       } = tokenData.data;
       const tokenExpiresAt = access_token_expire_in
         ? new Date(Date.now() + Number(access_token_expire_in) * 1000).toISOString()
         : null;
-      
-      // Store each advertiser account
+
+      // Collect advertisers: token response + authorized ad accounts endpoint
+      const advertisers = new Map<string, string>();
+      for (const id of (tokenData.data.advertiser_ids ?? []) as unknown[]) advertisers.set(String(id), 'Unknown');
+      try {
+        const listUrl = new URL('https://business-api.tiktok.com/open_api/v1.3/oauth2/advertiser/get/');
+        listUrl.searchParams.set('app_id', tiktokAppId!);
+        listUrl.searchParams.set('secret', tiktokAppSecret!);
+        const listResp = await fetch(listUrl, { headers: { 'Access-Token': access_token } });
+        const listData = await listResp.json();
+        console.log('advertiser/get result:', listData?.code, listData?.message, listData?.data?.list?.length ?? 0);
+        for (const a of listData?.data?.list ?? []) {
+          advertisers.set(String(a.advertiser_id), a.advertiser_name || 'Unknown');
+        }
+      } catch (e) {
+        console.error('advertiser/get failed:', e);
+      }
+
+      if (advertisers.size === 0) {
+        return new Response(
+          JSON.stringify({ error: 'TikTok did not share any ad accounts. Log in with the TikTok account that owns or has admin access to your Ads Manager account, then try again.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      // Get client to verify it exists and get tenant_id for backwards compat
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .select('id, agency_id')
         .eq('id', clientId)
         .single();
-      
+
       if (clientError || !client) {
         return new Response(
           JSON.stringify({ error: 'Client not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      const insertPromises = advertiser_ids.map(async (advertiserId: string) => {
-        // Get advertiser info
-        const infoResponse = await fetch(`https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${advertiserId}"]`, {
-          headers: {
-            'Access-Token': access_token,
-          },
-        });
-        
-        const infoData = await infoResponse.json();
-        const advertiserName = infoData.data?.list?.[0]?.name || 'Unknown';
-        
-        return supabase.from('tiktok_accounts').upsert({
+
+      let saved = 0;
+      for (const [advertiserId, listedName] of advertisers) {
+        let advertiserName = listedName;
+        if (advertiserName === 'Unknown') {
+          try {
+            const infoResponse = await fetch(`https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${advertiserId}"]`, {
+              headers: { 'Access-Token': access_token },
+            });
+            const infoData = await infoResponse.json();
+            advertiserName = infoData.data?.list?.[0]?.name || 'Unknown';
+          } catch { /* keep Unknown */ }
+        }
+
+        const { data: existing } = await supabase
+          .from('tiktok_accounts').select('id')
+          .eq('client_id', clientId).eq('advertiser_id', advertiserId).maybeSingle();
+        const row = {
           client_id: clientId,
-          tenant_id: client.agency_id, // Keep for backwards compat
+          tenant_id: client.agency_id,
           advertiser_id: advertiserId,
           advertiser_name: advertiserName,
-          access_token: access_token,
+          access_token,
           refresh_token: refresh_token ?? null,
           token_expires_at: tokenExpiresAt,
-        }, {
-          onConflict: 'tenant_id,advertiser_id',
-        });
-      });
+        };
+        const { error: saveError } = existing
+          ? await supabase.from('tiktok_accounts').update(row).eq('id', existing.id)
+          : await supabase.from('tiktok_accounts').insert(row);
+        if (saveError) console.error('Failed to save advertiser', advertiserId, saveError);
+        else saved++;
+      }
 
-      await Promise.all(insertPromises);
-      
-      console.log(`Connected ${advertiser_ids.length} TikTok advertiser accounts for client ${clientId}`);
-      
+      console.log(`Connected ${saved} TikTok advertiser accounts for client ${clientId}`);
+
+      if (saved === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Could not save your TikTok ad account. Please try again.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: `Connected ${advertiser_ids.length} advertiser account(s)`,
-          advertiserCount: advertiser_ids.length 
-        }),
+        JSON.stringify({ success: true, message: `Connected ${saved} advertiser account(s)`, advertiserCount: saved }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
