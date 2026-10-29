@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { ar } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,15 +31,11 @@ interface DateRangePickerProps {
   onChange: (range: DateRange) => void;
 }
 
-const presets = [
-  { value: "7d", label: "Last 7 days" },
-  { value: "14d", label: "Last 14 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "90d", label: "Last 90 days" },
-  { value: "custom", label: "Custom range" },
-] as const;
+const presets = ["7d", "14d", "30d", "90d", "custom"] as const;
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
+  const { t, i18n } = useTranslation("features");
+  const locale = i18n.language === "ar" ? { locale: ar } : undefined;
   const [preset, setPreset] = useState<PresetValue>("7d");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -77,8 +75,8 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         </SelectTrigger>
         <SelectContent>
           {presets.map((p) => (
-            <SelectItem key={p.value} value={p.value}>
-              {p.label}
+            <SelectItem key={p} value={p}>
+              {t(`dateRange.${p}`)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -89,21 +87,21 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
           <Button
             variant="outline"
             className={cn(
-              "justify-start text-left font-normal",
+              "justify-start text-start font-normal",
               !value && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="w-4 h-4 mr-2" />
+            <CalendarIcon className="w-4 h-4 me-2" />
             {value.from ? (
               value.to ? (
                 <>
-                  {format(value.from, "MMM d")} - {format(value.to, "MMM d, yyyy")}
+                  {format(value.from, "MMM d", locale)} - {format(value.to, "MMM d, yyyy", locale)}
                 </>
               ) : (
-                format(value.from, "MMM d, yyyy")
+                format(value.from, "MMM d, yyyy", locale)
               )
             ) : (
-              <span>Pick a date</span>
+              <span>{t("dateRange.pick")}</span>
             )}
           </Button>
         </PopoverTrigger>

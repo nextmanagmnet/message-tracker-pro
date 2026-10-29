@@ -2,9 +2,19 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+export type AccountType = "individual" | "agency";
+
+/** True when a Postgres error came from the plan-limits trigger (raises with a WOB_LIMIT prefix). */
+export function isPlanLimitError(message: string | null | undefined): boolean {
+  return !!message && message.includes("WOB_LIMIT");
+}
+
+export type CreateClientResult = { client: Client | null; limitReached: boolean };
+
 interface Agency {
   id: string;
   name: string;
+  account_type?: AccountType | null;
 }
 
 interface AgencyMember {
@@ -14,7 +24,7 @@ interface AgencyMember {
   role: "owner" | "admin" | "viewer";
 }
 
-interface Client {
+export interface Client {
   id: string;
   agency_id: string;
   name: string;
@@ -28,11 +38,13 @@ interface AgencyContextType {
   selectedClient: Client | null;
   setSelectedClient: (client: Client | null) => void;
   loading: boolean;
+  accountType: AccountType;
+  isIndividual: boolean;
   isOwner: boolean;
   isAdmin: boolean;
   canManage: boolean;
   refreshClients: () => Promise<void>;
-  createClient: (name: string) => Promise<Client | null>;
+  createClient: (name: string) => Promise<CreateClientResult>;
   updateClient: (clientId: string, name: string) => Promise<boolean>;
   deleteClient: (clientId: string) => Promise<boolean>;
 }
@@ -50,6 +62,9 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const isOwner = membership?.role === "owner";
   const isAdmin = membership?.role === "admin";
   const canManage = isOwner || isAdmin;
+  // Rows created before account types existed are agencies.
+  const accountType: AccountType = agency?.account_type === "individual" ? "individual" : "agency";
+  const isIndividual = accountType === "individual";
 
   useEffect(() => {
     if (user) {
@@ -146,8 +161,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
     await fetchClients();
   };
 
-  const createClient = async (name: string): Promise<Client | null> => {
-    if (!agency || !canManage) return null;
+  const createClient = async (name: string): Promise<CreateClientResult> => {
+    if (!agency || !canManage) return { client: null, limitReached: false };
 
     const { data, error } = await supabase
       .from("clients")
@@ -160,11 +175,11 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error("Error creating client:", error);
-      return null;
+      return { client: null, limitReached: isPlanLimitError(error.message) };
     }
 
     await refreshClients();
-    return data;
+    return { client: data, limitReached: false };
   };
 
   const updateClient = async (clientId: string, name: string): Promise<boolean> => {
@@ -215,6 +230,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
         selectedClient,
         setSelectedClient,
         loading,
+        accountType,
+        isIndividual,
         isOwner,
         isAdmin,
         canManage,

@@ -79,17 +79,19 @@ Deno.serve(async (req) => {
       });
       const reportData = await reportRes.json();
 
-      const spendMap = new Map<string, number>();
+      const metricsMap = new Map<string, { spend: number; clicks: number; impressions: number }>();
       if (reportData.code === 0) {
         for (const row of reportData.data?.list ?? []) {
-          spendMap.set(
-            row.dimensions.campaign_id,
-            parseFloat(row.metrics?.spend) || 0
-          );
+          metricsMap.set(row.dimensions.campaign_id, {
+            spend: parseFloat(row.metrics?.spend) || 0,
+            clicks: parseInt(row.metrics?.clicks) || 0,
+            impressions: parseInt(row.metrics?.impressions) || 0,
+          });
         }
       }
 
       for (const campaign of listData.data.list) {
+        const m = metricsMap.get(campaign.campaign_id);
         await supabase.from("tiktok_campaigns").upsert(
           {
             client_id: account.client_id,
@@ -97,7 +99,9 @@ Deno.serve(async (req) => {
             tiktok_account_id: account.id,
             campaign_id: campaign.campaign_id,
             campaign_name: campaign.campaign_name,
-            spend: spendMap.get(campaign.campaign_id) ?? 0,
+            spend: m?.spend ?? 0,
+            clicks: m?.clicks ?? 0,
+            impressions: m?.impressions ?? 0,
           },
           { onConflict: "tenant_id,campaign_id" }
         );
@@ -126,9 +130,62 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ---- Meta ad accounts: campaign-level insights for the same window
+  let metaQuery = supabase
+    .from("meta_accounts")
+    .select("id, client_id, ad_account_id, access_token")
+    .neq("ad_account_id", "pending");
+  if (onlyClientId) metaQuery = metaQuery.eq("client_id", onlyClientId);
+  const { data: metaAccounts } = await metaQuery;
+
+  for (const account of metaAccounts ?? []) {
+    try {
+      const params = new URLSearchParams({
+        level: "campaign",
+        fields: "campaign_id,campaign_name,spend,clicks,impressions",
+        time_range: JSON.stringify({ since: startDate, until: endDate }),
+        limit: "500",
+        access_token: account.access_token,
+      });
+      const res = await fetch(`https://graph.facebook.com/v21.0/${account.ad_account_id}/insights?${params}`);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error?.message ?? `Meta error ${res.status}`);
+
+      for (const row of data.data ?? []) {
+        await supabase.from("meta_campaigns").upsert(
+          {
+            client_id: account.client_id,
+            meta_account_id: account.id,
+            campaign_id: row.campaign_id,
+            campaign_name: row.campaign_name,
+            spend: parseFloat(row.spend) || 0,
+            clicks: parseInt(row.clicks) || 0,
+            impressions: parseInt(row.impressions) || 0,
+          },
+          { onConflict: "client_id,campaign_id" }
+        );
+        synced++;
+      }
+      await logJob(supabase, "sync-campaigns", {
+        clientId: account.client_id,
+        status: "success",
+        details: { provider: "meta", ad_account_id: account.ad_account_id, campaigns: data.data?.length ?? 0 },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      failures[account.ad_account_id] = msg;
+      await logJob(supabase, "sync-campaigns", {
+        clientId: account.client_id,
+        status: "failed",
+        details: { provider: "meta", ad_account_id: account.ad_account_id },
+        error: msg,
+      });
+    }
+  }
+
   return json({
     success: true,
-    accounts: accounts?.length ?? 0,
+    accounts: (accounts?.length ?? 0) + (metaAccounts?.length ?? 0),
     campaignsSynced: synced,
     failures,
   });

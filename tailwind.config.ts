@@ -15,7 +15,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Montserrat', 'Readex Pro', 'system-ui', 'sans-serif'],
+        display: ['Unbounded', 'Readex Pro', 'system-ui', 'sans-serif'],
+        arabic: ['Readex Pro', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -75,6 +77,15 @@ export default {
           "3": "hsl(var(--chart-3))",
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
+          "6": "hsl(var(--chart-6))",
+        },
+        brand: {
+          coral: "hsl(var(--brand-coral))",
+          pink: "hsl(var(--brand-pink))",
+          orange: "hsl(var(--brand-orange))",
+          blue: "hsl(var(--brand-blue))",
+          aqua: "hsl(var(--brand-aqua))",
+          charcoal: "hsl(var(--brand-charcoal))",
         },
       },
       borderRadius: {

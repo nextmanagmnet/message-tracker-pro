@@ -1,8 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Building2, Plus, MoreVertical, Pencil, Trash2, MessageCircle, DollarSign, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAgency } from "@/hooks/useAgency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -21,28 +26,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { 
-  Building2, 
-  Plus, 
-  MoreVertical, 
-  Pencil, 
-  Trash2,
-  MessageCircle,
-  DollarSign,
-  TrendingUp
-} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 export default function ClientsPage() {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { clients, canManage, createClient, updateClient, deleteClient, setSelectedClient } = useAgency();
-  
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -52,56 +47,56 @@ export default function ClientsPage() {
 
   const handleCreate = async () => {
     if (!clientName.trim()) {
-      toast.error("Please enter a client name");
+      toast.error(t("clientSwitcher.nameRequired"));
       return;
     }
-    
+
     setIsLoading(true);
-    const client = await createClient(clientName.trim());
+    const { client, limitReached } = await createClient(clientName.trim());
     setIsLoading(false);
-    
+
     if (client) {
-      toast.success("Client created successfully");
+      toast.success(t("clientSwitcher.created"));
       setClientName("");
       setIsCreateDialogOpen(false);
     } else {
-      toast.error("Failed to create client");
+      toast.error(limitReached ? t("errors.limitClient") : t("clientSwitcher.failed"));
     }
   };
 
   const handleEdit = async () => {
     if (!clientName.trim() || !selectedClientForAction) {
-      toast.error("Please enter a client name");
+      toast.error(t("clientSwitcher.nameRequired"));
       return;
     }
-    
+
     setIsLoading(true);
     const success = await updateClient(selectedClientForAction.id, clientName.trim());
     setIsLoading(false);
-    
+
     if (success) {
-      toast.success("Client updated successfully");
+      toast.success(t("clients.updated"));
       setClientName("");
       setIsEditDialogOpen(false);
       setSelectedClientForAction(null);
     } else {
-      toast.error("Failed to update client");
+      toast.error(t("clients.updateFailed"));
     }
   };
 
   const handleDelete = async () => {
     if (!selectedClientForAction) return;
-    
+
     setIsLoading(true);
     const success = await deleteClient(selectedClientForAction.id);
     setIsLoading(false);
-    
+
     if (success) {
-      toast.success("Client deleted successfully");
+      toast.success(t("clients.deleted"));
       setIsDeleteDialogOpen(false);
       setSelectedClientForAction(null);
     } else {
-      toast.error("Failed to delete client");
+      toast.error(t("clients.deleteFailed"));
     }
   };
 
@@ -116,38 +111,42 @@ export default function ClientsPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const nameField = (id: string, onEnter: () => void) => (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor={id}>{t("clientSwitcher.nameLabel")}</Label>
+        <Input
+          id={id}
+          placeholder={t("clientSwitcher.namePlaceholder")}
+          value={clientName}
+          onChange={(e) => setClientName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onEnter()}
+        />
+      </div>
+    </div>
+  );
+
   return (
-    <DashboardLayout
-      title="Clients"
-      subtitle="Manage your client accounts and their integrations"
-    >
-      {/* Action Bar */}
+    <DashboardLayout title={t("clients.title")} subtitle={t("clients.subtitle")}>
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            {clients.length} {clients.length === 1 ? "client" : "clients"}
-          </span>
-        </div>
+        <span className="text-sm text-muted-foreground">{t("clients.count", { count: clients.length })}</span>
         {canManage && (
           <Button variant="glow" onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Client
+            <Plus className="w-4 h-4" />
+            {t("clients.add")}
           </Button>
         )}
       </div>
 
-      {/* Clients Grid */}
       {clients.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">No clients yet</h3>
-          <p className="text-muted-foreground mb-6">
-            Create your first client to start tracking their TikTok and WhatsApp data.
-          </p>
+        <div className="dark wob-mesh-cool rounded-2xl p-12 text-center text-white">
+          <Building2 className="w-12 h-12 mx-auto mb-4 text-white/80" />
+          <h3 className="text-lg font-semibold mb-2">{t("clients.emptyTitle")}</h3>
+          <p className="text-white/75 mb-6">{t("clients.emptyDesc")}</p>
           {canManage && (
             <Button variant="glow" onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add First Client
+              <Plus className="w-4 h-4" />
+              {t("clients.addFirst")}
             </Button>
           )}
         </div>
@@ -156,14 +155,14 @@ export default function ClientsPage() {
           {clients.map((client) => (
             <div key={client.id} className="glass-card p-6 hover:border-primary/50 transition-colors">
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Building2 className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{client.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate">{client.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                      Added {new Date(client.created_at).toLocaleDateString()}
+                      {t("clients.added", { date: new Date(client.created_at).toLocaleDateString(i18n.language) })}
                     </p>
                   </div>
                 </div>
@@ -176,134 +175,102 @@ export default function ClientsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditDialog(client)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
+                        <Pencil className="w-4 h-4 me-2" />
+                        {t("common.edit")}
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => openDeleteDialog(client)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                      <DropdownMenuItem onClick={() => openDeleteDialog(client)} className="text-destructive">
+                        <Trash2 className="w-4 h-4 me-2" />
+                        {t("common.delete")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
               </div>
 
-              {/* Quick Stats (placeholder) */}
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="text-center p-2 rounded-lg bg-muted/50">
                   <MessageCircle className="w-4 h-4 mx-auto mb-1 text-primary" />
-                  <p className="text-xs text-muted-foreground">Leads</p>
+                  <p className="text-xs text-muted-foreground">{t("clients.leads")}</p>
                   <p className="font-semibold">--</p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-muted/50">
-                  <DollarSign className="w-4 h-4 mx-auto mb-1 text-success" />
-                  <p className="text-xs text-muted-foreground">Spend</p>
+                  <DollarSign className="w-4 h-4 mx-auto mb-1 text-brand-aqua" />
+                  <p className="text-xs text-muted-foreground">{t("clients.spend")}</p>
                   <p className="font-semibold">--</p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-muted/50">
                   <TrendingUp className="w-4 h-4 mx-auto mb-1 text-accent" />
-                  <p className="text-xs text-muted-foreground">Conv.</p>
+                  <p className="text-xs text-muted-foreground">{t("clients.conversions")}</p>
                   <p className="font-semibold">--</p>
                 </div>
               </div>
 
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
-                onClick={() => setSelectedClient(client)}
+                onClick={() => {
+                  setSelectedClient(client);
+                  navigate("/");
+                }}
               >
-                View Dashboard
+                {t("clients.viewDashboard")}
               </Button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Client</DialogTitle>
-            <DialogDescription>
-              Create a new client to track their TikTok and WhatsApp data separately.
-            </DialogDescription>
+            <DialogTitle>{t("clientSwitcher.createTitle")}</DialogTitle>
+            <DialogDescription>{t("clientSwitcher.createDesc")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="createName">Client Name</Label>
-              <Input
-                id="createName"
-                placeholder="e.g., Acme Corp"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              />
-            </div>
-          </div>
+          {nameField("createName", handleCreate)}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Client"}
+              {isLoading ? t("common.creating") : t("clientSwitcher.createButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Client</DialogTitle>
-            <DialogDescription>
-              Update the client's name.
-            </DialogDescription>
+            <DialogTitle>{t("clients.editTitle")}</DialogTitle>
+            <DialogDescription>{t("clients.editDesc")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="editName">Client Name</Label>
-              <Input
-                id="editName"
-                placeholder="e.g., Acme Corp"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-              />
-            </div>
-          </div>
+          {nameField("editName", handleEdit)}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleEdit} disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? t("common.saving") : t("clients.saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Client</AlertDialogTitle>
+            <AlertDialogTitle>{t("clients.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedClientForAction?.name}"? 
-              This will permanently remove all associated data including WhatsApp numbers, 
-              TikTok accounts, campaigns, and leads. This action cannot be undone.
+              {t("clients.deleteDesc", { name: selectedClientForAction?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isLoading ? "Deleting..." : "Delete"}
+              {isLoading ? t("common.deleting") : t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

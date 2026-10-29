@@ -1,0 +1,317 @@
+{
+  "common": {
+    "selectClient": "Select a client to get started.",
+    "error": "Something went wrong. Please try again.",
+    "tryAgain": "Try again",
+    "refresh": "Refresh",
+    "viewAll": "View all",
+    "save": "Save",
+    "copy": "Copy",
+    "copied": "Copied",
+    "vsLastPeriod": "vs last period"
+  },
+  "stage": {
+    "new": "New",
+    "real": "Real",
+    "qualified": "Qualified",
+    "client": "Client",
+    "not_lead": "Not a lead"
+  },
+  "platform": {
+    "tiktok": "TikTok",
+    "meta": "Meta",
+    "none": "No ad source"
+  },
+  "dateRange": {
+    "7d": "Last 7 days",
+    "14d": "Last 14 days",
+    "30d": "Last 30 days",
+    "90d": "Last 90 days",
+    "custom": "Custom range",
+    "pick": "Pick a date"
+  },
+  "chart": {
+    "title": "Lead quality over time",
+    "subtitle": "Real conversations, qualified leads, clients and trash per day",
+    "real": "Real",
+    "qualified": "Qualified",
+    "clients": "Clients",
+    "trash": "Trash",
+    "empty": "No conversations in this period yet"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "What your ads really brought in for {{client}}",
+    "manageConnections": "Manage connections",
+    "noClient": "Connect WhatsApp and your ad accounts to see who actually messages you.",
+    "getStarted": "Get started",
+    "funnel": "From click to client",
+    "step": {
+      "clicks": "Ad clicks",
+      "real": "Real conversations",
+      "qualified": "Qualified leads",
+      "clients": "Clients"
+    },
+    "ofPrevious": "{{pct}} of previous step",
+    "noClicks": "Click counts appear after your TikTok or Meta campaigns sync.",
+    "costPerQualified": "Cost per qualified lead",
+    "costPerClient": "Cost per client",
+    "revenue": "Revenue from clients",
+    "trashRate": "Trash rate",
+    "conversionsSent": "Conversions sent",
+    "conversionsSentHint": "Events reported to TikTok and Meta",
+    "recentLeads": "Recent leads"
+  },
+  "leads": {
+    "title": "Leads",
+    "subtitle": "Every WhatsApp conversation from your ads, scored and staged",
+    "loadFailed": "Couldn't load leads",
+    "live": "Live",
+    "empty": "No leads in this period",
+    "emptyHint": "New WhatsApp conversations show up here the moment they arrive.",
+    "capped": "Showing the latest 500 leads. Narrow the date range to see older ones.",
+    "filter": {
+      "allStages": "All stages",
+      "allSources": "All sources"
+    },
+    "suggestion": "AI thinks this lead is: {{stage}}{{value}}",
+    "suggestionChip": "AI: {{stage}}{{value}}",
+    "accept": "Accept",
+    "outcome": "Outcome",
+    "orderValue": "Order value",
+    "currency": "Currency",
+    "markClient": "Mark as client",
+    "notLead": "Not a lead",
+    "notLeadHint": "\"Not a lead\" stops future events for this person. Events already sent stay sent.",
+    "agent": {
+      "ai_active": "AI is replying to this lead",
+      "handed_off": "You're handling this chat",
+      "opted_out": "This contact asked not to be messaged",
+      "hint": "Replies you send from your phone also hand the chat over to you."
+    },
+    "takeOver": "Take over",
+    "handBack": "Hand back to AI",
+    "transcript": "Conversation",
+    "firstMessage": "First message",
+    "author": {
+      "lead": "Lead",
+      "owner": "You",
+      "ai": "AI"
+    },
+    "conversionLog": "Sent to ad platforms",
+    "noEvents": "Nothing sent yet.",
+    "eventStatus": {
+      "sent": "Sent",
+      "pending": "Pending",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "done": {
+      "mark_client": "Marked as client",
+      "mark_not_lead": "Marked as not a lead",
+      "accept_suggestion": "Suggestion accepted",
+      "take_over": "You're handling this chat now",
+      "hand_back": "AI is back on this chat"
+    }
+  },
+  "campaigns": {
+    "title": "Campaigns",
+    "subtitle": "Clicks, real conversations, qualified leads and clients per campaign",
+    "allPlatforms": "All platforms",
+    "syncNow": "Sync now",
+    "synced": "Synced {{count}} campaign(s)",
+    "syncFailed": "Sync failed",
+    "costPerQualified": "Cost per qualified lead",
+    "costPerClient": "Cost per client",
+    "revenue": "Revenue",
+    "spend": "Ad spend",
+    "empty": "No campaigns yet",
+    "emptyHint": "Connect a TikTok or Meta ad account, then sync.",
+    "goConnections": "Go to connections",
+    "col": {
+      "campaign": "Campaign",
+      "spend": "Spend",
+      "clicks": "Clicks",
+      "real": "Real",
+      "qualified": "Qualified",
+      "clients": "Clients",
+      "costPerQualified": "Cost / qualified",
+      "costPerClient": "Cost / client",
+      "revenue": "Revenue",
+      "roas": "ROAS"
+    },
+    "help": {
+      "title": "How WOB knows which ad a chat came from",
+      "meta": "Click-to-WhatsApp ads attach the ad automatically. Nothing to set up.",
+      "tiktok": "TikTok doesn't pass the click to WhatsApp, so the ad's WhatsApp link must prefill a message that contains the click ID. Use the link below as your ad's destination.",
+      "noNumber": "Connect a WhatsApp number first to get your ad link.",
+      "defaultText": "Hi, I'd like to know more",
+      "textLabel": "Prefilled message",
+      "verify": "After launching, send yourself one test click and check the lead shows TikTok as its source. Don't remove the ttclid part of the message."
+    }
+  },
+  "connections": {
+    "title": "Connections",
+    "subtitle": "Link WhatsApp and your ad accounts",
+    "checking": "Checking…",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "connect": "Connect",
+    "authUrlMissing": "The login link wasn't returned. Please try again.",
+    "whatsapp": {
+      "title": "WhatsApp",
+      "description": "Scan a QR code with the phone you take orders on. You keep chatting from that phone as usual.",
+      "add": "Add number"
+    },
+    "tiktok": {
+      "title": "TikTok Ads",
+      "description": "Lets WOB read your campaign spend and send qualified leads and clients back to TikTok.",
+      "addAccount": "Add account",
+      "unnamed": "Unnamed ad account",
+      "pixel": "TikTok Pixel ID",
+      "pixelHint": "From TikTok Events Manager. Qualified leads and clients are reported through this pixel.",
+      "savePixel": "Save pixel",
+      "pixelRequired": "Enter a pixel ID",
+      "pixelFailed": "Couldn't save the pixel",
+      "pixelSaved": "Pixel saved",
+      "testEvent": "Send test event",
+      "testPrompt": "Paste the Test Event Code from TikTok Events Manager (Pixel → Test Events). Leave empty to send a live event.",
+      "testAccepted": "TikTok accepted the test event",
+      "testRejected": "TikTok rejected the event: {{message}}"
+    },
+    "meta": {
+      "title": "Meta Ads (Facebook & Instagram)",
+      "description": "Tracks Click-to-WhatsApp ads and sends qualified leads and clients back to Meta.",
+      "adAccount": "Ad account",
+      "dataset": "Dataset (pixel)",
+      "noDataset": "Not chosen yet",
+      "chooseDataset": "Choose dataset",
+      "datasetHint": "Pick the dataset Meta should receive lead and purchase events on.",
+      "noDatasets": "No datasets found on this ad account. Create one in Meta Events Manager, then try again.",
+      "datasetSaved": "Dataset saved",
+      "confirmDisconnect": "Disconnect this Meta ad account? WOB will stop sending events to Meta.",
+      "disconnected": "Meta disconnected"
+    }
+  },
+  "limits": {
+    "whatsapp": "The Individual plan includes one WhatsApp number.",
+    "tiktok": "The Individual plan includes one TikTok ad account.",
+    "meta": "The Individual plan includes one Meta ad account."
+  },
+  "whatsapp": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "disconnect": "Disconnect",
+    "reconnect": "Reconnect",
+    "remove": "Remove",
+    "realMessages": "Real messages",
+    "trash": "Trash",
+    "lastMessage": "Last message",
+    "loadFailed": "Couldn't load WhatsApp numbers",
+    "done": {
+      "disconnect": "Number disconnected",
+      "remove": "Number removed",
+      "reconnect": "Number reconnected"
+    }
+  },
+  "qr": {
+    "title": "Connect WhatsApp",
+    "description": "Scan the code with the phone that has this WhatsApp number.",
+    "preparing": "Preparing QR code…",
+    "step1": "Open WhatsApp on the phone",
+    "step2": "Tap Settings (or ⋮) → Linked devices",
+    "step3": "Tap Link a device and scan this code",
+    "waiting": "Waiting for scan… the code refreshes automatically",
+    "connectedToast": "Connected {{phone}}",
+    "done": "{{phone}} is connected!",
+    "failed": "Connection failed",
+    "loadFailed": "Could not load the QR code"
+  },
+  "callback": {
+    "tiktokTitle": "Connecting TikTok…",
+    "metaTitle": "Connecting Meta…",
+    "working": "Finishing authorization and saving your ad account.",
+    "cancelled": "Authorization was cancelled",
+    "noPending": "No pending connection found. Please try connecting again.",
+    "stateMismatch": "Security check failed. Please try connecting again.",
+    "noAdAccounts": "No ad account was linked. Please try again.",
+    "failed": "Couldn't complete the connection",
+    "tiktokConnected": "TikTok connected: {{count}} ad account(s)",
+    "metaConnected": "Meta ad account connected. Now choose a dataset.",
+    "pickAdAccount": "Choose an ad account"
+  },
+  "ai": {
+    "title": "AI Agent",
+    "subtitle": "Optional add-on: let AI reply to new leads and follow up",
+    "enable": "AI auto-reply",
+    "enableHint": "Off by default. When on, AI answers new leads, asks your qualifying questions and hands the chat to you when needed.",
+    "warningTitle": "Use with care",
+    "warning": "QR-linked WhatsApp is not the official WhatsApp Business API. Automated messages, especially many follow-ups, can get a number restricted by WhatsApp. Keep follow-ups few and only during the day.",
+    "knowledgeTitle": "What the AI should know",
+    "field": {
+      "business_knowledge": "About your business",
+      "tone": "Tone of voice",
+      "qualifying_questions": "Questions to qualify a lead",
+      "handoff_rules": "When to hand over to you",
+      "follow_up_delay_hours": "Wait (hours)",
+      "follow_up_max": "Max follow-ups",
+      "allowed_hours_start": "From hour",
+      "allowed_hours_end": "Until hour",
+      "timezone": "Time zone"
+    },
+    "placeholder": {
+      "business_knowledge": "Products, prices, delivery areas and times, opening hours, payment methods…",
+      "tone": "Friendly and short, Gulf Arabic when the customer writes Arabic",
+      "qualifying_questions": "Which size? Which city? When do you need it?",
+      "handoff_rules": "Customer wants to pay, asks for a person, or complains"
+    },
+    "followUpTitle": "Automatic follow-ups",
+    "followUpHint": "Nudge leads who stopped replying. Never sent to people who said stop.",
+    "hoursInvalid": "The start hour must be before the end hour",
+    "saveFailed": "Couldn't save settings",
+    "saved": "Settings saved",
+    "playground": "Try it",
+    "playgroundHint": "Test replies here. Nothing is sent on WhatsApp.",
+    "playgroundEmpty": "Type a message as a customer to see how the AI replies.",
+    "clear": "Clear chat",
+    "switchRole": "Switch who is typing",
+    "asLead": "Customer",
+    "asBusiness": "You",
+    "typeMessage": "Type a message…",
+    "send": "Send",
+    "verdict": {
+      "spam": "Spam",
+      "notSpam": "Real",
+      "hot": "Hot lead",
+      "warm": "Warm lead",
+      "cold": "Cold lead",
+      "handoff": "Would hand over to you"
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "A shareable summary for the selected client",
+    "pdf": "Save as PDF",
+    "heading": "{{client}} — Performance report",
+    "campaigns": "Campaigns",
+    "csv": {
+      "client": "Client",
+      "period": "Period",
+      "platform": "Platform",
+      "campaign": "Campaign",
+      "spend": "Ad spend",
+      "clicks": "Clicks",
+      "messages": "All messages",
+      "real": "Real conversations",
+      "qualified": "Qualified leads",
+      "clients": "Clients",
+      "trash": "Trash",
+      "revenue": "Revenue",
+      "costPerQualified": "Cost per qualified lead",
+      "costPerClient": "Cost per client",
+      "attributed": "From ads",
+      "avgScore": "Avg quality score",
+      "conversionsSent": "Conversions sent"
+    }
+  }
+}

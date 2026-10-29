@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { limitError } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -183,7 +184,7 @@ Deno.serve(async (req) => {
               client_id: clientId, tenant_id: tenantId, phone_number: phone,
               phone_number_id: name, waba_id: "evolution", status: "connected",
             });
-        if (upErr) return ok({ state: "authorized", error: upErr.message });
+        if (upErr) return limitError(upErr) ?? ok({ state: "authorized", error: upErr.message });
         return ok({ instance: name, state: "connected", phoneNumber: phone });
       }
 
@@ -423,7 +424,7 @@ Deno.serve(async (req) => {
               client_id: clientId, tenant_id: tenantId, phone_number: display,
               phone_number_id: esPhoneId, waba_id: esWabaId, status: "connected",
             });
-        if (upErr) return json({ error: upErr.message });
+        if (upErr) return limitError(upErr) ?? json({ error: upErr.message });
         return json({ success: true, phoneNumber: display });
       }
 
@@ -472,6 +473,8 @@ Deno.serve(async (req) => {
             });
 
           if (insertError) {
+            const limited = limitError(insertError);
+            if (limited) return limited;
             failed.push({ phoneNumberId, error: insertError.message });
           } else {
             imported.push(phoneNumberId);

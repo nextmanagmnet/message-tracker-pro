@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { authorizeClient, limitError } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,14 +105,9 @@ serve(async (req) => {
     // Handle OAuth callback - exchange code for tokens
     if (action === 'callback') {
       const { code, clientId } = parsedBody ?? (await req.json());
-      
-      if (!clientId) {
-        return new Response(
-          JSON.stringify({ error: 'Client ID is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
+      const auth = await authorizeClient(req, clientId);
+      if (auth instanceof Response) return auth;
+
       console.log('Exchanging TikTok auth code for tokens for client:', clientId);
       
       // Exchange authorization code for access token
@@ -185,6 +181,7 @@ serve(async (req) => {
       }
 
       let saved = 0;
+      let limitHit: Response | null = null;
       for (const [advertiserId, listedName] of advertisers) {
         let advertiserName = listedName;
         if (advertiserName === 'Unknown') {
@@ -212,12 +209,15 @@ serve(async (req) => {
         const { error: saveError } = existing
           ? await supabase.from('tiktok_accounts').update(row).eq('id', existing.id)
           : await supabase.from('tiktok_accounts').insert(row);
-        if (saveError) console.error('Failed to save advertiser', advertiserId, saveError);
-        else saved++;
+        if (saveError) {
+          limitHit ??= limitError(saveError);
+          console.error('Failed to save advertiser', advertiserId, saveError);
+        } else saved++;
       }
 
       console.log(`Connected ${saved} TikTok advertiser accounts for client ${clientId}`);
 
+      if (saved === 0 && limitHit) return limitHit;
       if (saved === 0) {
         return new Response(
           JSON.stringify({ error: 'Could not save your TikTok ad account. Please try again.' }),
@@ -234,14 +234,9 @@ serve(async (req) => {
     // Fetch campaigns for a client with real spend data
     if (action === 'fetch-campaigns') {
       const { clientId, dateFrom, dateTo } = parsedBody ?? (await req.json());
-      
-      if (!clientId) {
-        return new Response(
-          JSON.stringify({ error: 'Client ID is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
+      const auth = await authorizeClient(req, clientId);
+      if (auth instanceof Response) return auth;
+
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
       // Get client info

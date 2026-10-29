@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface WhatsAppNumberCardProps {
   id: string;
@@ -31,6 +32,7 @@ export const WhatsAppNumberCard = ({
   onRemove,
   onReconnect,
 }: WhatsAppNumberCardProps) => {
+  const { t } = useTranslation("features");
   const isConnected = status === "connected";
   const [isLoading, setIsLoading] = useState(false);
 
@@ -72,17 +74,17 @@ export const WhatsAppNumberCard = ({
             <Phone className={`w-5 h-5 ${isConnected ? "text-success" : "text-destructive"}`} />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">{phoneNumber}</h3>
+            <h3 className="font-semibold text-foreground" dir="ltr">{phoneNumber}</h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               {isConnected ? (
                 <>
                   <CheckCircle className="w-3.5 h-3.5 text-success" />
-                  <span className="text-xs text-success">Connected</span>
+                  <span className="text-xs text-success">{t("whatsapp.connected")}</span>
                 </>
               ) : (
                 <>
                   <XCircle className="w-3.5 h-3.5 text-destructive" />
-                  <span className="text-xs text-destructive">Disconnected</span>
+                  <span className="text-xs text-destructive">{t("whatsapp.disconnected")}</span>
                 </>
               )}
             </div>
@@ -101,13 +103,13 @@ export const WhatsAppNumberCard = ({
             <DropdownMenuContent align="end">
               {isConnected ? (
                 <DropdownMenuItem onClick={handleDisconnect} disabled={isLoading}>
-                  <Unplug className="w-4 h-4 mr-2" />
-                  Disconnect
+                  <Unplug className="w-4 h-4 me-2" />
+                  {t("whatsapp.disconnect")}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onClick={handleReconnect} disabled={isLoading}>
-                  <PlugZap className="w-4 h-4 mr-2" />
-                  Reconnect
+                  <PlugZap className="w-4 h-4 me-2" />
+                  {t("whatsapp.reconnect")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem 
@@ -115,8 +117,8 @@ export const WhatsAppNumberCard = ({
                 disabled={isLoading}
                 className="text-destructive focus:text-destructive"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Remove
+                <Trash2 className="w-4 h-4 me-2" />
+                {t("whatsapp.remove")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -127,14 +129,14 @@ export const WhatsAppNumberCard = ({
         <div className="p-3 rounded-lg bg-secondary/50">
           <div className="flex items-center gap-2 mb-1">
             <MessageCircle className="w-4 h-4 text-success" />
-            <span className="text-xs text-muted-foreground">Real Messages</span>
+            <span className="text-xs text-muted-foreground">{t("whatsapp.realMessages")}</span>
           </div>
           <p className="text-xl font-bold text-success">{realMessages}</p>
         </div>
         <div className="p-3 rounded-lg bg-secondary/50">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-destructive" />
-            <span className="text-xs text-muted-foreground">Trash</span>
+            <span className="text-xs text-muted-foreground">{t("whatsapp.trash")}</span>
           </div>
           <p className="text-xl font-bold text-destructive">{trashMessages}</p>
         </div>
@@ -142,7 +144,7 @@ export const WhatsAppNumberCard = ({
 
       {lastMessage && (
         <div className="pt-4 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-1">Last message</p>
+          <p className="text-xs text-muted-foreground mb-1">{t("whatsapp.lastMessage")}</p>
           <p className="text-sm text-foreground truncate">{lastMessage}</p>
         </div>
       )}

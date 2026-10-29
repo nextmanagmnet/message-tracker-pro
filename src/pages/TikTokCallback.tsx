@@ -1,110 +1,49 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-
-type PendingOAuth = {
-  clientId: string;
-  state: string;
-  createdAt: number;
-};
-
-const STORAGE_KEY = "tiktok_oauth_pending";
-
-function readPending(): PendingOAuth | null {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PendingOAuth;
-  } catch {
-    return null;
-  }
-}
+import { Loader2 } from "lucide-react";
+import { invokeFn, isLimitError } from "@/components/leads/shared";
+import { readPending, TIKTOK_KEY } from "@/components/connections/oauth";
 
 const TikTokCallback = () => {
+  const { t } = useTranslation("features");
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [isWorking, setIsWorking] = useState(true);
-
-  const code = useMemo(() => params.get("code"), [params]);
-  const returnedState = useMemo(() => params.get("state"), [params]);
-  const error = useMemo(() => params.get("error"), [params]);
-  const errorDescription = useMemo(() => params.get("error_description"), [params]);
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return; // the auth code is single-use; guard StrictMode double-run
+    started.current = true;
+    const done = (ok: boolean, msg: string) => {
+      (ok ? toast.success : toast.error)(msg);
+      navigate("/connections", { replace: true });
+    };
     (async () => {
+      const code = params.get("code") ?? params.get("auth_code");
+      const state = params.get("state");
+      if (params.get("error")) return done(false, params.get("error_description") || t("callback.cancelled"));
+      const pending = readPending(TIKTOK_KEY);
+      if (!code || !state || !pending) return done(false, t("callback.noPending"));
+      if (pending.state !== state) return done(false, t("callback.stateMismatch"));
       try {
-        if (error) {
-          toast.error(errorDescription || "TikTok authorization was cancelled");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-
-        if (!code || !returnedState) {
-          toast.error("Missing TikTok callback parameters");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-
-        const pending = readPending();
-        if (!pending) {
-          toast.error("No pending TikTok connection found. Please try connecting again.");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-
-        // Basic replay protection: require exact state match.
-        if (pending.state !== returnedState) {
-          toast.error("TikTok state mismatch. Please try connecting again.");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-
-        const { data, error: invokeError } = await supabase.functions.invoke("tiktok-oauth", {
-          body: {
-            action: "callback",
-            code,
-            clientId: pending.clientId,
-          },
-        });
-
-        if (invokeError) {
-          console.error("TikTok callback invoke error:", invokeError);
-          toast.error("Failed to complete TikTok connection");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-
-        if (data?.error) {
-          console.error("TikTok callback error:", data);
-          toast.error(data?.error || "Failed to complete TikTok connection");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-
-        sessionStorage.removeItem(STORAGE_KEY);
-        if (!data?.advertiserCount) {
-          toast.error("No TikTok ad account was linked. Please try again.");
-          navigate("/tiktok", { replace: true });
-          return;
-        }
-        toast.success(`TikTok connected: ${data.advertiserCount} ad account(s)`);
-        navigate("/tiktok", { replace: true });
-      } finally {
-        setIsWorking(false);
+        const d = await invokeFn<{ advertiserCount?: number }>("tiktok-oauth", { action: "callback", code, clientId: pending.clientId });
+        sessionStorage.removeItem(TIKTOK_KEY);
+        if (!d.advertiserCount) return done(false, t("callback.noAdAccounts"));
+        done(true, t("callback.tiktokConnected", { count: d.advertiserCount }));
+      } catch (e) {
+        done(false, isLimitError(e) ? t("limits.tiktok") : e instanceof Error ? e.message : t("callback.failed"));
       }
     })();
-  }, [code, returnedState, error, errorDescription, navigate]);
+  }, [params, navigate, t]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background wob-mesh-hero p-4">
       <div className="glass-card p-8 max-w-md w-full">
-        <h1 className="text-xl font-semibold text-foreground">Connecting TikTok…</h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          {isWorking
-            ? "Finishing authorization and saving your advertiser account."
-            : "You can close this page."}
-        </p>
+        <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" /> {t("callback.tiktokTitle")}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">{t("callback.working")}</p>
       </div>
     </div>
   );

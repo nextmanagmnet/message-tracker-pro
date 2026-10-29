@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,22 +9,10 @@ import { useAgency } from "@/hooks/useAgency";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import {
-  Building2,
-  Users,
-  Shield,
-  Bell,
-  Webhook,
-  Copy,
-  Check,
-  Target,
-  Activity,
-  Loader2,
-  ExternalLink,
-  Trash2,
-} from "lucide-react";
-
-const WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+import { Building2, Users, Shield, Bell, Plug, Activity, Loader2, ExternalLink, Trash2, Palette } from "lucide-react";
+import { setLanguage, type Language } from "@/i18n";
+import { setTheme, useTheme } from "@/components/brand/theme";
+import { cn } from "@/lib/utils";
 
 type Member = {
   member_id: string;
@@ -56,11 +45,40 @@ const DEFAULT_PREFS: Prefs = {
 };
 
 const PREF_LABELS: { key: keyof Prefs; label: string }[] = [
-  { key: "new_verified", label: "New verified conversation" },
-  { key: "daily_summary", label: "Daily summary report" },
-  { key: "campaign_alerts", label: "Campaign performance alerts" },
-  { key: "number_status", label: "WhatsApp number status changes" },
+  { key: "new_verified", label: "settings.prefNewVerified" },
+  { key: "daily_summary", label: "settings.prefDailySummary" },
+  { key: "campaign_alerts", label: "settings.prefCampaignAlerts" },
+  { key: "number_status", label: "settings.prefNumberStatus" },
 ];
+
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-border p-1 bg-secondary/50">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          className={cn(
+            "px-4 py-1.5 text-sm rounded-md transition-colors",
+            value === o.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const SectionHeader = ({
   icon: Icon,
@@ -89,8 +107,10 @@ const SectionHeader = ({
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const theme = useTheme();
   const { user } = useAuth();
-  const { agency, selectedClient, canManage, isOwner } = useAgency();
+  const { agency, canManage, isOwner, isIndividual } = useAgency();
 
   const [companyName, setCompanyName] = useState("");
   const [savingCompany, setSavingCompany] = useState(false);
@@ -98,15 +118,7 @@ const Settings = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
 
-  const [tiktokCount, setTiktokCount] = useState(0);
-  const [waCount, setWaCount] = useState(0);
-
-  const [pixelCode, setPixelCode] = useState("");
-  const [pixelId, setPixelId] = useState<string | null>(null);
-  const [savingPixel, setSavingPixel] = useState(false);
-
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [copied, setCopied] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
@@ -119,37 +131,17 @@ const Settings = () => {
 
   // Team members
   const loadMembers = async () => {
-    if (!agency) return;
+    if (!agency || isIndividual) return;
     setLoadingMembers(true);
     const { data, error } = await supabase.rpc("get_agency_members", { _agency_id: agency.id });
-    if (error) toast.error("Couldn't load team members");
+    if (error) toast.error(t("settings.teamLoadFailed"));
     setMembers((data as Member[]) ?? []);
     setLoadingMembers(false);
   };
   useEffect(() => {
     loadMembers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agency?.id]);
-
-  // Integration status + pixel for selected client
-  useEffect(() => {
-    if (!selectedClient) return;
-    (async () => {
-      const [tt, wa, px] = await Promise.all([
-        supabase.from("tiktok_accounts").select("id", { count: "exact", head: true }).eq("client_id", selectedClient.id),
-        supabase
-          .from("whatsapp_numbers")
-          .select("id", { count: "exact", head: true })
-          .eq("client_id", selectedClient.id)
-          .eq("status", "connected"),
-        supabase.from("tiktok_pixels").select("id, pixel_code").eq("client_id", selectedClient.id).maybeSingle(),
-      ]);
-      setTiktokCount(tt.count ?? 0);
-      setWaCount(wa.count ?? 0);
-      setPixelId(px.data?.id ?? null);
-      setPixelCode(px.data?.pixel_code ?? "");
-    })();
-  }, [selectedClient?.id]);
+  }, [agency?.id, isIndividual]);
 
   // Background jobs
   useEffect(() => {
@@ -179,54 +171,34 @@ const Settings = () => {
     const { error } = await supabase.from("agencies").update({ name: companyName.trim() }).eq("id", agency.id);
     setSavingCompany(false);
     if (error) {
-      toast.error("Couldn't save company name");
+      toast.error(t("settings.companyFailed"));
     } else {
-      toast.success("Company name saved");
+      toast.success(t("settings.companySaved"));
     }
   };
 
   const changeRole = async (memberId: string, role: Member["role"]) => {
     const { error } = await supabase.from("agency_members").update({ role }).eq("id", memberId);
-    if (error) return toast.error("Couldn't change role");
-    toast.success("Role updated");
+    if (error) return toast.error(t("settings.roleFailed"));
+    toast.success(t("settings.roleUpdated"));
     loadMembers();
   };
 
   const removeMember = async (memberId: string) => {
     const { error } = await supabase.from("agency_members").delete().eq("id", memberId);
-    if (error) return toast.error("Couldn't remove member");
-    toast.success("Member removed");
+    if (error) return toast.error(t("settings.memberRemoveFailed"));
+    toast.success(t("settings.memberRemoved"));
     loadMembers();
   };
 
-  const savePixel = async () => {
-    if (!selectedClient) return;
-    const code = pixelCode.trim();
-    if (!code) return toast.error("Enter a pixel ID");
-    setSavingPixel(true);
-    const { data, error } = pixelId
-      ? await supabase.from("tiktok_pixels").update({ pixel_code: code }).eq("id", pixelId).select("id").single()
-      : await supabase.from("tiktok_pixels").insert({ client_id: selectedClient.id, pixel_code: code }).select("id").single();
-    setSavingPixel(false);
-    if (error) return toast.error("Couldn't save pixel");
-    setPixelId(data.id);
-    toast.success(`Pixel saved for ${selectedClient.name}`);
-  };
-
-  const copyWebhook = async () => {
-    await navigator.clipboard.writeText(WEBHOOK_URL);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   const changePassword = async () => {
-    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters");
+    if (newPassword.length < 8) return toast.error(t("settings.passwordShort"));
     setSavingPassword(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setSavingPassword(false);
     if (error) return toast.error(error.message);
     setNewPassword("");
-    toast.success("Password updated");
+    toast.success(t("settings.passwordUpdated"));
   };
 
   const togglePref = async (key: keyof Prefs, value: boolean) => {
@@ -238,7 +210,7 @@ const Settings = () => {
       .upsert({ user_id: user.id, ...next, updated_at: new Date().toISOString() });
     if (error) {
       setPrefs(prefs);
-      toast.error("Couldn't save preference");
+      toast.error(t("settings.prefFailed"));
     }
   };
 
@@ -246,46 +218,88 @@ const Settings = () => {
     s === "success" ? "badge-verified" : s === "failed" ? "badge-trash" : "badge-pending";
 
   return (
-    <DashboardLayout title="Settings" subtitle="Manage your agency, clients and integrations">
+    <DashboardLayout title={t("settings.title")} subtitle={t("settings.subtitle")}>
       <div className="max-w-4xl space-y-6">
         {/* Company */}
         <div className="glass-card p-6">
-          <SectionHeader icon={Building2} title="Agency Settings" subtitle="Your agency's name shown across the app" />
+          <SectionHeader
+            icon={Building2}
+            title={isIndividual ? t("settings.companyTitle") : t("settings.companyTitleAgency")}
+            subtitle={t("settings.companySubtitle")}
+            action={
+              <span className="px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary">
+                {isIndividual ? t("auth.individual") : t("auth.agency")}
+              </span>
+            }
+          />
           <div className="flex flex-col sm:flex-row gap-3">
             <Input
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               disabled={!canManage}
-              placeholder="Agency name"
+              placeholder={t("settings.companyPlaceholder")}
             />
             <Button onClick={saveCompany} disabled={!canManage || savingCompany || companyName === agency?.name}>
               {savingCompany && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save
+              {t("common.save")}
             </Button>
           </div>
         </div>
 
-        {/* Team */}
+        {/* Preferences */}
         <div className="glass-card p-6">
-          <SectionHeader icon={Users} title="Team Members" subtitle="People with access to this agency" />
-          {loadingMembers ? (
+          <SectionHeader icon={Palette} title={t("settings.preferencesTitle")} subtitle={t("settings.preferencesSubtitle")} />
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-foreground">{t("language.label")}</span>
+              <Segmented<Language>
+                value={i18n.language === "ar" ? "ar" : "en"}
+                onChange={setLanguage}
+                options={[
+                  { value: "en", label: t("language.en") },
+                  { value: "ar", label: t("language.ar") },
+                ]}
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-foreground">{t("theme.label")}</span>
+              <Segmented
+                value={theme}
+                onChange={setTheme}
+                options={[
+                  { value: "dark", label: t("theme.dark") },
+                  { value: "light", label: t("theme.light") },
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Team (agency accounts only) */}
+        <div className="glass-card p-6">
+          <SectionHeader icon={Users} title={t("settings.teamTitle")} subtitle={t("settings.teamSubtitle")} />
+          {isIndividual ? (
+            <p className="text-sm text-muted-foreground">{t("settings.teamIndividual")}</p>
+          ) : loadingMembers ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           ) : (
             <div className="space-y-3">
               {members.map((m) => {
                 const isSelf = m.user_id === user?.id;
-                const label = m.full_name || m.email || "Unknown user";
+                const label = m.full_name || m.email || t("common.unknownUser");
                 return (
                   <div key={m.member_id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-semibold text-primary-foreground">
+                      <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-brand-pink to-brand-orange flex items-center justify-center text-sm font-semibold text-white">
                         {label.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-foreground truncate">
-                          {label} {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}
+                          {label} {isSelf && <span className="text-xs text-muted-foreground">{t("common.you")}</span>}
                         </p>
-                        <p className="text-sm text-muted-foreground truncate">{m.email}</p>
+                        <p className="text-sm text-muted-foreground truncate" dir="ltr">
+                          {m.email}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -296,17 +310,22 @@ const Settings = () => {
                             onChange={(e) => changeRole(m.member_id, e.target.value as Member["role"])}
                             className="px-3 py-1.5 text-sm bg-secondary border border-border rounded-lg text-foreground"
                           >
-                            <option value="owner">Owner</option>
-                            <option value="admin">Admin</option>
-                            <option value="viewer">Viewer</option>
+                            <option value="owner">{t("roles.owner")}</option>
+                            <option value="admin">{t("roles.admin")}</option>
+                            <option value="viewer">{t("roles.viewer")}</option>
                           </select>
-                          <Button variant="ghost" size="icon" onClick={() => removeMember(m.member_id)} aria-label="Remove member">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeMember(m.member_id)}
+                            aria-label={t("settings.removeMember")}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </>
                       ) : (
-                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-secondary text-muted-foreground capitalize">
-                          {m.role}
+                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-secondary text-muted-foreground">
+                          {t(`roles.${m.role}`)}
                         </span>
                       )}
                     </div>
@@ -317,104 +336,40 @@ const Settings = () => {
           )}
         </div>
 
-        {/* Client integrations */}
+        {/* WhatsApp numbers, ad accounts and pixels live on the Connections page */}
         <div className="glass-card p-6">
           <SectionHeader
-            icon={Webhook}
-            title="Integrations"
-            subtitle={selectedClient ? `Status for ${selectedClient.name}` : "Select a client to see its integrations"}
-          />
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground">TikTok Ads</p>
-                  {tiktokCount > 0 && <Check className="w-4 h-4 text-success" />}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {tiktokCount > 0 ? `${tiktokCount} advertiser account(s) connected` : "Not connected"}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate("/tiktok")}>
+            icon={Plug}
+            title={t("settings.connectionsTitle")}
+            subtitle={t("settings.connectionsSubtitle")}
+            action={
+              <Button variant="outline" size="sm" onClick={() => navigate("/connections")}>
                 <ExternalLink className="w-4 h-4" />
-                {tiktokCount > 0 ? "Manage" : "Connect"}
+                {t("settings.openConnections")}
               </Button>
-            </div>
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground">WhatsApp Business</p>
-                  {waCount > 0 && <Check className="w-4 h-4 text-success" />}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {waCount > 0 ? `${waCount} number(s) connected` : "No numbers connected"}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate("/whatsapp")}>
-                <ExternalLink className="w-4 h-4" />
-                {waCount > 0 ? "Manage" : "Connect"}
-              </Button>
-            </div>
-            <div className="p-4 rounded-lg bg-secondary/50">
-              <p className="font-medium text-foreground mb-1">WhatsApp webhook address</p>
-              <p className="text-sm text-muted-foreground mb-3">
-                Paste this into your Meta app's webhook settings and subscribe to "messages".
-              </p>
-              <div className="flex gap-2">
-                <Input readOnly value={WEBHOOK_URL} className="font-mono text-xs" />
-                <Button variant="outline" onClick={copyWebhook}>
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pixel */}
-        <div className="glass-card p-6">
-          <SectionHeader
-            icon={Target}
-            title="TikTok Pixel"
-            subtitle="Real conversations are reported to TikTok through this client's pixel"
+            }
           />
-          {selectedClient ? (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                value={pixelCode}
-                onChange={(e) => setPixelCode(e.target.value)}
-                placeholder="e.g. C4ABC123DEF456"
-                disabled={!canManage}
-              />
-              <Button onClick={savePixel} disabled={!canManage || savingPixel}>
-                {savingPixel && <Loader2 className="w-4 h-4 animate-spin" />}
-                Save pixel
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Select a client first.</p>
-          )}
         </div>
 
         {/* Automation */}
         <div className="glass-card p-6">
-          <SectionHeader
-            icon={Activity}
-            title="Automatic Sync"
-            subtitle="Campaign spend and TikTok logins refresh every hour automatically"
-          />
+          <SectionHeader icon={Activity} title={t("settings.syncTitle")} subtitle={t("settings.syncSubtitle")} />
           {jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No runs yet. The first results appear after the next hourly run.</p>
+            <p className="text-sm text-muted-foreground">{t("settings.syncEmpty")}</p>
           ) : (
             <div className="space-y-2">
               {jobs.map((j) => (
                 <div key={j.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 text-sm">
                   <div className="min-w-0">
-                    <p className="text-foreground">{j.job_name === "sync-campaigns" ? "Campaign sync" : "Login refresh"}</p>
+                    <p className="text-foreground">
+                      {j.job_name === "sync-campaigns" ? t("settings.jobCampaignSync") : t("settings.jobLoginRefresh")}
+                    </p>
                     {j.error_message && <p className="text-xs text-destructive truncate">{j.error_message}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs text-muted-foreground">{new Date(j.started_at).toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(j.started_at).toLocaleString(i18n.language)}
+                    </span>
                     <span className={jobStatusClass(j.status)}>{j.status.replace(/_/g, " ")}</span>
                   </div>
                 </div>
@@ -425,29 +380,33 @@ const Settings = () => {
 
         {/* Security */}
         <div className="glass-card p-6">
-          <SectionHeader icon={Shield} title="Security" subtitle="Change your password" />
+          <SectionHeader icon={Shield} title={t("settings.securityTitle")} subtitle={t("settings.securitySubtitle")} />
           <div className="flex flex-col sm:flex-row gap-3">
             <Input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New password (min 8 characters)"
+              placeholder={t("settings.newPassword")}
               autoComplete="new-password"
             />
             <Button onClick={changePassword} disabled={savingPassword || !newPassword}>
               {savingPassword && <Loader2 className="w-4 h-4 animate-spin" />}
-              Update password
+              {t("settings.updatePassword")}
             </Button>
           </div>
         </div>
 
         {/* Notifications */}
         <div className="glass-card p-6">
-          <SectionHeader icon={Bell} title="Notifications" subtitle="Choose what you want to be notified about" />
+          <SectionHeader
+            icon={Bell}
+            title={t("settings.notificationsTitle")}
+            subtitle={t("settings.notificationsSubtitle")}
+          />
           <div className="space-y-3">
             {PREF_LABELS.map(({ key, label }) => (
               <label key={key} className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 cursor-pointer">
-                <span className="text-foreground">{label}</span>
+                <span className="text-foreground">{t(label)}</span>
                 <Switch checked={prefs[key]} onCheckedChange={(v) => togglePref(key, v)} />
               </label>
             ))}

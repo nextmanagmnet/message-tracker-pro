@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ interface WhatsAppConnectDialogProps {
 type Step = "loading" | "qr" | "done" | "error";
 
 export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess }: WhatsAppConnectDialogProps) {
+  const { t } = useTranslation("features");
   const [step, setStep] = useState<Step>("loading");
   const [error, setError] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
         stopPolling();
         setPhone(d.phoneNumber);
         setStep("done");
-        toast.success(`Connected ${d.phoneNumber}`);
+        toast.success(t("qr.connectedToast", { phone: d.phoneNumber }));
         onSuccess();
         setTimeout(() => onOpenChange(false), 1800);
       } else if (d?.qr) {
@@ -58,7 +60,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
       }
     } catch (e) {
       stopPolling();
-      setError((e instanceof Error && e.message) || "Connection failed");
+      setError((e instanceof Error && e.message) || t("qr.failed"));
       setStep("error");
     }
   };
@@ -78,7 +80,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
       setStep("qr");
       timer.current = window.setInterval(checkStatus, 3000);
     } catch (e) {
-      setError((e instanceof Error && e.message) || "Could not load the QR code");
+      setError((e instanceof Error && e.message) || t("qr.loadFailed"));
       setStep("error");
     }
   };
@@ -101,30 +103,30 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="w-5 h-5 text-success" />
-            Connect WhatsApp
+            {t("qr.title")}
           </DialogTitle>
-          <DialogDescription>Scan the code with the phone that has this client's WhatsApp.</DialogDescription>
+          <DialogDescription>{t("qr.description")}</DialogDescription>
         </DialogHeader>
 
         {step === "loading" && (
           <div className="flex flex-col items-center py-10 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Preparing QR code...</p>
+            <p className="text-sm text-muted-foreground">{t("qr.preparing")}</p>
           </div>
         )}
 
         {step === "qr" && qr && (
           <div className="flex flex-col items-center gap-4 py-2">
-            <div className="rounded-xl bg-foreground p-3">
+            <div className="rounded-xl bg-white p-3">
               <img src={`data:image/png;base64,${qr}`} alt="WhatsApp QR code" className="w-60 h-60" />
             </div>
             <ol className="text-sm text-muted-foreground space-y-1 self-stretch">
-              <li>1. Open WhatsApp on the phone</li>
-              <li>2. Tap Settings (or ⋮) → <span className="text-foreground">Linked devices</span></li>
-              <li>3. Tap <span className="text-foreground">Link a device</span> and scan this code</li>
+              <li>1. {t("qr.step1")}</li>
+              <li>2. {t("qr.step2")}</li>
+              <li>3. {t("qr.step3")}</li>
             </ol>
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Smartphone className="w-3.5 h-3.5" /> Waiting for scan… the code refreshes automatically
+              <Smartphone className="w-3.5 h-3.5" /> {t("qr.waiting")}
             </p>
           </div>
         )}
@@ -135,7 +137,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
             <p className="text-sm text-destructive text-center">{error}</p>
-            <Button variant="outline" onClick={start}>Try Again</Button>
+            <Button variant="outline" onClick={start}>{t("common.tryAgain")}</Button>
           </div>
         )}
 
@@ -144,7 +146,7 @@ export function WhatsAppConnectDialog({ open, onOpenChange, clientId, onSuccess 
             <div className="p-3 rounded-full bg-success/10">
               <Check className="w-8 h-8 text-success" />
             </div>
-            <p className="text-sm text-success">{phone} is connected!</p>
+            <p className="text-sm text-success">{t("qr.done", { phone })}</p>
           </div>
         )}
       </DialogContent>

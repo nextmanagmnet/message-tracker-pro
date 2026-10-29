@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { DateRangePicker, DateRange, getDefaultDateRange } from "@/components/dashboard/DateRangePicker";
@@ -13,6 +14,7 @@ type SortKey = "name" | "spend" | "real" | "cost" | "trash";
 
 const AgencyOverview = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { agency, clients, setSelectedClient } = useAgency();
   const [range, setRange] = useState<DateRange>(getDefaultDateRange());
   const [leads, setLeads] = useState<LeadLite[]>([]);
@@ -82,7 +84,15 @@ const AgencyOverview = () => {
 
   const exportCsv = () =>
     downloadCsv(`agency-overview-${range.from.toISOString().slice(0, 10)}.csv`, [
-      ["Client", "Spend", "Real conversations", "Pending", "Trash", "Cost per real", "Trash ratio %"],
+      [
+        t("agency.colClient"),
+        t("agency.colSpend"),
+        t("agency.realConversations"),
+        t("agency.csvPending"),
+        t("agency.csvTrash"),
+        t("agency.csvCost"),
+        t("agency.csvTrashRatio"),
+      ],
       ...rows.map((r) => [
         r.client.name,
         r.stats.spend.toFixed(2),
@@ -101,7 +111,7 @@ const AgencyOverview = () => {
   };
 
   const Th = ({ k, label }: { k: SortKey; label: string }) => (
-    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+    <th className="px-6 py-3 text-start text-xs font-medium text-muted-foreground uppercase">
       <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort(k)}>
         {label}
         <ArrowUpDown className="w-3 h-3" />
@@ -110,20 +120,23 @@ const AgencyOverview = () => {
   );
 
   return (
-    <DashboardLayout title="All Clients" subtitle={`How every client of ${agency?.name ?? "your agency"} is performing`}>
+    <DashboardLayout
+      title={t("agency.title")}
+      subtitle={t("agency.subtitle", { name: agency?.name ?? t("agency.yourAgency") })}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <DateRangePicker value={range} onChange={setRange} />
         <Button variant="outline" onClick={exportCsv} disabled={!rows.length}>
           <Download className="w-4 h-4" />
-          Export CSV
+          {t("common.exportCsv")}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricCard title="Active Clients" value={clients.length} icon={<Building2 className="w-5 h-5" />} />
-        <MetricCard title="Total Spend" value={`$${totals.spend.toFixed(2)}`} icon={<DollarSign className="w-5 h-5" />} />
-        <MetricCard title="Real Conversations" value={totals.real} icon={<MessageCircle className="w-5 h-5" />} />
-        <MetricCard title="Trash Ratio" value={`${totals.trashRatio.toFixed(1)}%`} icon={<AlertTriangle className="w-5 h-5" />} />
+        <MetricCard title={t("agency.activeClients")} value={clients.length} icon={<Building2 className="w-5 h-5" />} />
+        <MetricCard title={t("agency.totalSpend")} value={`$${totals.spend.toFixed(2)}`} icon={<DollarSign className="w-5 h-5" />} />
+        <MetricCard title={t("agency.realConversations")} value={totals.real} icon={<MessageCircle className="w-5 h-5" />} />
+        <MetricCard title={t("agency.trashRatio")} value={`${totals.trashRatio.toFixed(1)}%`} icon={<AlertTriangle className="w-5 h-5" />} />
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -131,19 +144,19 @@ const AgencyOverview = () => {
           <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : !clients.length ? (
           <div className="p-12 text-center">
-            <p className="text-muted-foreground mb-4">No clients yet.</p>
-            <Button onClick={() => navigate("/clients")}>Add a client</Button>
+            <p className="text-muted-foreground mb-4">{t("agency.noClients")}</p>
+            <Button onClick={() => navigate("/clients")}>{t("agency.addClient")}</Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b border-border">
                 <tr>
-                  <Th k="name" label="Client" />
-                  <Th k="spend" label="Spend" />
-                  <Th k="real" label="Real" />
-                  <Th k="cost" label="Cost / real" />
-                  <Th k="trash" label="Trash %" />
+                  <Th k="name" label={t("agency.colClient")} />
+                  <Th k="spend" label={t("agency.colSpend")} />
+                  <Th k="real" label={t("agency.colReal")} />
+                  <Th k="cost" label={t("agency.colCost")} />
+                  <Th k="trash" label={t("agency.colTrash")} />
                   <th />
                 </tr>
               </thead>
@@ -157,8 +170,10 @@ const AgencyOverview = () => {
                     <td className={`px-6 py-4 ${stats.trashRatio > 50 ? "text-destructive" : "text-muted-foreground"}`}>
                       {stats.trashRatio.toFixed(1)}%
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => openClient(client.id)}>Open</Button>
+                    <td className="px-6 py-4 text-end">
+                      <Button size="sm" variant="ghost" onClick={() => openClient(client.id)}>
+                        {t("common.open")}
+                      </Button>
                     </td>
                   </tr>
                 ))}

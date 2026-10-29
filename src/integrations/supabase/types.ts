@@ -16,18 +16,21 @@ export type Database = {
     Tables: {
       agencies: {
         Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
           created_at: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
           created_at?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
           created_at?: string
           id?: string
           name?: string
@@ -67,6 +70,62 @@ export type Database = {
           },
         ]
       }
+      ai_agent_settings: {
+        Row: {
+          allowed_hours_end: number
+          allowed_hours_start: number
+          business_knowledge: string | null
+          client_id: string
+          enabled: boolean
+          follow_up_delay_hours: number
+          follow_up_enabled: boolean
+          follow_up_max: number
+          handoff_rules: string | null
+          qualifying_questions: string | null
+          timezone: string
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_hours_end?: number
+          allowed_hours_start?: number
+          business_knowledge?: string | null
+          client_id: string
+          enabled?: boolean
+          follow_up_delay_hours?: number
+          follow_up_enabled?: boolean
+          follow_up_max?: number
+          handoff_rules?: string | null
+          qualifying_questions?: string | null
+          timezone?: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_hours_end?: number
+          allowed_hours_start?: number
+          business_knowledge?: string | null
+          client_id?: string
+          enabled?: boolean
+          follow_up_delay_hours?: number
+          follow_up_enabled?: boolean
+          follow_up_max?: number
+          handoff_rules?: string | null
+          qualifying_questions?: string | null
+          timezone?: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           agency_id: string
@@ -95,6 +154,162 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_contacts: {
+        Row: {
+          contact_jid: string
+          conversation_id: string
+        }
+        Insert: {
+          contact_jid: string
+          conversation_id: string
+        }
+        Update: {
+          contact_jid?: string
+          conversation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_contacts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          agent_status: string
+          analyzed_at: string | null
+          client_id: string
+          created_at: string
+          follow_up_count: number
+          id: string
+          last_follow_up_at: string | null
+          last_inbound_at: string | null
+          last_message_at: string | null
+          last_outbound_at: string | null
+          lead_id: string | null
+          whatsapp_number_id: string | null
+        }
+        Insert: {
+          agent_status?: string
+          analyzed_at?: string | null
+          client_id: string
+          created_at?: string
+          follow_up_count?: number
+          id?: string
+          last_follow_up_at?: string | null
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_outbound_at?: string | null
+          lead_id?: string | null
+          whatsapp_number_id?: string | null
+        }
+        Update: {
+          agent_status?: string
+          analyzed_at?: string | null
+          client_id?: string
+          created_at?: string
+          follow_up_count?: number
+          id?: string
+          last_follow_up_at?: string | null
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_outbound_at?: string | null
+          lead_id?: string | null
+          whatsapp_number_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_whatsapp_number_id_fkey"
+            columns: ["whatsapp_number_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_numbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversion_events: {
+        Row: {
+          attempts: number
+          client_id: string
+          created_at: string
+          currency: string | null
+          event_id: string
+          event_name: string
+          id: string
+          lead_id: string
+          platform: string
+          response: Json | null
+          sent_at: string | null
+          stage: Database["public"]["Enums"]["lead_stage"]
+          status: string
+          value: number | null
+        }
+        Insert: {
+          attempts?: number
+          client_id: string
+          created_at?: string
+          currency?: string | null
+          event_id: string
+          event_name: string
+          id?: string
+          lead_id: string
+          platform: string
+          response?: Json | null
+          sent_at?: string | null
+          stage: Database["public"]["Enums"]["lead_stage"]
+          status?: string
+          value?: number | null
+        }
+        Update: {
+          attempts?: number
+          client_id?: string
+          created_at?: string
+          currency?: string | null
+          event_id?: string
+          event_name?: string
+          id?: string
+          lead_id?: string
+          platform?: string
+          response?: Json | null
+          sent_at?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          status?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -158,6 +373,16 @@ export type Database = {
       }
       leads: {
         Row: {
+          ad_id: string | null
+          ad_platform: string | null
+          campaign_id: string | null
+          order_currency: string | null
+          order_value: number | null
+          stage: Database["public"]["Enums"]["lead_stage"]
+          stage_confidence: number | null
+          stage_evidence: string | null
+          stage_suggestion: Database["public"]["Enums"]["lead_stage"] | null
+          stage_updated_at: string | null
           attribution_source: string
           click_to_message_seconds: number | null
           client_id: string | null
@@ -180,6 +405,16 @@ export type Database = {
           whatsapp_number_id: string | null
         }
         Insert: {
+          ad_id?: string | null
+          ad_platform?: string | null
+          campaign_id?: string | null
+          order_currency?: string | null
+          order_value?: number | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          stage_confidence?: number | null
+          stage_evidence?: string | null
+          stage_suggestion?: Database["public"]["Enums"]["lead_stage"] | null
+          stage_updated_at?: string | null
           attribution_source?: string
           click_to_message_seconds?: number | null
           client_id?: string | null
@@ -202,6 +437,16 @@ export type Database = {
           whatsapp_number_id?: string | null
         }
         Update: {
+          ad_id?: string | null
+          ad_platform?: string | null
+          campaign_id?: string | null
+          order_currency?: string | null
+          order_value?: number | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          stage_confidence?: number | null
+          stage_evidence?: string | null
+          stage_suggestion?: Database["public"]["Enums"]["lead_stage"] | null
+          stage_updated_at?: string | null
           attribution_source?: string
           click_to_message_seconds?: number | null
           client_id?: string | null
@@ -240,6 +485,155 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          author: string
+          client_id: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          external_id: string | null
+          id: string
+          text: string | null
+        }
+        Insert: {
+          author: string
+          client_id: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          external_id?: string | null
+          id?: string
+          text?: string | null
+        }
+        Update: {
+          author?: string
+          client_id?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          external_id?: string | null
+          id?: string
+          text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_accounts: {
+        Row: {
+          access_token: string | null
+          ad_account_id: string
+          ad_account_name: string | null
+          client_id: string
+          created_at: string
+          dataset_id: string | null
+          dataset_name: string | null
+          id: string
+          tenant_id: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          ad_account_id: string
+          ad_account_name?: string | null
+          client_id: string
+          created_at?: string
+          dataset_id?: string | null
+          dataset_name?: string | null
+          id?: string
+          tenant_id?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          ad_account_id?: string
+          ad_account_name?: string | null
+          client_id?: string
+          created_at?: string
+          dataset_id?: string | null
+          dataset_name?: string | null
+          id?: string
+          tenant_id?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_campaigns: {
+        Row: {
+          campaign_id: string
+          campaign_name: string | null
+          clicks: number
+          client_id: string
+          id: string
+          impressions: number
+          meta_account_id: string | null
+          spend: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name?: string | null
+          clicks?: number
+          client_id: string
+          id?: string
+          impressions?: number
+          meta_account_id?: string | null
+          spend?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string | null
+          clicks?: number
+          client_id?: string
+          id?: string
+          impressions?: number
+          meta_account_id?: string | null
+          spend?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_campaigns_meta_account_id_fkey"
+            columns: ["meta_account_id"]
+            isOneToOne: false
+            referencedRelation: "meta_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           campaign_alerts: boolean
@@ -267,6 +661,57 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          agency_id: string
+          body: string | null
+          client_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          agency_id: string
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          agency_id?: string
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -274,7 +719,6 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
-          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -283,7 +727,6 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
-          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -292,18 +735,9 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
-          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       scheduler_config: {
         Row: {
@@ -320,30 +754,6 @@ export type Database = {
           created_at?: string
           cron_token?: string
           id?: number
-        }
-        Relationships: []
-      }
-      tenants: {
-        Row: {
-          company_name: string
-          created_at: string
-          id: string
-          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
-          updated_at: string
-        }
-        Insert: {
-          company_name: string
-          created_at?: string
-          id?: string
-          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
-          updated_at?: string
-        }
-        Update: {
-          company_name?: string
-          created_at?: string
-          id?: string
-          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
-          updated_at?: string
         }
         Relationships: []
       }
@@ -396,6 +806,8 @@ export type Database = {
       }
       tiktok_campaigns: {
         Row: {
+          clicks: number | null
+          impressions: number | null
           campaign_id: string
           campaign_name: string
           client_id: string | null
@@ -409,6 +821,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clicks?: number | null
+          impressions?: number | null
           campaign_id: string
           campaign_name: string
           client_id?: string | null
@@ -422,6 +836,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clicks?: number | null
+          impressions?: number | null
           campaign_id?: string
           campaign_name?: string
           client_id?: string | null
@@ -482,38 +898,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          tenant_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          tenant_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          tenant_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -579,25 +963,12 @@ export type Database = {
         }[]
       }
       get_user_agency_id: { Args: { _user_id: string }; Returns: string }
-      get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_agency_role: {
         Args: {
           _agency_id: string
           _role: Database["public"]["Enums"]["agency_role"]
           _user_id: string
         }
-        Returns: boolean
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _tenant_id: string
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      user_belongs_to_tenant: {
-        Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
       user_can_access_client: {
@@ -610,10 +981,10 @@ export type Database = {
       }
     }
     Enums: {
+      account_type: "individual" | "agency"
       agency_role: "owner" | "admin" | "viewer"
-      app_role: "owner" | "admin" | "member"
+      lead_stage: "new" | "real" | "qualified" | "client" | "not_lead"
       lead_status: "verified" | "pending" | "trash"
-      subscription_plan: "free" | "starter" | "pro" | "enterprise"
       whatsapp_status: "connected" | "disconnected" | "pending"
     }
     CompositeTypes: {
@@ -742,10 +1113,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_type: ["individual", "agency"],
       agency_role: ["owner", "admin", "viewer"],
-      app_role: ["owner", "admin", "member"],
+      lead_stage: ["new", "real", "qualified", "client", "not_lead"],
       lead_status: ["verified", "pending", "trash"],
-      subscription_plan: ["free", "starter", "pro", "enterprise"],
       whatsapp_status: ["connected", "disconnected", "pending"],
     },
   },

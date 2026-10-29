@@ -1,86 +1,105 @@
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   MessageCircle,
   TrendingUp,
-  Radio,
+  Plug,
+  Bot,
   Settings,
   ChevronLeft,
   ChevronRight,
-  Zap,
   Users,
   Building2,
   FileText,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
+import { useAgency } from "@/hooks/useAgency";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { icon: Building2, label: "All Clients", path: "/agency" },
-  { icon: LayoutDashboard, label: "Overview", path: "/" },
-  { icon: Users, label: "Clients", path: "/clients" },
-  { icon: MessageCircle, label: "WhatsApp Numbers", path: "/whatsapp" },
-  { icon: TrendingUp, label: "TikTok Performance", path: "/tiktok" },
-  { icon: Radio, label: "Live Feed", path: "/feed" },
-  { icon: FileText, label: "Reports", path: "/reports" },
-  { icon: Settings, label: "Settings", path: "/settings" },
+const mainItems = [
+  { icon: LayoutDashboard, key: "nav.dashboard", path: "/" },
+  { icon: MessageCircle, key: "nav.leads", path: "/leads" },
+  { icon: TrendingUp, key: "nav.campaigns", path: "/campaigns" },
+  { icon: Plug, key: "nav.connections", path: "/connections" },
+  { icon: Bot, key: "nav.aiAgent", path: "/ai-agent" },
+  { icon: FileText, key: "nav.reports", path: "/reports" },
+  { icon: Settings, key: "nav.settings", path: "/settings" },
 ];
 
-export const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
+const agencyItems = [
+  { icon: Building2, key: "nav.allClients", path: "/agency" },
+  { icon: Users, key: "nav.clients", path: "/clients" },
+];
+
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
+  const { t, i18n } = useTranslation();
   const location = useLocation();
+  const { isIndividual } = useAgency();
+  const rtl = i18n.dir() === "rtl";
+
+  const renderItem = (item: (typeof mainItems)[number]) => {
+    const isActive =
+      item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+    const label = t(item.key);
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        className={cn("sidebar-link", isActive && "active", collapsed && "justify-center px-0")}
+        title={collapsed ? label : undefined}
+      >
+        <item.icon className="w-5 h-5 shrink-0" />
+        {!collapsed && <span className="fade-in truncate">{label}</span>}
+      </Link>
+    );
+  };
+
+  // Chevron points toward the side the sidebar collapses to, mirrored in RTL.
+  const CollapseIcon = collapsed !== rtl ? ChevronRight : ChevronLeft;
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 z-50 ${
+      className={cn(
+        "fixed start-0 top-0 h-screen bg-sidebar border-e border-sidebar-border transition-all duration-300 z-50",
         collapsed ? "w-20" : "w-64"
-      }`}
+      )}
     >
       <div className="flex flex-col h-full">
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <Zap className="w-5 h-5 text-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="fade-in">
-              <h1 className="font-bold text-foreground">LeadTrack</h1>
-              <p className="text-xs text-muted-foreground">Real Conversions</p>
-            </div>
-          )}
+        <div className={cn("flex items-center border-b border-sidebar-border h-20", collapsed ? "justify-center px-3" : "px-5")}>
+          <Link to="/" aria-label="WOB">
+            {collapsed ? <Logo variant="mark" className="h-9" /> : <Logo variant="horizontal" className="h-11" />}
+          </Link>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-6 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`sidebar-link ${isActive ? "active" : ""}`}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span className="fade-in">{item.label}</span>}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
+          {mainItems.map(renderItem)}
+
+          {!isIndividual && (
+            <div className="pt-6">
+              {!collapsed && (
+                <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {t("nav.agencySection")}
+                </p>
+              )}
+              <div className="space-y-1">{agencyItems.map(renderItem)}</div>
+            </div>
+          )}
         </nav>
 
-        {/* Collapse Toggle */}
         <div className="px-3 py-4 border-t border-sidebar-border">
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={onToggle}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-sidebar-accent transition-colors"
+            aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
           >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <>
-                <ChevronLeft className="w-4 h-4" />
-                <span>Collapse</span>
-              </>
-            )}
+            <CollapseIcon className="w-4 h-4" />
+            {!collapsed && <span>{t("nav.collapse")}</span>}
           </button>
         </div>
       </div>
