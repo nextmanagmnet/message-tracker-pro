@@ -5,6 +5,7 @@ import { checkFundAmount, parseAdvertiserBalance, type BcAdvertiser } from "../_
 // Agency-level TikTok Business Center: connect it, list ad-account balances, top accounts up.
 // Body: { action, agencyId, ... }. Only agency owners/admins; the token never leaves the server.
 const API = "https://business-api.tiktok.com/open_api/v1.3";
+const PAGE_SIZE = 50; // TikTok rejects anything larger
 
 async function tt(path: string, token: string, init: { method?: string; body?: string; query?: Record<string, string> } = {}) {
   const url = new URL(`${API}${path}`);
@@ -21,8 +22,8 @@ async function tt(path: string, token: string, init: { method?: string; body?: s
 async function listBalances(bcId: string, token: string): Promise<{ rows: BcAdvertiser[]; sample: unknown; error?: string }> {
   const rows: BcAdvertiser[] = [];
   let sample: unknown = null;
-  for (let page = 1; page <= 20; page++) {
-    const query: Record<string, string> = { bc_id: bcId, page: String(page), page_size: "100", fields: JSON.stringify(["min_transferable_amount"]) };
+  for (let page = 1; page <= 100; page++) {
+    const query: Record<string, string> = { bc_id: bcId, page: String(page), page_size: String(PAGE_SIZE), fields: JSON.stringify(["min_transferable_amount"]) };
     let d = await tt("/advertiser/balance/get/", token, { query });
     if (d.code !== 0 && page === 1) {
       delete query.fields; // retry without the optional field
@@ -35,7 +36,7 @@ async function listBalances(bcId: string, token: string): Promise<{ rows: BcAdve
       const p = parseAdvertiserBalance(r);
       if (p) rows.push(p);
     }
-    if (list.length < 100) break;
+    if (list.length < PAGE_SIZE) break;
   }
   return { rows, sample };
 }
