@@ -1,1 +1,25 @@
-project_id = "itxzpkxdwyqtcnyzueoj"
+project_id = "oiidzysiucznvzgwrtfp"
+
+# Called by Meta / Evolution / Green-API (signature or bearer secret checked in code).
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+# Called by pg_cron with the x-cron-secret header (checked in code).
+[functions.analyze-conversation]
+verify_jwt = false
+
+[functions.ai-followups]
+verify_jwt = false
+
+[functions.conversion-retry]
+verify_jwt = false
+
+[functions.refresh-tokens]
+verify_jwt = false
+
+[functions.sync-campaigns]
+verify_jwt = false
+
+# Called by whatsapp-webhook with x-internal-key, or by signed-in users (checked in code).
+[functions.ai-agent]
+verify_jwt = false

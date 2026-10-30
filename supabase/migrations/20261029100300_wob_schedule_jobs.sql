@@ -8,7 +8,7 @@ SELECT cron.schedule(
   '*/5 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://itxzpkxdwyqtcnyzueoj.supabase.co/functions/v1/analyze-conversation',
+    url := 'https://oiidzysiucznvzgwrtfp.supabase.co/functions/v1/analyze-conversation',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', (SELECT cron_token FROM public.scheduler_config WHERE id = 1)
@@ -24,7 +24,7 @@ SELECT cron.schedule(
   '*/15 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://itxzpkxdwyqtcnyzueoj.supabase.co/functions/v1/ai-followups',
+    url := 'https://oiidzysiucznvzgwrtfp.supabase.co/functions/v1/ai-followups',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', (SELECT cron_token FROM public.scheduler_config WHERE id = 1)
@@ -40,7 +40,7 @@ SELECT cron.schedule(
   '*/30 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://itxzpkxdwyqtcnyzueoj.supabase.co/functions/v1/conversion-retry',
+    url := 'https://oiidzysiucznvzgwrtfp.supabase.co/functions/v1/conversion-retry',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', (SELECT cron_token FROM public.scheduler_config WHERE id = 1)

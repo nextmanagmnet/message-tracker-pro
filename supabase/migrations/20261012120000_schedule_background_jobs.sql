@@ -13,7 +13,7 @@ SELECT cron.schedule(
   '0 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://itxzpkxdwyqtcnyzueoj.supabase.co/functions/v1/refresh-tokens',
+    url := 'https://oiidzysiucznvzgwrtfp.supabase.co/functions/v1/refresh-tokens',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', (SELECT cron_token FROM public.scheduler_config WHERE id = 1)
@@ -28,7 +28,7 @@ SELECT cron.schedule(
   '15 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://itxzpkxdwyqtcnyzueoj.supabase.co/functions/v1/sync-campaigns',
+    url := 'https://oiidzysiucznvzgwrtfp.supabase.co/functions/v1/sync-campaigns',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', (SELECT cron_token FROM public.scheduler_config WHERE id = 1)
