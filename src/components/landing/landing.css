@@ -1,0 +1,215 @@
+/*
+ * Landing page motion. Everything here is decorative: with
+ * prefers-reduced-motion the funnel freezes in a readable end state and
+ * reveals show immediately.
+ *
+ * Funnel stage geometry: a 400x500 design space. The stage is a size
+ * container, so 1 design unit = 0.25cqw (height is 125cqw via aspect ratio).
+ */
+
+.lp-stage {
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 4 / 5;
+}
+
+.lp-at {
+  position: absolute;
+  left: calc(var(--x) * 0.25cqw);
+  top: calc(var(--y) * 0.25cqw);
+  transform: translate(-50%, -50%);
+}
+
+/* Ad clicks raining from the platform pills into the funnel mouth */
+.lp-click {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.2cqw;
+  height: 2.2cqw;
+  margin: -1.1cqw 0 0 -1.1cqw;
+  border-radius: 9999px;
+  background: hsl(var(--brand-aqua));
+  box-shadow: 0 0 2.5cqw hsl(var(--brand-aqua) / 0.8);
+  opacity: 0;
+  animation: lp-fall 2.4s cubic-bezier(0.45, 0, 0.75, 0.6) infinite;
+}
+
+@keyframes lp-fall {
+  0% {
+    opacity: 0;
+    transform: translate(calc(var(--sx) * 0.25cqw), calc(var(--sy) * 0.25cqw)) scale(0.6);
+  }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--ex) * 0.25cqw), calc(var(--ey) * 0.25cqw)) scale(0.3);
+  }
+}
+
+/* Chat bubbles popping out of the funnel neck and flying into a bin */
+.lp-bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  white-space: nowrap;
+  animation: lp-sort 6s cubic-bezier(0.3, 0.7, 0.3, 1) infinite;
+  transform: translate(-50%, -50%) translate(calc(200 * 0.25cqw), calc(318 * 0.25cqw));
+}
+
+@keyframes lp-sort {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc(200 * 0.25cqw), calc(318 * 0.25cqw)) scale(0.4);
+  }
+  7% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(200 * 0.25cqw), calc(334 * 0.25cqw)) scale(1);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(var(--dx) * 0.25cqw), calc(386 * 0.25cqw)) scale(0.9);
+  }
+  36%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc(var(--dx) * 0.25cqw), calc(410 * 0.25cqw)) scale(0.5);
+  }
+}
+
+/* Bin "catches" a bubble */
+.lp-bin-pulse {
+  animation: lp-bin 6s ease-out infinite;
+}
+
+@keyframes lp-bin {
+  0%, 24%, 44%, 100% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 0 0.6cqw var(--pulse), 0 0 6cqw var(--pulse); }
+}
+
+/* Conversion signal racing from the Sale bin back up to the ad platforms */
+.lp-beam {
+  stroke-dasharray: 14 100;
+  stroke-dashoffset: 14;
+  animation: lp-beam 6s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+}
+
+@keyframes lp-beam {
+  0%, 34% { stroke-dashoffset: 14; opacity: 0; }
+  36% { opacity: 1; }
+  56% { stroke-dashoffset: -100; opacity: 1; }
+  57%, 100% { stroke-dashoffset: -100; opacity: 0; }
+}
+
+.lp-pill-flash {
+  animation: lp-flash 6s ease-out infinite;
+}
+
+@keyframes lp-flash {
+  0%, 52%, 80%, 100% { box-shadow: 0 0 0 0 transparent; }
+  58% { box-shadow: 0 0 0 0.6cqw hsl(var(--brand-pink) / 0.55), 0 0 7cqw hsl(var(--brand-orange) / 0.7); }
+}
+
+/* Funnel "reading" scan line (inside the SVG, so px = viewBox units) */
+.lp-scan {
+  animation: lp-scan 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes lp-scan {
+  from { transform: translateY(0); opacity: 0.25; }
+  to { transform: translateY(150px); opacity: 0.9; }
+}
+
+/* Slow-drifting mesh blobs */
+.lp-blob {
+  animation: lp-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes lp-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(4%, -6%, 0) scale(1.12); }
+}
+
+/* Scroll reveal */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--delay, 0ms);
+}
+
+.lp-reveal.lp-shown {
+  opacity: 1;
+  transform: none;
+}
+
+/* Demo bars grow when revealed */
+.lp-bar {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--delay, 0ms);
+}
+
+[dir='rtl'] .lp-bar {
+  transform-origin: right;
+}
+
+.lp-shown .lp-bar {
+  transform: scaleX(1);
+}
+
+/* Typing dots in the AI chat mock */
+.lp-typing span {
+  animation: lp-dot 1.2s ease-in-out infinite;
+}
+
+.lp-typing span:nth-child(2) { animation-delay: 0.15s; }
+.lp-typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes lp-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.lp-faq summary::-webkit-details-marker { display: none; }
+.lp-faq[open] .lp-faq-icon { transform: rotate(45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-click,
+  .lp-scan,
+  .lp-blob,
+  .lp-bin-pulse,
+  .lp-pill-flash,
+  .lp-typing span {
+    animation: none;
+  }
+
+  .lp-click { display: none; }
+
+  /* Frozen end state: one bubble resting above each bin, beam drawn. */
+  .lp-bubble {
+    animation: none;
+    opacity: 0;
+  }
+
+  .lp-bubble[data-still] {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(var(--dx) * 0.25cqw), calc(372 * 0.25cqw));
+  }
+
+  .lp-beam {
+    animation: none;
+    stroke-dasharray: none;
+    opacity: 0.8;
+  }
+
+  .lp-reveal,
+  .lp-bar {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

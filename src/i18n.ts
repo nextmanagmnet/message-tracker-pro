@@ -4,6 +4,8 @@ import enCommon from "./locales/en/common.json";
 import arCommon from "./locales/ar/common.json";
 import enFeatures from "./locales/en/features.json";
 import arFeatures from "./locales/ar/features.json";
+import enLanding from "./locales/en/landing.json";
+import arLanding from "./locales/ar/landing.json";
 
 export type Language = "en" | "ar";
 
@@ -28,12 +30,12 @@ applyDocumentLanguage(initial);
 
 i18n.use(initReactI18next).init({
   resources: {
-    en: { common: enCommon, features: enFeatures },
-    ar: { common: arCommon, features: arFeatures },
+    en: { common: enCommon, features: enFeatures, landing: enLanding },
+    ar: { common: arCommon, features: arFeatures, landing: arLanding },
   },
   lng: initial,
   fallbackLng: "en",
-  ns: ["common", "features"],
+  ns: ["common", "features", "landing"],
   defaultNS: "common",
   interpolation: { escapeValue: false },
   returnNull: false,

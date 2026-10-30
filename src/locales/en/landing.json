@@ -1,0 +1,169 @@
+{
+  "nav": {
+    "how": "How it works",
+    "features": "Features",
+    "plans": "Plans",
+    "faq": "FAQ",
+    "signIn": "Sign in",
+    "getStarted": "Get started"
+  },
+  "hero": {
+    "eyebrow": "WhatsApp × TikTok × Meta",
+    "titleA": "Clicks lie.",
+    "titleB": "Conversations don't.",
+    "subtitle": "WOB reads your WhatsApp chats, separates real leads from noise, spots the sales, and reports them back to TikTok and Meta, so your campaigns learn to find buyers instead of clicks.",
+    "ctaPrimary": "Get started",
+    "ctaSecondary": "See how it works",
+    "chips": ["Keep chatting on your phone", "Arabic & English", "No code"]
+  },
+  "stage": {
+    "tiktok": "TikTok",
+    "meta": "Meta",
+    "eventsApi": "Events API",
+    "conversionsApi": "Conversions API",
+    "clicks": "Ad clicks",
+    "reads": "WOB reads the chat",
+    "signal": "Sale reported",
+    "bins": { "trash": "Trash", "qualified": "Qualified", "sale": "Sale" },
+    "bubbles": {
+      "t1": "hi",
+      "t2": "wrong number",
+      "t3": "?",
+      "q1": "Do you deliver?",
+      "q2": "Size M in stock?",
+      "s1": "I'll take two"
+    },
+    "aria": "Animation: ad clicks fall into a funnel, WhatsApp chats are sorted into trash, qualified leads and sales, and a signal is sent back to TikTok and Meta."
+  },
+  "problem": {
+    "eyebrow": "The problem",
+    "title": "Your ad dashboard can't see the chat.",
+    "body": "TikTok and Meta count the click and stop there. What happens next lives in WhatsApp, where a hundred messages can hide a handful of buyers. So the algorithm keeps buying more of whatever clicks.",
+    "seeTitle": "What the ad platform sees",
+    "seeItems": ["A click", "A chat started", "A cheap cost per click"],
+    "realTitle": "What actually happened",
+    "realItems": ["Most chats went nowhere", "A few asked real questions", "One of them ordered"],
+    "punch": "Clicks ≠ customers"
+  },
+  "how": {
+    "eyebrow": "How it works",
+    "title": "Three steps. Then it runs itself.",
+    "steps": [
+      {
+        "title": "Scan the QR",
+        "body": "Link your WhatsApp the same way you link WhatsApp Web. You keep chatting from your phone like always."
+      },
+      {
+        "title": "Connect your ads",
+        "body": "Plug in your TikTok and Meta ad accounts. WOB matches each conversation to the campaign it came from."
+      },
+      {
+        "title": "WOB reports the sales back",
+        "body": "Qualified leads and orders go back to TikTok and Meta as conversion events, so their algorithms chase buyers."
+      }
+    ]
+  },
+  "demo": {
+    "eyebrow": "See the difference",
+    "title": "Same budget. Very different truth.",
+    "body": "Ad dashboards rank campaigns by clicks. WOB ranks them by who actually became a lead and who actually paid, with cost per qualified lead and cost per client for every campaign.",
+    "illustrative": "Illustrative example",
+    "campaignA": "Campaign A",
+    "campaignB": "Campaign B",
+    "metrics": { "clicks": "Clicks", "chats": "Chats", "qualified": "Qualified leads", "sales": "Sales" },
+    "cpql": "Cost per qualified lead",
+    "cpc": "Cost per client",
+    "higher": "Higher",
+    "lower": "Lower",
+    "verdictA": "Looks like the winner in the ad dashboard.",
+    "verdictB": "Actually brings the buyers."
+  },
+  "features": {
+    "eyebrow": "Features",
+    "title": "Everything between the click and the cash.",
+    "items": [
+      { "title": "Lead sorting", "body": "Every conversation is labeled: not a lead, real, qualified or client. No more scrolling to guess." },
+      { "title": "Sale detection", "body": "WOB recognizes when a chat turns into an order and records it against the right campaign." },
+      { "title": "Signals back to the ads", "body": "Qualified leads and sales are sent to TikTok's Events API and Meta's Conversions API." },
+      { "title": "Real cost metrics", "body": "Cost per qualified lead and cost per client, per campaign, next to the numbers you already know." },
+      { "title": "Your phone, your WhatsApp", "body": "Connect with a QR scan. Nothing changes for you or your customers." },
+      { "title": "Built for Arabic and English", "body": "Understands both languages, and the whole app works right-to-left." }
+    ]
+  },
+  "plans": {
+    "eyebrow": "Plans",
+    "title": "One business or fifty.",
+    "subtitle": "Start with your own brand, or run every client from one place.",
+    "individual": {
+      "name": "Individual",
+      "tagline": "For a business running its own ads.",
+      "items": ["1 WhatsApp number", "1 TikTok ad account", "1 Meta ad account", "Lead sorting, sale detection and reporting"],
+      "cta": "Get started"
+    },
+    "agency": {
+      "name": "Agency",
+      "badge": "For teams",
+      "tagline": "For agencies managing ads for many clients.",
+      "items": ["Many clients, each with their own WhatsApp and ad accounts", "Cross-client overview", "Your team in one workspace", "Everything in Individual"],
+      "cta": "Get started"
+    },
+    "noPricing": "Pricing will be announced soon. Create an account to get started."
+  },
+  "ai": {
+    "eyebrow": "AI add-on",
+    "badge": "Optional",
+    "title": "A sales assistant that never sleeps.",
+    "body": "Turn it on when you want it. It answers in your customer's language, shows the right product, follows up, and hands the chat to you when a human should take over.",
+    "items": [
+      "Auto-replies in Arabic or English, matching the customer",
+      "Product catalog with images and videos",
+      "Follow-ups for chats that went quiet",
+      "Human handoff whenever you step in"
+    ],
+    "chat": {
+      "customer": "السلام عليكم، عندكم توصيل؟",
+      "bot": "وعليكم السلام! نعم، نوصل. أرسل لك صور المنتجات؟",
+      "card": "Product catalog",
+      "handoff": "Handed to you"
+    }
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Questions, answered.",
+    "items": [
+      {
+        "q": "Do I need the WhatsApp Business API?",
+        "a": "No. You link your existing WhatsApp by scanning a QR code, and you keep using it on your phone as usual."
+      },
+      {
+        "q": "What does WOB send to TikTok and Meta?",
+        "a": "Conversion events for leads that WOB marks as qualified and for sales, through TikTok's Events API and Meta's Conversions API, so the platforms can optimize toward them."
+      },
+      {
+        "q": "Does it understand Arabic?",
+        "a": "Yes. WOB works with Arabic and English conversations, and the app itself is available in both languages."
+      },
+      {
+        "q": "Is the AI auto-reply required?",
+        "a": "No. It's an optional add-on. Lead sorting, sale detection and reporting work without it."
+      },
+      {
+        "q": "Can an agency manage several clients?",
+        "a": "Yes. The Agency plan lets you add many clients, each with their own WhatsApp and ad accounts, and work on them as a team."
+      },
+      {
+        "q": "How much does it cost?",
+        "a": "Pricing hasn't been announced yet. Create an account to get started."
+      }
+    ]
+  },
+  "cta": {
+    "title": "Teach your ads what a buyer looks like.",
+    "body": "Connect WhatsApp, TikTok and Meta in minutes.",
+    "button": "Get started"
+  },
+  "footer": {
+    "tagline": "World of Business",
+    "signIn": "Sign in"
+  }
+}

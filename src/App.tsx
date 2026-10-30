@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AgencyProvider, useAgency } from "@/hooks/useAgency";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Auth from "./pages/Auth";
@@ -22,6 +22,7 @@ const ClientsPage = lazy(() => import("./pages/ClientsPage"));
 const TikTokCallback = lazy(() => import("./pages/TikTokCallback"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,13 @@ const PageFallback = () => (
 );
 
 const P = ({ children }: { children: ReactNode }) => <ProtectedRoute>{children}</ProtectedRoute>;
+
+// "/" is the marketing page for visitors and the dashboard once signed in.
+const Home = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <PageFallback />;
+  return user ? <Index /> : <Landing />;
+};
 
 // Clients and the cross-client overview only exist for agency accounts.
 const AgencyOnly = ({ children }: { children: ReactNode }) => {
@@ -52,7 +60,8 @@ const App = () => (
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/" element={<P><Index /></P>} />
+                <Route path="/" element={<Home />} />
+                <Route path="/welcome" element={<Landing />} />
                 <Route path="/leads" element={<P><Leads /></P>} />
                 <Route path="/campaigns" element={<P><Campaigns /></P>} />
                 <Route path="/connections" element={<P><Connections /></P>} />
