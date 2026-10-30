@@ -102,6 +102,24 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "diagnose") {
+      // What this login can see at TikTok, to find a wrong Business Center ID or a missing permission.
+      const [bcs, advs] = await Promise.all([
+        tt("/bc/get/", conn.access_token).catch((e) => ({ code: -1, message: String(e) })),
+        tt("/oauth2/advertiser/get/", conn.access_token, {
+          query: { app_id: Deno.env.get("TIKTOK_APP_ID") ?? "", secret: Deno.env.get("TIKTOK_APP_SECRET") ?? "" },
+        }).catch((e) => ({ code: -1, message: String(e) })),
+      ]);
+      return json({
+        savedBcId: conn.bc_id,
+        businessCenters: {
+          code: bcs.code, message: bcs.message,
+          list: (bcs.data?.list ?? []).map((i: any) => ({ id: String(i?.bc_info?.bc_id ?? i?.bc_id ?? ""), name: i?.bc_info?.name ?? i?.name ?? null, role: i?.user_role ?? null })),
+        },
+        authorizedAdAccounts: { code: advs.code, message: advs.message, count: (advs.data?.list ?? []).length },
+      });
+    }
+
     if (!conn.bc_id) return json({ error: "Choose your Business Center ID first", code: "no_bc" }, 400);
 
     if (action === "balances") {

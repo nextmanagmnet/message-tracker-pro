@@ -416,6 +416,13 @@
       "pending": "In progress",
       "unknown": "Unconfirmed, check TikTok",
       "failed": "Failed"
-    }
+    },
+    "diagnose": "Check connection",
+    "savedBc": "Saved Business Center ID",
+    "visibleBcs": "Business Centers your TikTok login can see",
+    "none": "none",
+    "useThis": "Use this one",
+    "authorizedAds": "Ad accounts shared with WOB by this login: {{count}}",
+    "diagnoseHint": "If your Business Center is not listed, log in with a TikTok user who is an admin or Finance Manager of it (Disconnect, then Connect again)."
   }
 }

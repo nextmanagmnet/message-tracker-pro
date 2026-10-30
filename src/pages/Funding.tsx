@@ -16,6 +16,11 @@ import { BC_KEY, beginOAuth } from "@/components/connections/oauth";
 type Conn = { bc_id: string | null; bc_name: string | null; max_transfer: number };
 type Account = { advertiserId: string; name: string | null; balance: number | null; currency: string | null; minTransferable: number | null; clientId: string | null };
 type Balances = { bcId: string; maxTransfer: number; bcBalance: Record<string, unknown> | null; accounts: Account[]; sample: unknown };
+type Diagnosis = {
+  savedBcId: string | null;
+  businessCenters: { code: number; message: string; list: { id: string; name: string | null; role: string | null }[] };
+  authorizedAdAccounts: { code: number; message: string; count: number };
+};
 type Transfer = { id: string; advertiser_id: string; advertiser_name: string | null; amount: number; status: "pending" | "sent" | "failed" | "unknown"; response: { message?: string } | null; created_at: string };
 
 const STATUS: Record<Transfer["status"], string> = {
@@ -39,6 +44,7 @@ const Funding = () => {
   const [target, setTarget] = useState<Account | null>(null);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [diag, setDiag] = useState<Diagnosis | null>(null);
 
   const agencyId = agency?.id;
 
@@ -102,6 +108,31 @@ const Funding = () => {
     try {
       await invokeFn("tiktok-bc", { action: "set-bc", agencyId, bcId: bcInput.trim() });
       await loadConn();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const diagnose = async () => {
+    setBusy(true);
+    try {
+      setDiag(await invokeFn<Diagnosis>("tiktok-bc", { action: "diagnose", agencyId }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const useBc = async (id: string, name: string | null) => {
+    setBusy(true);
+    try {
+      await invokeFn("tiktok-bc", { action: "set-bc", agencyId, bcId: id, bcName: name });
+      setDiag(null);
+      await loadConn();
+      await loadBalances();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -179,7 +210,29 @@ const Funding = () => {
           </section>
 
           {error ? (
-            <div className="glass-card border-destructive/40 p-5 text-sm text-destructive">{error}</div>
+            <div className="glass-card space-y-3 border-destructive/40 p-5 text-sm">
+              <p className="text-destructive">{error}</p>
+              <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.diagnose")}
+              </Button>
+              {diag && (
+                <div className="space-y-2 rounded-lg bg-secondary/50 p-3 text-foreground">
+                  <p dir="ltr">{t("funding.savedBc")}: {diag.savedBcId}</p>
+                  <p>
+                    {t("funding.visibleBcs")}:{" "}
+                    {diag.businessCenters.list.length === 0 ? `${t("funding.none")} (${diag.businessCenters.message || diag.businessCenters.code})` : ""}
+                  </p>
+                  {diag.businessCenters.list.map((b) => (
+                    <div key={b.id} className="flex items-center gap-2" dir="ltr">
+                      <span className="flex-1">{b.name ?? "—"} · {b.id}{b.role ? ` · ${b.role}` : ""}</span>
+                      <Button size="sm" onClick={() => useBc(b.id, b.name)} disabled={busy}>{t("funding.useThis")}</Button>
+                    </div>
+                  ))}
+                  <p>{t("funding.authorizedAds", { count: diag.authorizedAdAccounts.count })}</p>
+                  <p className="text-xs text-muted-foreground">{t("funding.diagnoseHint")}</p>
+                </div>
+              )}
+            </div>
           ) : (
             <section className="glass-card overflow-hidden">
               <div className="flex items-center gap-3 border-b border-border p-4">
