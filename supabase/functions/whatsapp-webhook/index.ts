@@ -1,4 +1,5 @@
 import { scoreLead } from "../_shared/scoring.ts";
+import { isOrderMessage, parseOrder } from "../_shared/orders.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
 import { extractCampaignCode, extractClidFromText, extractFbclid, isOptOut, parseAdContext } from "../_shared/funnel.ts";
@@ -216,6 +217,11 @@ async function handleMessage(supabase: any, m: WaMessage) {
     const patch: Record<string, unknown> = { last_outbound_at: now, last_message_at: now };
     if (conv.agent_status === 'ai_active') patch.agent_status = 'handed_off'; // owner took over
     await supabase.from('conversations').update(patch).eq('id', conv.id);
+    // The business's order-confirmation message counts as a sale.
+    const { data: client } = await supabase.from('clients').select('order_marker').eq('id', clientId).maybeSingle();
+    if (isOrderMessage(m.text, client?.order_marker)) {
+      await reportStage(supabase, existingLead.id, 'client', parseOrder(m.text));
+    }
     return;
   }
 

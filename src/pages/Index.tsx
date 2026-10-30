@@ -96,7 +96,7 @@ const Index = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <MetricCard title={t("dashboard.costPerQualified")} value={money(ratio(totals.spend, totals.qualified))} icon={<Target className="w-5 h-5" />} />
             <MetricCard title={t("dashboard.costPerClient")} value={money(ratio(totals.spend, totals.clients))} icon={<BadgeCheck className="w-5 h-5" />} />
-            <MetricCard title={t("dashboard.revenue")} value={f.money(totals.revenue, "SAR")} icon={<Coins className="w-5 h-5" />} />
+            <MetricCard title={t("dashboard.revenue")} value={f.money(totals.revenue, totals.currency)} icon={<Coins className="w-5 h-5" />} />
             <MetricCard title={t("dashboard.trashRate")} value={f.pct(trashRate)} icon={<AlertTriangle className="w-5 h-5" />} />
             <MetricCard title={t("dashboard.conversionsSent")} value={f.num(totals.conversionsSent)} hint={t("dashboard.conversionsSentHint")} icon={<Send className="w-5 h-5" />} />
           </div>

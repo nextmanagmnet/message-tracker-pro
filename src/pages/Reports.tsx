@@ -88,7 +88,7 @@ const Reports = () => {
             <Stat label={t("reports.csv.real")} value={f.num(totals.real)} />
             <Stat label={t("reports.csv.qualified")} value={f.num(totals.qualified)} />
             <Stat label={t("reports.csv.clients")} value={f.num(totals.clients)} />
-            <Stat label={t("reports.csv.revenue")} value={f.money(totals.revenue, "SAR")} />
+            <Stat label={t("reports.csv.revenue")} value={f.money(totals.revenue, totals.currency)} />
             <Stat label={t("reports.csv.costPerQualified")} value={usd(cpq)} />
             <Stat label={t("reports.csv.costPerClient")} value={usd(cpc)} />
             <Stat label={t("reports.csv.messages")} value={f.num(totals.leads)} />

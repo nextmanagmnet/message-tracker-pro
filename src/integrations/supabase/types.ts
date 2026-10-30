@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
@@ -132,6 +132,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          order_marker: string
           updated_at: string
         }
         Insert: {
@@ -139,6 +140,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          order_marker?: string
           updated_at?: string
         }
         Update: {
@@ -146,6 +148,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          order_marker?: string
           updated_at?: string
         }
         Relationships: [
@@ -375,15 +378,8 @@ export type Database = {
         Row: {
           ad_id: string | null
           ad_platform: string | null
-          campaign_id: string | null
-          order_currency: string | null
-          order_value: number | null
-          stage: Database["public"]["Enums"]["lead_stage"]
-          stage_confidence: number | null
-          stage_evidence: string | null
-          stage_suggestion: Database["public"]["Enums"]["lead_stage"] | null
-          stage_updated_at: string | null
           attribution_source: string
+          campaign_id: string | null
           click_to_message_seconds: number | null
           client_id: string | null
           created_at: string
@@ -394,12 +390,19 @@ export type Database = {
           is_real: boolean
           is_repeat_lead: boolean
           message_received_at: string | null
+          order_currency: string | null
+          order_value: number | null
           quality_score: number
           quality_signals: Json
           referral_headline: string | null
           sender_phone_hash: string
           source_id: string | null
           source_type: string | null
+          stage: Database["public"]["Enums"]["lead_stage"]
+          stage_confidence: number | null
+          stage_evidence: string | null
+          stage_suggestion: Database["public"]["Enums"]["lead_stage"] | null
+          stage_updated_at: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tenant_id: string
           ttclid: string | null
@@ -408,15 +411,8 @@ export type Database = {
         Insert: {
           ad_id?: string | null
           ad_platform?: string | null
-          campaign_id?: string | null
-          order_currency?: string | null
-          order_value?: number | null
-          stage?: Database["public"]["Enums"]["lead_stage"]
-          stage_confidence?: number | null
-          stage_evidence?: string | null
-          stage_suggestion?: Database["public"]["Enums"]["lead_stage"] | null
-          stage_updated_at?: string | null
           attribution_source?: string
+          campaign_id?: string | null
           click_to_message_seconds?: number | null
           client_id?: string | null
           created_at?: string
@@ -427,12 +423,19 @@ export type Database = {
           is_real?: boolean
           is_repeat_lead?: boolean
           message_received_at?: string | null
+          order_currency?: string | null
+          order_value?: number | null
           quality_score?: number
           quality_signals?: Json
           referral_headline?: string | null
           sender_phone_hash: string
           source_id?: string | null
           source_type?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          stage_confidence?: number | null
+          stage_evidence?: string | null
+          stage_suggestion?: Database["public"]["Enums"]["lead_stage"] | null
+          stage_updated_at?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tenant_id: string
           ttclid?: string | null
@@ -441,15 +444,8 @@ export type Database = {
         Update: {
           ad_id?: string | null
           ad_platform?: string | null
-          campaign_id?: string | null
-          order_currency?: string | null
-          order_value?: number | null
-          stage?: Database["public"]["Enums"]["lead_stage"]
-          stage_confidence?: number | null
-          stage_evidence?: string | null
-          stage_suggestion?: Database["public"]["Enums"]["lead_stage"] | null
-          stage_updated_at?: string | null
           attribution_source?: string
+          campaign_id?: string | null
           click_to_message_seconds?: number | null
           client_id?: string | null
           created_at?: string
@@ -460,12 +456,19 @@ export type Database = {
           is_real?: boolean
           is_repeat_lead?: boolean
           message_received_at?: string | null
+          order_currency?: string | null
+          order_value?: number | null
           quality_score?: number
           quality_signals?: Json
           referral_headline?: string | null
           sender_phone_hash?: string
           source_id?: string | null
           source_type?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          stage_confidence?: number | null
+          stage_evidence?: string | null
+          stage_suggestion?: Database["public"]["Enums"]["lead_stage"] | null
+          stage_updated_at?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tenant_id?: string
           ttclid?: string | null
@@ -583,7 +586,7 @@ export type Database = {
           {
             foreignKeyName: "meta_accounts_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
@@ -718,6 +721,53 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          client_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          images: string[]
+          in_stock: boolean
+          name: string
+          price: number | null
+          videos: string[]
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          images?: string[]
+          in_stock?: boolean
+          name: string
+          price?: number | null
+          videos?: string[]
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          images?: string[]
+          in_stock?: boolean
+          name?: string
+          price?: number | null
+          videos?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -812,13 +862,13 @@ export type Database = {
       }
       tiktok_campaigns: {
         Row: {
-          clicks: number | null
-          impressions: number | null
           campaign_id: string
           campaign_name: string
+          clicks: number | null
           client_id: string | null
           created_at: string
           id: string
+          impressions: number | null
           real_conversations: number | null
           spend: number | null
           tenant_id: string
@@ -827,13 +877,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          clicks?: number | null
-          impressions?: number | null
           campaign_id: string
           campaign_name: string
+          clicks?: number | null
           client_id?: string | null
           created_at?: string
           id?: string
+          impressions?: number | null
           real_conversations?: number | null
           spend?: number | null
           tenant_id: string
@@ -842,13 +892,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          clicks?: number | null
-          impressions?: number | null
           campaign_id?: string
           campaign_name?: string
+          clicks?: number | null
           client_id?: string | null
           created_at?: string
           id?: string
+          impressions?: number | null
           real_conversations?: number | null
           spend?: number | null
           tenant_id?: string

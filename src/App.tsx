@@ -14,6 +14,7 @@ const Leads = lazy(() => import("./pages/Leads"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Connections = lazy(() => import("./pages/Connections"));
 const AIAgent = lazy(() => import("./pages/AIAgent"));
+const Catalog = lazy(() => import("./pages/Catalog"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AgencyOverview = lazy(() => import("./pages/AgencyOverview"));
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/campaigns" element={<P><Campaigns /></P>} />
                 <Route path="/connections" element={<P><Connections /></P>} />
                 <Route path="/ai-agent" element={<P><AIAgent /></P>} />
+                <Route path="/catalog" element={<P><Catalog /></P>} />
                 <Route path="/reports" element={<P><Reports /></P>} />
                 <Route path="/settings" element={<P><Settings /></P>} />
                 <Route path="/onboarding" element={<P><Onboarding /></P>} />

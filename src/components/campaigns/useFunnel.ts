@@ -20,6 +20,7 @@ export type CampaignRow = {
 export type Totals = Omit<CampaignRow, "key" | "platform" | "campaignId" | "name"> & {
   leads: number;
   conversionsSent: number;
+  currency: string; // currency most orders were reported in (sums assume one currency)
 };
 
 type DbCampaign = { campaign_id: string; campaign_name: string; spend: number | null; clicks: number | null; impressions: number | null };
@@ -102,13 +103,16 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
   }, [leads, campaigns]);
 
   const totals = useMemo<Totals>(() => {
-    const t: Totals = { spend: 0, clicks: 0, impressions: 0, real: 0, qualified: 0, clients: 0, trash: 0, revenue: 0, leads: leads.length, conversionsSent };
+    const t: Totals = { spend: 0, clicks: 0, impressions: 0, real: 0, qualified: 0, clients: 0, trash: 0, revenue: 0, leads: leads.length, conversionsSent, currency: "USD" };
     for (const r of rows) {
       t.spend += r.spend;
       t.clicks += r.clicks;
       t.impressions += r.impressions;
     }
     for (const l of leads) tally(t, l); // all leads, attributed or not
+    const seen: Record<string, number> = {};
+    for (const l of leads) if (stageOf(l) === "client" && l.order_currency) seen[l.order_currency] = (seen[l.order_currency] ?? 0) + 1;
+    t.currency = Object.entries(seen).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "USD";
     return t;
   }, [rows, leads, conversionsSent]);
 

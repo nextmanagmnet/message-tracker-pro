@@ -13,8 +13,8 @@ interface WhatsAppNumberCardProps {
   id: string;
   phoneNumber: string;
   status: "connected" | "disconnected";
-  realMessages: number;
-  trashMessages: number;
+  leadCount: number;
+  saleCount: number;
   lastMessage?: string;
   onDisconnect?: (id: string) => Promise<void>;
   onRemove?: (id: string) => Promise<void>;
@@ -25,8 +25,8 @@ export const WhatsAppNumberCard = ({
   id,
   phoneNumber,
   status,
-  realMessages,
-  trashMessages,
+  leadCount,
+  saleCount,
   lastMessage,
   onDisconnect,
   onRemove,
@@ -129,16 +129,16 @@ export const WhatsAppNumberCard = ({
         <div className="p-3 rounded-lg bg-secondary/50">
           <div className="flex items-center gap-2 mb-1">
             <MessageCircle className="w-4 h-4 text-success" />
-            <span className="text-xs text-muted-foreground">{t("whatsapp.realMessages")}</span>
+            <span className="text-xs text-muted-foreground">{t("whatsapp.leads")}</span>
           </div>
-          <p className="text-xl font-bold text-success">{realMessages}</p>
+          <p className="text-xl font-bold text-success">{leadCount}</p>
         </div>
         <div className="p-3 rounded-lg bg-secondary/50">
           <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-destructive" />
-            <span className="text-xs text-muted-foreground">{t("whatsapp.trash")}</span>
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span className="text-xs text-muted-foreground">{t("whatsapp.sales")}</span>
           </div>
-          <p className="text-xl font-bold text-destructive">{trashMessages}</p>
+          <p className="text-xl font-bold text-primary">{saleCount}</p>
         </div>
       </div>
 

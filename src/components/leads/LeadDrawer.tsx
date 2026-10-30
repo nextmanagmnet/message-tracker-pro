@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bot, Check, Hand, Loader2, Sparkles, UserRound, XCircle } from "lucide-react";
+import { Bot, Check, Hand, Loader2, Send, Sparkles, UserRound, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { db, invokeFn, Lead, maskHash, stageOf, useFormat } from "./shared";
 import { PlatformChip, StageBadge } from "./badges";
@@ -40,12 +40,13 @@ export function LeadDrawer({ lead, onClose, onChanged }: { lead: Lead | null; on
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [value, setValue] = useState("");
-  const [currency, setCurrency] = useState("SAR");
+  const [currency, setCurrency] = useState("USD");
+  const [reply, setReply] = useState("");
 
   useEffect(() => {
     if (!lead) return;
     setValue(lead.order_value ? String(lead.order_value) : "");
-    setCurrency(lead.order_currency ?? "SAR");
+    setCurrency(lead.order_currency ?? "USD");
     setLoading(true);
     (async () => {
       const [conv, ev] = await Promise.all([
@@ -66,6 +67,34 @@ export function LeadDrawer({ lead, onClose, onChanged }: { lead: Lead | null; on
       setLoading(false);
     })();
   }, [lead]);
+
+  // New messages (customer, you, AI) show up while the chat is open.
+  const convId = conversation?.id;
+  useEffect(() => {
+    if (!convId) return;
+    const refresh = async () => {
+      const { data } = await db.from("messages").select("id, direction, author, text, created_at")
+        .eq("conversation_id", convId).order("created_at", { ascending: true }).limit(500);
+      if (data) setMessages(data as Message[]);
+    };
+    const timer = setInterval(refresh, 5000);
+    return () => clearInterval(timer);
+  }, [convId]);
+
+  const sendReply = async () => {
+    if (!lead || !reply.trim()) return;
+    setBusy("send_message");
+    try {
+      await invokeFn("lead-actions", { action: "send_message", leadId: lead.id, text: reply.trim() });
+      setMessages((m) => [...m, { id: `local-${Date.now()}`, direction: "out", author: "owner", text: reply.trim(), created_at: new Date().toISOString() }]);
+      setReply("");
+      setConversation((c) => (c && c.agent_status === "ai_active" ? { ...c, agent_status: "handed_off" } : c));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const act = async (action: string, extra: Record<string, unknown> = {}) => {
     if (!lead) return;
@@ -113,7 +142,7 @@ export function LeadDrawer({ lead, onClose, onChanged }: { lead: Lead | null; on
                   <Sparkles className="w-4 h-4 text-primary" />
                   {t("leads.suggestion", {
                     stage: t(`stage.${lead.stage_suggestion}`),
-                    value: lead.order_value ? ` — ${f.money(lead.order_value, lead.order_currency ?? "SAR")}` : "",
+                    value: lead.order_value ? ` — ${f.money(lead.order_value, lead.order_currency ?? "USD")}` : "",
                   })}
                 </p>
                 {lead.stage_evidence && <p className="mt-1 text-muted-foreground">“{lead.stage_evidence}”</p>}
@@ -200,6 +229,21 @@ export function LeadDrawer({ lead, onClose, onChanged }: { lead: Lead | null; on
               )}
             </section>
 
+            {conversation && (
+              <div className="sticky bottom-0 mt-3 flex gap-2 bg-background py-2">
+                <Input
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !busy && sendReply()}
+                  placeholder={t("leads.replyPlaceholder")}
+                  aria-label={t("leads.replyPlaceholder")}
+                />
+                <Button size="icon" onClick={sendReply} disabled={!!busy || !reply.trim()} aria-label={t("leads.send")}>
+                  {busy === "send_message" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 rtl:-scale-x-100" />}
+                </Button>
+              </div>
+            )}
+
             <section className="mt-6 mb-2">
               <h4 className="mb-3 text-sm font-semibold text-foreground">{t("leads.conversionLog")}</h4>
               {events.length === 0 ? (
@@ -211,7 +255,7 @@ export function LeadDrawer({ lead, onClose, onChanged }: { lead: Lead | null; on
                       <span className="flex items-center gap-2">
                         <PlatformChip platform={e.platform === "meta" || e.platform === "tiktok" ? e.platform : null} />
                         <span className="text-foreground">{e.event_name}</span>
-                        {e.value ? <span className="text-muted-foreground">{f.money(e.value, e.currency ?? "SAR")}</span> : null}
+                        {e.value ? <span className="text-muted-foreground">{f.money(e.value, e.currency ?? "USD")}</span> : null}
                       </span>
                       <span className={cn("text-xs font-medium", EVENT_STATUS[e.status])}>
                         {t(`leads.eventStatus.${e.status}`)}

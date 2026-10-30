@@ -77,7 +77,7 @@ const Campaigns = () => {
             {[
               [t("campaigns.costPerQualified"), cell(ratio(totals.spend, totals.qualified))],
               [t("campaigns.costPerClient"), cell(ratio(totals.spend, totals.clients))],
-              [t("campaigns.revenue"), f.money(totals.revenue, "SAR")],
+              [t("campaigns.revenue"), f.money(totals.revenue, totals.currency)],
               [t("campaigns.spend"), f.money(totals.spend, "USD")],
             ].map(([label, value]) => (
               <div key={label} className="glass-card p-4">
@@ -134,7 +134,7 @@ const Campaigns = () => {
                         <td className="font-semibold text-success">{f.num(r.clients)}</td>
                         <td>{cell(ratio(r.spend, r.qualified))}</td>
                         <td className="text-primary font-semibold">{cell(ratio(r.spend, r.clients))}</td>
-                        <td>{f.money(r.revenue, "SAR")}</td>
+                        <td>{f.money(r.revenue, totals.currency)}</td>
                         {/* ponytail: ROAS mixes revenue currency with ad-spend currency; add FX when accounts bill in different currencies. */}
                         <td>{r.spend > 0 ? `${(r.revenue / r.spend).toFixed(2)}×` : "—"}</td>
                       </tr>

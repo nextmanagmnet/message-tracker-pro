@@ -112,7 +112,9 @@
       "accept_suggestion": "Suggestion accepted",
       "take_over": "You're handling this chat now",
       "hand_back": "AI is back on this chat"
-    }
+    },
+    "replyPlaceholder": "Reply to this customer on WhatsApp…",
+    "send": "Send"
   },
   "campaigns": {
     "title": "Campaigns",
@@ -227,7 +229,7 @@
     "disconnect": "Disconnect",
     "reconnect": "Reconnect",
     "remove": "Remove",
-    "realMessages": "Real messages",
+    "leadCount": "Real messages",
     "trash": "Trash",
     "lastMessage": "Last message",
     "loadFailed": "Couldn't load WhatsApp numbers",
@@ -235,7 +237,9 @@
       "disconnect": "Number disconnected",
       "remove": "Number removed",
       "reconnect": "Number reconnected"
-    }
+    },
+    "leads": "Leads",
+    "sales": "Sales"
   },
   "qr": {
     "title": "Connect WhatsApp",
@@ -306,7 +310,11 @@
       "warm": "Warm lead",
       "cold": "Cold lead",
       "handoff": "Would hand over to you"
-    }
+    },
+    "edit": "Edit",
+    "catalogHint": "{{count}} product(s). The AI quotes these prices and sends the photos.",
+    "followUpSummary": "Follow-ups on: up to {{max}}, {{hours}}h apart, {{from}}:00–{{to}}:00",
+    "followUpOff": "Automatic follow-ups are off"
   },
   "reports": {
     "title": "Reports",
@@ -333,5 +341,43 @@
       "avgScore": "Avg quality score",
       "conversionsSent": "Conversions sent"
     }
+  },
+  "sales": {
+    "title": "Sales message",
+    "hint": "Send this message to the customer every time they place an order. WOB reads it, counts a sale with the total, and reports the purchase to TikTok/Meta.",
+    "template": "✅ {{marker}} #1234\nTotal: 45 USD\nThank you for your order!",
+    "copy": "Copy template",
+    "copied": "Template copied",
+    "markerLabel": "Key phrase WOB looks for",
+    "saved": "Sales message saved",
+    "tooShort": "Use at least 4 characters",
+    "rule": "Only messages you send that contain the key phrase count. Keep \"Total: <amount> <currency>\" so the order value is reported."
+  },
+  "catalog": {
+    "title": "Catalog",
+    "subtitle": "Your products, prices, photos and videos. The AI uses them to answer and sends the photos in WhatsApp.",
+    "add": "Add product",
+    "edit": "Edit product",
+    "delete": "Delete",
+    "empty": "No products yet",
+    "emptyHint": "Add your products so the AI can quote prices and send photos.",
+    "name": "Product name",
+    "description": "Description",
+    "descriptionHint": "Sizes, colors, materials, delivery notes…",
+    "price": "Price",
+    "inStock": "In stock",
+    "outOfStock": "Out of stock",
+    "photosVideos": "Photos and videos",
+    "upload": "Upload",
+    "removeMedia": "Remove",
+    "mediaHint": "Images or videos up to {{mb}} MB each. The first photo is what the AI sends.",
+    "media": "{{images}} photo(s), {{videos}} video(s)",
+    "saved": "Product saved",
+    "nameRequired": "Enter a product name",
+    "badPrice": "Enter a valid price",
+    "tooBig": "{{name}} is larger than {{mb}} MB",
+    "uploadFailed": "Upload failed",
+    "confirmDelete": "Delete {{name}}?",
+    "cancel": "Cancel"
   }
 }

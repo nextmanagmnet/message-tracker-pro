@@ -2,6 +2,7 @@ import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeClient, serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
 import type { Stage } from "../_shared/funnel.ts";
+import { sendWhatsAppText } from "../_shared/whatsappSend.ts";
 
 // User actions on a lead from the Leads page. Body: { action, leadId, value?, currency? }.
 Deno.serve(async (req) => {
@@ -41,6 +42,16 @@ Deno.serve(async (req) => {
         if (!lead.stage_suggestion) return json({ error: "No suggestion to accept" }, 400);
         const r = await reportStage(supabase, leadId, lead.stage_suggestion as Stage);
         return json({ success: r.changed, stage: r.changed ? lead.stage_suggestion : lead.stage });
+      }
+      case "send_message": {
+        const text = typeof body.text === "string" ? body.text.trim().slice(0, 4000) : "";
+        if (!text) return json({ error: "Message is empty" }, 400);
+        const { data: conv } = await supabase.from("conversations").select("id").eq("lead_id", leadId).maybeSingle();
+        if (!conv) return json({ error: "No conversation yet" }, 404);
+        // Replying yourself pauses the AI on this chat.
+        await supabase.from("conversations").update({ agent_status: "handed_off" }).eq("id", conv.id).eq("agent_status", "ai_active");
+        const ok = await sendWhatsAppText(serviceClient(), conv.id, text, { author: "owner" });
+        return ok ? json({ success: true }) : json({ error: "Couldn't send. Check that WhatsApp is connected." }, 502);
       }
       case "take_over":
         return setAgent("handed_off");

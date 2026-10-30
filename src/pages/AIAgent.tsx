@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Bot, Loader2, Send, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, Bot, ChevronRight, Loader2, Package, Pencil, Send, Trash2 } from "lucide-react";
 import { useAgency } from "@/hooks/useAgency";
 import { cn } from "@/lib/utils";
 import { db, invokeFn } from "@/components/leads/shared";
@@ -42,7 +43,7 @@ const DEFAULTS: Settings = {
 };
 
 type ChatMsg = { role: "lead" | "business"; text: string };
-type Verdict = { reply?: string; is_spam?: boolean; qualification?: "hot" | "warm" | "cold"; handoff?: boolean; reason?: string; language?: string };
+type Verdict = { products?: string[]; reply?: string; is_spam?: boolean; qualification?: "hot" | "warm" | "cold"; handoff?: boolean; reason?: string; language?: string };
 
 const AIAgent = () => {
   const { t } = useTranslation("features");
@@ -50,12 +51,18 @@ const AIAgent = () => {
   const [s, setS] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Once saved, the setup folds into a short summary; "Edit" opens it again.
+  const [editing, setEditing] = useState(true);
+  const [productCount, setProductCount] = useState(0);
 
   useEffect(() => {
     if (!selectedClient) return;
     setLoading(true);
+    db.from("products").select("id", { count: "exact", head: true }).eq("client_id", selectedClient.id)
+      .then(({ count }) => setProductCount(count ?? 0));
     db.from("ai_agent_settings").select("*").eq("client_id", selectedClient.id).maybeSingle().then(({ data }) => {
       const row = (data ?? {}) as Partial<Settings>;
+      setEditing(!data);
       // Keep only editable fields so the upsert never echoes id/timestamps back.
       setS(Object.fromEntries(Object.entries(DEFAULTS).map(([k, v]) => [k, row[k as keyof Settings] ?? v])) as Settings);
       setLoading(false);
@@ -70,8 +77,9 @@ const AIAgent = () => {
     setSaving(true);
     const { error } = await db.from("ai_agent_settings").upsert({ client_id: selectedClient.id, ...s }, { onConflict: "client_id" });
     setSaving(false);
-    if (error) toast.error(t("ai.saveFailed"));
-    else toast.success(t("ai.saved"));
+    if (error) return toast.error(t("ai.saveFailed"));
+    toast.success(t("ai.saved"));
+    setEditing(false);
   };
 
   const num = (k: "follow_up_delay_hours" | "follow_up_max" | "allowed_hours_start" | "allowed_hours_end", min: number, max: number) => (
@@ -100,7 +108,17 @@ const AIAgent = () => {
                   <h2 className="flex items-center gap-2 font-semibold text-foreground"><Bot className="w-5 h-5 text-primary" /> {t("ai.enable")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("ai.enableHint")}</p>
                 </div>
-                <Switch checked={s.enabled} onCheckedChange={(v) => set("enabled", v)} disabled={!canManage} aria-label={t("ai.enable")} />
+                <Switch
+                  checked={s.enabled}
+                  onCheckedChange={async (v) => {
+                    set("enabled", v);
+                    if (editing || !selectedClient) return;
+                    const { error } = await db.from("ai_agent_settings").update({ enabled: v }).eq("client_id", selectedClient.id);
+                    if (error) toast.error(t("ai.saveFailed"));
+                  }}
+                  disabled={!canManage}
+                  aria-label={t("ai.enable")}
+                />
               </div>
               <Alert className="mt-4 border-warning/40 bg-warning/5">
                 <AlertTriangle className="h-4 w-4 text-warning" />
@@ -109,6 +127,37 @@ const AIAgent = () => {
               </Alert>
             </section>
 
+            <Link to="/catalog" className="glass-card flex items-center gap-4 p-5 transition-colors hover:bg-secondary/40">
+              <Package className="h-6 w-6 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground">{t("catalog.title")}</p>
+                <p className="text-sm text-muted-foreground">{t("ai.catalogHint", { count: productCount })}</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground rtl:-scale-x-100" />
+            </Link>
+
+            {!editing ? (
+              <section className="glass-card space-y-3 p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="font-semibold text-foreground">{t("ai.knowledgeTitle")}</h2>
+                  {canManage && (
+                    <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /> {t("ai.edit")}</Button>
+                  )}
+                </div>
+                {(["business_knowledge", "tone", "qualifying_questions", "handoff_rules"] as const).map((k) => (
+                  <div key={k}>
+                    <p className="text-xs text-muted-foreground">{t(`ai.field.${k}`)}</p>
+                    <p className="line-clamp-2 whitespace-pre-wrap text-sm text-foreground">{s[k] || "—"}</p>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  {s.follow_up_enabled
+                    ? t("ai.followUpSummary", { max: s.follow_up_max, hours: s.follow_up_delay_hours, from: s.allowed_hours_start, to: s.allowed_hours_end })
+                    : t("ai.followUpOff")}
+                </p>
+              </section>
+            ) : (
+            <>
             <section className="glass-card space-y-4 p-6">
               <h2 className="font-semibold text-foreground">{t("ai.knowledgeTitle")}</h2>
               {([
@@ -150,6 +199,8 @@ const AIAgent = () => {
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />} {t("common.save")}
                 </Button>
               </div>
+            )}
+            </>
             )}
           </div>
 
@@ -215,6 +266,7 @@ function Playground({ clientId }: { clientId: string }) {
           </span>
           {verdict.qualification && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-primary">{t(`ai.verdict.${verdict.qualification}`)}</span>}
           {verdict.handoff && <span className="rounded-full bg-warning/15 px-2 py-0.5 text-warning">{t("ai.verdict.handoff")}</span>}
+          {verdict.products?.map((n) => <span key={n} className="rounded-full bg-accent/15 px-2 py-0.5 text-accent-foreground">📷 {n}</span>)}
           {verdict.reason && <span className="w-full text-muted-foreground">{verdict.reason}</span>}
         </div>
       )}

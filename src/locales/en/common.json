@@ -16,7 +16,8 @@
     "clients": "Clients",
     "collapse": "Collapse",
     "expand": "Expand",
-    "agencySection": "Agency"
+    "agencySection": "Agency",
+    "catalog": "Catalog"
   },
   "theme": {
     "label": "Theme",

@@ -149,7 +149,7 @@ const Leads = () => {
                     <PlatformChip platform={l.ad_platform} />
                     {l.referral_headline && <span className="truncate text-xs text-primary">{l.referral_headline}</span>}
                     {stage === "client" && l.order_value ? (
-                      <span className="text-xs font-semibold text-success">{f.money(l.order_value, l.order_currency ?? "SAR")}</span>
+                      <span className="text-xs font-semibold text-success">{f.money(l.order_value, l.order_currency ?? "USD")}</span>
                     ) : null}
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">{l.first_message}</p>
@@ -166,7 +166,7 @@ const Leads = () => {
                     <Sparkles className="w-3 h-3" />
                     {t("leads.suggestionChip", {
                       stage: t(`stage.${suggest}`),
-                      value: suggest === "client" && l.order_value ? ` — ${f.money(l.order_value, l.order_currency ?? "SAR")}` : "",
+                      value: suggest === "client" && l.order_value ? ` — ${f.money(l.order_value, l.order_currency ?? "USD")}` : "",
                     })}
                     <span className="font-semibold">· {t("leads.accept")}</span>
                   </button>

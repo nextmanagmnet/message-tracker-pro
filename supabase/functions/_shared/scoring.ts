@@ -114,11 +114,12 @@ export function scoreLead(input: ScoringInput): ScoringResult {
   // A lead is REAL (and therefore worth sending to TikTok) only when the
   // score clears the bar and the content is not obviously junk.
   const isReal = score >= 60 && !emojiOnly && !tooShort && !lowIntent;
-  const status: ScoringResult["status"] = isReal
-    ? "verified"
-    : score < 35
-    ? "trash"
-    : "pending";
+  // Trash only on hard junk signals. A plain "Hello" from a new phone is a new lead, not spam:
+  // the AI analyzer decides later whether the chat becomes real, qualified or not a lead.
+  const hardJunk =
+    emojiOnly || input.clientVelocity10m > 15 || input.senderLeadCount >= 5 || input.duplicateMessageText ||
+    (gap !== null && gap < 2);
+  const status: ScoringResult["status"] = isReal ? "verified" : score < 35 && hardJunk ? "trash" : "pending";
 
   return { score, isReal, status, signals };
 }

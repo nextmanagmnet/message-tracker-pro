@@ -75,7 +75,7 @@ export function useFormat() {
   const locale = i18n.language === "ar" ? "ar-SA" : "en-US";
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   return {
-    money: (v: number | null | undefined, currency = "SAR") =>
+    money: (v: number | null | undefined, currency = "USD") =>
       v === null || v === undefined || !isFinite(v)
         ? "—"
         : new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 2 }).format(v),

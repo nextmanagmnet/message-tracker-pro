@@ -134,4 +134,8 @@ describe("scoreLead", () => {
     });
     expect(result.status).toBe("trash");
   });
+
+  it("keeps a plain greeting from a new phone as a pending lead, not trash", () => {
+    expect(scoreLead({ ...baseInput, message: "Hello" }).status).toBe("pending");
+  });
 });

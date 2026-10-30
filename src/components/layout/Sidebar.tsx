@@ -12,6 +12,7 @@ import {
   Users,
   Building2,
   FileText,
+  Package,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useAgency } from "@/hooks/useAgency";
@@ -23,6 +24,7 @@ const mainItems = [
   { icon: TrendingUp, key: "nav.campaigns", path: "/campaigns" },
   { icon: Plug, key: "nav.connections", path: "/connections" },
   { icon: Bot, key: "nav.aiAgent", path: "/ai-agent" },
+  { icon: Package, key: "nav.catalog", path: "/catalog" },
   { icon: FileText, key: "nav.reports", path: "/reports" },
   { icon: Settings, key: "nav.settings", path: "/settings" },
 ];

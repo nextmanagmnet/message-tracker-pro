@@ -7,7 +7,7 @@ export async function sendWhatsAppText(
   supabase: any,
   conversationId: string,
   text: string,
-  opts: { humanDelay?: boolean } = {},
+  opts: { humanDelay?: boolean; author?: "ai" | "owner" } = {},
 ): Promise<boolean> {
   const { data: conv } = await supabase
     .from("conversations").select("id, client_id, whatsapp_number_id").eq("id", conversationId).maybeSingle();
@@ -32,7 +32,7 @@ export async function sendWhatsAppText(
     conversation_id: conversationId,
     client_id: conv.client_id,
     direction: "out",
-    author: "ai",
+    author: opts.author ?? "ai",
     text,
     external_id: pendingId,
   }).select("id").single();
@@ -57,5 +57,44 @@ export async function sendWhatsAppText(
     await supabase.from("messages").update({ external_id: d.key.id }).eq("id", row.id);
   }
   await supabase.from("conversations").update({ last_outbound_at: now, last_message_at: now }).eq("id", conversationId);
+  return true;
+}
+
+// Sends a product image/video with a caption (AI catalog replies). Evolution lines only.
+export async function sendWhatsAppMedia(
+  supabase: any,
+  conversationId: string,
+  url: string,
+  mediatype: "image" | "video",
+  caption: string,
+): Promise<boolean> {
+  const { data: conv } = await supabase
+    .from("conversations").select("id, client_id, whatsapp_number_id").eq("id", conversationId).maybeSingle();
+  if (!conv) return false;
+  const [{ data: line }, { data: contact }] = await Promise.all([
+    supabase.from("whatsapp_numbers").select("phone_number_id, waba_id").eq("id", conv.whatsapp_number_id).maybeSingle(),
+    supabase.from("conversation_contacts").select("contact_jid").eq("conversation_id", conversationId).maybeSingle(),
+  ]);
+  const base = (Deno.env.get("EVOLUTION_API_URL") || "").replace(/\/+$/, "");
+  const key = Deno.env.get("EVOLUTION_API_KEY") || "";
+  if (!line || line.waba_id !== "evolution" || !contact?.contact_jid || !base || !key) return false;
+
+  const pendingId = `pending:${crypto.randomUUID()}`;
+  const text = `[${mediatype}] ${caption}`;
+  const { data: row } = await supabase.from("messages").insert({
+    conversation_id: conversationId, client_id: conv.client_id, direction: "out", author: "ai", text, external_id: pendingId,
+  }).select("id").single();
+  const res = await fetch(`${base}/message/sendMedia/${line.phone_number_id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: key },
+    body: JSON.stringify({ number: String(contact.contact_jid).split("@")[0], mediatype, media: url, caption }),
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    console.error("Evolution sendMedia failed", res.status, JSON.stringify(d));
+    if (row) await supabase.from("messages").delete().eq("id", row.id);
+    return false;
+  }
+  if (row && d?.key?.id) await supabase.from("messages").update({ external_id: d.key.id }).eq("id", row.id);
   return true;
 }
