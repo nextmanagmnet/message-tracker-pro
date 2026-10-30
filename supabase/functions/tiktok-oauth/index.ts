@@ -83,7 +83,12 @@ serve(async (req) => {
     // Generate OAuth URL for TikTok login
     if (action === 'get-auth-url') {
       const { redirectUri, state } = parsedBody ?? (await req.json());
-      const allowed = ['https://message-tracker-pro.lovable.app/tiktok/callback'];
+      // APP_ORIGINS: comma-separated site origins, e.g. https://wob.vercel.app,https://app.wob.com
+      const appOrigins = (Deno.env.get('APP_ORIGINS') ?? '').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
+      const allowed = [
+        'https://message-tracker-pro.lovable.app/tiktok/callback',
+        ...appOrigins.map((o) => `${o}/tiktok/callback`),
+      ];
       const isPreview = typeof redirectUri === 'string' && /^https:\/\/[a-z0-9-]+\.lovable\.app\/tiktok\/callback$/.test(redirectUri);
       if (!allowed.includes(redirectUri) && !isPreview) {
         return new Response(JSON.stringify({ error: 'Redirect URI not allowed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
