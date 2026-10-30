@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Building2, Plus, MoreVertical, Pencil, Trash2, MessageCircle, DollarSign, TrendingUp } from "lucide-react";
+import { Building2, Plus, MoreVertical, Pencil, Trash2, MessageCircle, DollarSign, TrendingUp, UserPlus } from "lucide-react";
+import { InviteClientDialog } from "@/components/clients/InviteClientDialog";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAgency } from "@/hooks/useAgency";
@@ -43,6 +44,7 @@ export default function ClientsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClientForAction, setSelectedClientForAction] = useState<{ id: string; name: string } | null>(null);
   const [clientName, setClientName] = useState("");
+  const [inviteFor, setInviteFor] = useState<{ id: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -174,6 +176,10 @@ export default function ClientsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setInviteFor({ id: client.id, name: client.name })}>
+                        <UserPlus className="w-4 h-4 me-2" />
+                        {t("invite.menu", { ns: "features" })}
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openEditDialog(client)}>
                         <Pencil className="w-4 h-4 me-2" />
                         {t("common.edit")}
@@ -219,6 +225,8 @@ export default function ClientsPage() {
           ))}
         </div>
       )}
+
+      <InviteClientDialog client={inviteFor} onClose={() => setInviteFor(null)} />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>

@@ -10,7 +10,7 @@ import { MetaSection } from "@/components/connections/MetaSection";
 const Connections = () => {
   const { t } = useTranslation("features");
   const agency = useAgency();
-  const { selectedClient, canManage } = agency;
+  const { selectedClient, canManageClient: canManage } = agency;
   // accountType/isIndividual are added to useAgency by the shell agent.
   const isIndividual = (agency as { isIndividual?: boolean }).isIndividual ?? false;
   const [params, setParams] = useSearchParams();

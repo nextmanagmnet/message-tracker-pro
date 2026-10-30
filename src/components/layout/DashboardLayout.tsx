@@ -37,7 +37,7 @@ function readCollapsed() {
 export const DashboardLayout = ({ children, title, subtitle, actions }: DashboardLayoutProps) => {
   const { t } = useTranslation();
   const { profile, signOut } = useAuth();
-  const { isIndividual } = useAgency();
+  const { isIndividual, isClientUser } = useAgency();
   const [collapsed, setCollapsed] = useState(readCollapsed);
 
   const toggle = () => {
@@ -67,7 +67,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                 <h1 className="text-xl font-bold text-foreground truncate">{title}</h1>
                 {subtitle && <p className="text-sm text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
               </div>
-              {!isIndividual && <ClientSwitcher />}
+              {!isIndividual && !isClientUser && <ClientSwitcher />}
             </div>
 
             <div className="flex items-center gap-2">

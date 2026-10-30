@@ -224,7 +224,8 @@
     "prefDailySummary": "Daily summary report",
     "prefCampaignAlerts": "Campaign performance alerts",
     "prefNumberStatus": "WhatsApp number status changes",
-    "prefFailed": "Couldn't save preference"
+    "prefFailed": "Couldn't save preference",
+    "teamClient": "Your agency manages the team. You only see your own business here."
   },
   "notFound": {
     "title": "404",

@@ -44,7 +44,7 @@ interface SidebarProps {
 export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { isIndividual } = useAgency();
+  const { isIndividual, isClientUser } = useAgency();
   const rtl = i18n.dir() === "rtl";
 
   const renderItem = (item: (typeof mainItems)[number]) => {
@@ -82,9 +82,9 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-          {mainItems.map(renderItem)}
+          {mainItems.filter((i) => !(isClientUser && i.path === "/ai-agent")).map(renderItem)}
 
-          {!isIndividual && (
+          {!isIndividual && !isClientUser && (
             <div className="pt-6">
               {!collapsed && (
                 <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">

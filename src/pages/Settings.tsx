@@ -110,7 +110,7 @@ const Settings = () => {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const { user } = useAuth();
-  const { agency, canManage, isOwner, isIndividual } = useAgency();
+  const { agency, canManage, isOwner, isIndividual, isClientUser } = useAgency();
 
   const [companyName, setCompanyName] = useState("");
   const [savingCompany, setSavingCompany] = useState(false);
@@ -131,7 +131,7 @@ const Settings = () => {
 
   // Team members
   const loadMembers = async () => {
-    if (!agency || isIndividual) return;
+    if (!agency || isIndividual || isClientUser) return;
     setLoadingMembers(true);
     const { data, error } = await supabase.rpc("get_agency_members", { _agency_id: agency.id });
     if (error) toast.error(t("settings.teamLoadFailed"));
@@ -141,7 +141,7 @@ const Settings = () => {
   useEffect(() => {
     loadMembers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agency?.id, isIndividual]);
+  }, [agency?.id, isIndividual, isClientUser]);
 
   // Background jobs
   useEffect(() => {
@@ -278,7 +278,9 @@ const Settings = () => {
         {/* Team (agency accounts only) */}
         <div className="glass-card p-6">
           <SectionHeader icon={Users} title={t("settings.teamTitle")} subtitle={t("settings.teamSubtitle")} />
-          {isIndividual ? (
+          {isClientUser ? (
+            <p className="text-sm text-muted-foreground">{t("settings.teamClient")}</p>
+          ) : isIndividual ? (
             <p className="text-sm text-muted-foreground">{t("settings.teamIndividual")}</p>
           ) : loadingMembers ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />

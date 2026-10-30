@@ -41,6 +41,7 @@ export type Database = {
       agency_members: {
         Row: {
           agency_id: string
+          client_id: string | null
           created_at: string
           id: string
           role: Database["public"]["Enums"]["agency_role"]
@@ -48,6 +49,7 @@ export type Database = {
         }
         Insert: {
           agency_id: string
+          client_id?: string | null
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["agency_role"]
@@ -55,6 +57,7 @@ export type Database = {
         }
         Update: {
           agency_id?: string
+          client_id?: string | null
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["agency_role"]
@@ -66,6 +69,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_members_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -169,6 +179,54 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: true
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          agency_id: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          agency_id: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          agency_id?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_invites_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1114,6 +1172,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_client_invite: { Args: never; Returns: string }
+      auth_user_by_email: {
+        Args: { _email: string }
+        Returns: {
+          id: string
+          last_sign_in_at: string
+        }[]
+      }
       get_agency_members: {
         Args: { _agency_id: string }
         Returns: {
@@ -1134,6 +1200,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_client_user_of: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_can_access_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -1145,7 +1215,7 @@ export type Database = {
     }
     Enums: {
       account_type: "individual" | "agency"
-      agency_role: "owner" | "admin" | "viewer"
+      agency_role: "owner" | "admin" | "viewer" | "client"
       lead_stage: "new" | "real" | "qualified" | "client" | "not_lead"
       lead_status: "verified" | "pending" | "trash"
       whatsapp_status: "connected" | "disconnected" | "pending"
@@ -1277,7 +1347,7 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["individual", "agency"],
-      agency_role: ["owner", "admin", "viewer"],
+      agency_role: ["owner", "admin", "viewer", "client"],
       lead_stage: ["new", "real", "qualified", "client", "not_lead"],
       lead_status: ["verified", "pending", "trash"],
       whatsapp_status: ["connected", "disconnected", "pending"],

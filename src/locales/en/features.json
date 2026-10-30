@@ -424,5 +424,27 @@
     "useThis": "Use this one",
     "authorizedAds": "Ad accounts shared with WOB by this login: {{count}}",
     "diagnoseHint": "If your Business Center is not listed, log in with a TikTok user who is an admin or Finance Manager of it (Disconnect, then Connect again)."
+  },
+  "invite": {
+    "menu": "Invite client login",
+    "dialogTitle": "Client login for {{name}}",
+    "dialogHint": "Give this client their own login. They see only their own leads, chats, campaigns and connections, never your other clients.",
+    "email": "Client email",
+    "create": "Create invite",
+    "ready": "Invite ready. Send it to your client:",
+    "copy": "Copy link",
+    "whatsapp": "Send on WhatsApp",
+    "oneTime": "The link works once. Anyone who opens it can set the password for this client.",
+    "message": "Hi! Here is your WOB login for {{name}}. Open this link and choose your password: {{link}}",
+    "active": "Active logins",
+    "pending": "Waiting to accept",
+    "revoke": "Cancel invite",
+    "title": "Choose your password",
+    "hint": "Welcome to WOB. Set a password for {{email}} to finish.",
+    "password": "Password",
+    "confirm": "Confirm password",
+    "save": "Save and continue",
+    "tooShort": "Use at least 8 characters",
+    "mismatch": "The passwords do not match"
   }
 }

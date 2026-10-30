@@ -21,7 +21,8 @@ interface AgencyMember {
   id: string;
   user_id: string;
   agency_id: string;
-  role: "owner" | "admin" | "viewer";
+  role: "owner" | "admin" | "viewer" | "client";
+  client_id?: string | null;
 }
 
 export interface Client {
@@ -43,6 +44,10 @@ interface AgencyContextType {
   isOwner: boolean;
   isAdmin: boolean;
   canManage: boolean;
+  /** A login that belongs to one client (invited by the agency), not agency staff. */
+  isClientUser: boolean;
+  /** Staff with edit rights, or the client user for their own client. */
+  canManageClient: boolean;
   refreshClients: () => Promise<void>;
   createClient: (name: string) => Promise<CreateClientResult>;
   updateClient: (clientId: string, name: string) => Promise<boolean>;
@@ -62,6 +67,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const isOwner = membership?.role === "owner";
   const isAdmin = membership?.role === "admin";
   const canManage = isOwner || isAdmin;
+  const isClientUser = membership?.role === "client";
+  const canManageClient = canManage || isClientUser;
   // Rows created before account types existed are agencies.
   const accountType: AccountType = agency?.account_type === "individual" ? "individual" : "agency";
   const isIndividual = accountType === "individual";
@@ -78,7 +85,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const fetchAgencyData = async () => {
+  const fetchAgencyData = async (retried = false): Promise<void> => {
     if (!user) return;
 
     try {
@@ -103,6 +110,11 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
       }
 
       if (!membershipData) {
+        // A client the agency invited has no membership until their invite is accepted.
+        if (!retried) {
+          const { data: acceptedClient } = await supabase.rpc("accept_client_invite");
+          if (acceptedClient) return fetchAgencyData(true);
+        }
         console.log("No agency membership found");
         setLoading(false);
         return;
@@ -235,6 +247,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
         isOwner,
         isAdmin,
         canManage,
+        isClientUser,
+        canManageClient,
         refreshClients,
         createClient,
         updateClient,

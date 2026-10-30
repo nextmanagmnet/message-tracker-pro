@@ -23,7 +23,7 @@ const MAX_MB = 16; // WhatsApp's media limit
 const Catalog = () => {
   const { t } = useTranslation("features");
   const f = useFormat();
-  const { selectedClient, canManage } = useAgency();
+  const { selectedClient, canManageClient: canManage } = useAgency();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);

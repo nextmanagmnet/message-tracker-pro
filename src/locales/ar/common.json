@@ -228,7 +228,8 @@
     "prefDailySummary": "تقرير ملخص يومي",
     "prefCampaignAlerts": "تنبيهات أداء الحملات",
     "prefNumberStatus": "تغيّر حالة رقم واتساب",
-    "prefFailed": "تعذّر حفظ التفضيل"
+    "prefFailed": "تعذّر حفظ التفضيل",
+    "teamClient": "وكالتك تدير الفريق. هنا ترى نشاطك التجاري فقط."
   },
   "notFound": {
     "title": "404",

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AgencyProvider, useAgency } from "@/hooks/useAgency";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SetPasswordGate } from "@/components/SetPasswordGate";
 import Auth from "./pages/Auth";
 
 const Index = lazy(() => import("./pages/Index"));
@@ -42,11 +43,19 @@ const Home = () => {
   return user ? <Index /> : <Landing />;
 };
 
+// The AI agent's setup is for the agency/owner; a client's own login doesn't get it.
+const StaffOnly = ({ children }: { children: ReactNode }) => {
+  const { loading, isClientUser } = useAgency();
+  if (loading) return <PageFallback />;
+  if (isClientUser) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 // Clients and the cross-client overview only exist for agency accounts.
 const AgencyOnly = ({ children }: { children: ReactNode }) => {
-  const { loading, isIndividual } = useAgency();
+  const { loading, isIndividual, isClientUser } = useAgency();
   if (loading) return <PageFallback />;
-  if (isIndividual) return <Navigate to="/" replace />;
+  if (isIndividual || isClientUser) return <Navigate to="/" replace />;
   return <P>{children}</P>;
 };
 
@@ -59,6 +68,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Suspense fallback={<PageFallback />}>
+              <SetPasswordGate>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/" element={<Home />} />
@@ -66,7 +76,7 @@ const App = () => (
                 <Route path="/leads" element={<P><Leads /></P>} />
                 <Route path="/campaigns" element={<P><Campaigns /></P>} />
                 <Route path="/connections" element={<P><Connections /></P>} />
-                <Route path="/ai-agent" element={<P><AIAgent /></P>} />
+                <Route path="/ai-agent" element={<P><StaffOnly><AIAgent /></StaffOnly></P>} />
                 <Route path="/catalog" element={<P><Catalog /></P>} />
                 <Route path="/reports" element={<P><Reports /></P>} />
                 <Route path="/settings" element={<P><Settings /></P>} />
@@ -83,6 +93,7 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </SetPasswordGate>
             </Suspense>
           </BrowserRouter>
         </TooltipProvider>
