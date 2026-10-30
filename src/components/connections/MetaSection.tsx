@@ -1,112 +1,108 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Database, ExternalLink, Loader2, Unplug } from "lucide-react";
+import { Loader2, Unplug, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { db, invokeFn, isLimitError } from "@/components/leads/shared";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { invokeFn, isLimitError } from "@/components/leads/shared";
 import { ConnectionCard } from "./ConnectionCard";
-import { beginOAuth, META_KEY } from "./oauth";
 
-type MetaAccount = {
-  id: string;
-  ad_account_id: string;
-  ad_account_name: string | null;
-  dataset_id: string | null;
-  dataset_name: string | null;
+type Status = {
+  connected: boolean;
+  pixelId: string | null;
+  pixelName: string | null;
+  adAccountId: string | null;
+  adAccountName: string | null;
+  hasAdsToken: boolean;
 };
-type Option = { id: string; name: string };
 
-export function MetaSection({
-  clientId,
-  canManage,
-  autoStart,
-  openDatasetPicker,
-}: {
-  clientId: string;
-  canManage: boolean;
-  autoStart: boolean;
-  openDatasetPicker: boolean;
-}) {
+const mask = (s: string) => (s.length <= 4 ? s : `•••• ${s.slice(-4)}`);
+
+export function MetaSection({ clientId, canManage }: { clientId: string; canManage: boolean }) {
   const { t } = useTranslation("features");
-  const [account, setAccount] = useState<MetaAccount | null | undefined>(undefined);
-  const [connecting, setConnecting] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [datasets, setDatasets] = useState<Option[] | null>(null);
+  const [status, setStatus] = useState<Status | null>(null);
+  const [pixelId, setPixelId] = useState("");
+  const [capiToken, setCapiToken] = useState("");
+  const [adAccountId, setAdAccountId] = useState("");
+  const [adsToken, setAdsToken] = useState("");
+  const [busy, setBusy] = useState<"pixel" | "ads" | null>(null);
 
   const load = useCallback(async () => {
-    const { data, error } = await db.from("meta_accounts")
-      .select("id, ad_account_id, ad_account_name, dataset_id, dataset_name")
-      .eq("client_id", clientId).limit(1).maybeSingle();
-    if (error) console.error("meta_accounts load failed", error);
-    setAccount((data as MetaAccount) ?? null);
+    try {
+      setStatus(await invokeFn<Status>("meta-connect", { action: "status", clientId }));
+    } catch (e) {
+      console.error("meta status failed", e);
+      setStatus({ connected: false, pixelId: null, pixelName: null, adAccountId: null, adAccountName: null, hasAdsToken: false });
+    }
   }, [clientId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const connect = useCallback(async () => {
-    setConnecting(true);
+  const fail = (e: unknown) => toast.error(isLimitError(e) ? t("limits.meta") : e instanceof Error ? e.message : t("common.error"));
+
+  const savePixel = async () => {
+    if (!pixelId.trim() || !capiToken.trim()) return toast.error(t("connections.meta.pixelRequired"));
+    setBusy("pixel");
     try {
-      const state = beginOAuth(META_KEY, clientId);
-      const d = await invokeFn<{ authUrl?: string }>("meta-oauth", {
-        action: "get-auth-url",
-        redirectUri: `${window.location.origin}/meta/callback`,
-        state,
+      await invokeFn("meta-connect", { action: "save-pixel", clientId, pixelId, capiToken });
+      toast.success(t("connections.meta.pixelSaved"));
+      setPixelId("");
+      setCapiToken("");
+      load();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveAds = async () => {
+    if (!adAccountId.trim() || !adsToken.trim()) return toast.error(t("connections.meta.adsRequired"));
+    setBusy("ads");
+    try {
+      await invokeFn("meta-connect", { action: "save-ads", clientId, adAccountId, adsToken });
+      toast.success(t("connections.meta.adsSaved"));
+      setAdAccountId("");
+      setAdsToken("");
+      load();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const testEvent = async () => {
+    const code = window.prompt(t("connections.meta.testPrompt"));
+    if (code === null) return;
+    try {
+      const d = await invokeFn<{ accepted?: boolean; message?: string | null }>("meta-connect", {
+        action: "test-event",
         clientId,
+        testEventCode: code,
       });
-      if (!d.authUrl) throw new Error(t("connections.authUrlMissing"));
-      window.location.href = d.authUrl;
+      if (d.accepted) toast.success(t("connections.meta.testAccepted"));
+      else toast.error(t("connections.meta.testRejected", { message: d.message ?? "" }));
     } catch (e) {
-      toast.error(isLimitError(e) ? t("limits.meta") : e instanceof Error ? e.message : t("common.error"));
-      setConnecting(false);
-    }
-  }, [clientId, t]);
-
-  const openPicker = useCallback(async () => {
-    setPickerOpen(true);
-    setDatasets(null);
-    try {
-      const d = await invokeFn<{ datasets?: Option[] }>("meta-oauth", { action: "list-datasets", clientId });
-      setDatasets(d.datasets ?? []);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
-      setPickerOpen(false);
-    }
-  }, [clientId, t]);
-
-  useEffect(() => {
-    if (autoStart && canManage) connect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart]);
-
-  useEffect(() => {
-    if (openDatasetPicker && account) openPicker();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openDatasetPicker, account?.id]);
-
-  const selectDataset = async (ds: Option) => {
-    try {
-      await invokeFn("meta-oauth", { action: "select-dataset", clientId, datasetId: ds.id, datasetName: ds.name });
-      toast.success(t("connections.meta.datasetSaved"));
-      setPickerOpen(false);
-      load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
+      fail(e);
     }
   };
 
-  const disconnect = async () => {
-    if (!window.confirm(t("connections.meta.confirmDisconnect"))) return;
+  const disconnect = async (part: "ads" | "all") => {
+    if (!window.confirm(t(part === "all" ? "connections.meta.confirmDisconnect" : "connections.meta.confirmAdsDisconnect"))) return;
     try {
-      await invokeFn("meta-oauth", { action: "disconnect", clientId });
-      toast.success(t("connections.meta.disconnected"));
+      await invokeFn("meta-connect", { action: "disconnect", clientId, part });
+      toast.success(t(part === "all" ? "connections.meta.disconnected" : "connections.meta.adsDisconnected"));
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
+      fail(e);
     }
   };
+
+  const connected = status === null ? null : status.connected;
 
   return (
     <ConnectionCard
@@ -114,69 +110,95 @@ export function MetaSection({
       accent="bg-gradient-to-br from-chart-4 to-chart-6"
       title={t("connections.meta.title")}
       description={t("connections.meta.description")}
-      connected={account === undefined ? null : !!account}
+      connected={connected}
       actions={
-        canManage &&
-        (account ? (
+        status?.connected &&
+        canManage && (
           <>
-            <Button variant="outline" size="sm" onClick={openPicker}>
-              <Database className="w-4 h-4" /> {t("connections.meta.chooseDataset")}
+            <Button variant="outline" size="sm" onClick={testEvent}>
+              <Zap className="w-4 h-4" /> {t("connections.meta.testEvent")}
             </Button>
-            <Button variant="ghost" size="sm" onClick={disconnect}>
+            <Button variant="ghost" size="sm" onClick={() => disconnect("all")}>
               <Unplug className="w-4 h-4" /> {t("whatsapp.disconnect")}
             </Button>
           </>
-        ) : (
-          <Button variant="glow" size="sm" onClick={connect} disabled={connecting}>
-            {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-            {t("connections.connect")}
-          </Button>
-        ))
+        )
       }
     >
-      {account && (
-        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+      {status?.connected && status.pixelId && (
+        <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div className="rounded-lg bg-secondary/50 px-3 py-2">
-            <dt className="text-xs text-muted-foreground">{t("connections.meta.adAccount")}</dt>
-            <dd className="text-foreground">{account.ad_account_name ?? account.ad_account_id}</dd>
+            <dt className="text-xs text-muted-foreground">{t("connections.meta.pixel")}</dt>
+            <dd className="text-foreground">
+              {status.pixelName ?? "—"} <span className="text-xs text-muted-foreground" dir="ltr">{mask(status.pixelId)}</span>
+            </dd>
           </div>
           <div className="rounded-lg bg-secondary/50 px-3 py-2">
-            <dt className="text-xs text-muted-foreground">{t("connections.meta.dataset")}</dt>
-            <dd className={account.dataset_id ? "text-foreground" : "text-warning"}>
-              {account.dataset_name ?? account.dataset_id ?? t("connections.meta.noDataset")}
-            </dd>
+            <dt className="text-xs text-muted-foreground">{t("connections.meta.capiToken")}</dt>
+            <dd className="text-success">{t("connections.meta.tokenSaved")}</dd>
           </div>
         </dl>
       )}
 
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("connections.meta.chooseDataset")}</DialogTitle>
-            <DialogDescription>{t("connections.meta.datasetHint")}</DialogDescription>
-          </DialogHeader>
-          {datasets === null ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-          ) : datasets.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">{t("connections.meta.noDatasets")}</p>
-          ) : (
-            <ul className="max-h-72 space-y-2 overflow-y-auto">
-              {datasets.map((ds) => (
-                <li key={ds.id}>
-                  <button
-                    type="button"
-                    onClick={() => selectDataset(ds)}
-                    className="w-full rounded-lg border border-border p-3 text-start hover:border-primary/50 hover:bg-secondary/50"
-                  >
-                    <p className="font-medium text-foreground">{ds.name}</p>
-                    <p className="text-xs text-muted-foreground" dir="ltr">{ds.id}</p>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </DialogContent>
-      </Dialog>
+      {canManage && (
+        <div className="space-y-3">
+          <ol className="list-decimal space-y-1 ps-5 text-xs text-muted-foreground">
+            <li>{t("connections.meta.help.step1")}</li>
+            <li>{t("connections.meta.help.step2")}</li>
+            <li>{t("connections.meta.help.step3")}</li>
+          </ol>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="meta-pixel">{t("connections.meta.pixelId")}</Label>
+              <Input id="meta-pixel" dir="ltr" inputMode="numeric" value={pixelId} onChange={(e) => setPixelId(e.target.value)} placeholder="1234567890123456" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="meta-capi">{t("connections.meta.capiToken")}</Label>
+              <Input id="meta-capi" dir="ltr" type="password" autoComplete="off" value={capiToken} onChange={(e) => setCapiToken(e.target.value)} placeholder="EAA…" />
+            </div>
+          </div>
+          <Button onClick={savePixel} disabled={busy === "pixel"}>
+            {busy === "pixel" && <Loader2 className="w-4 h-4 animate-spin" />}
+            {status?.connected ? t("connections.meta.updatePixel") : t("connections.meta.savePixel")}
+          </Button>
+        </div>
+      )}
+
+      <details className="mt-5 rounded-lg border border-border p-3" open={status?.hasAdsToken || undefined}>
+        <summary className="cursor-pointer text-sm font-medium text-foreground">{t("connections.meta.adsTitle")}</summary>
+        <p className="mt-2 text-xs text-muted-foreground">{t("connections.meta.adsHint")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("connections.meta.adsHelp")}</p>
+        {status?.hasAdsToken && (
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2 text-sm">
+            <span className="text-foreground">
+              {t("connections.meta.adsOn", { name: status.adAccountName ?? (status.adAccountId ? mask(status.adAccountId) : "") })}
+            </span>
+            {canManage && (
+              <Button variant="ghost" size="sm" onClick={() => disconnect("ads")}>
+                <Unplug className="w-4 h-4" /> {t("connections.meta.adsDisconnect")}
+              </Button>
+            )}
+          </div>
+        )}
+        {canManage && (
+          <div className="mt-3 space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="meta-ad-account">{t("connections.meta.adAccountId")}</Label>
+                <Input id="meta-ad-account" dir="ltr" value={adAccountId} onChange={(e) => setAdAccountId(e.target.value)} placeholder="act_1234567890" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="meta-ads-token">{t("connections.meta.adsToken")}</Label>
+                <Input id="meta-ads-token" dir="ltr" type="password" autoComplete="off" value={adsToken} onChange={(e) => setAdsToken(e.target.value)} placeholder="EAA…" />
+              </div>
+            </div>
+            <Button variant="outline" onClick={saveAds} disabled={busy === "ads"}>
+              {busy === "ads" && <Loader2 className="w-4 h-4 animate-spin" />}
+              {t("connections.meta.saveAds")}
+            </Button>
+          </div>
+        )}
+      </details>
     </ConnectionCard>
   );
 }

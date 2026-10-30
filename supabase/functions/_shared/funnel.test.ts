@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFbc,
   buildMetaPayload,
   buildTikTokPayload,
   canAdvance,
@@ -7,6 +8,7 @@ import {
   eventNameFor,
   extractCampaignCode,
   extractClidFromText,
+  extractFbclid,
   isFollowUpEligible,
   isOptOut,
   parseAdContext,
@@ -39,12 +41,29 @@ describe("event mapping", () => {
   });
   it("adds value only when present", () => {
     const base = { eventName: "Purchase", eventId: "x", eventTime: 1, clickId: "c", phoneHash: "h" };
-    expect(buildMetaPayload(base).data[0]).not.toHaveProperty("custom_data");
-    expect(buildMetaPayload({ ...base, value: 50, currency: "SAR" }).data[0].custom_data).toEqual({ value: 50, currency: "SAR" });
+    const { clickId: _clickId, ...metaBase } = base;
+    expect(buildMetaPayload(metaBase).data[0]).not.toHaveProperty("custom_data");
+    expect(buildMetaPayload({ ...metaBase, value: 50, currency: "SAR" }).data[0].custom_data).toEqual({ value: 50, currency: "SAR" });
     const tt = buildTikTokPayload("PIX", { ...base, value: 10 });
     expect(tt.event_source_id).toBe("PIX");
     expect(tt.data[0].properties).toMatchObject({ value: 10, currency: "USD" });
-    expect(buildMetaPayload(base).data[0]).toMatchObject({ action_source: "business_messaging", messaging_channel: "whatsapp" });
+  });
+  it("sends Meta events to a pixel as chat events matched on phone only", () => {
+    const e = buildMetaPayload({ eventName: "Lead", eventId: "L:q:meta", eventTime: 100, phoneHash: "h" }).data[0];
+    expect(e).toMatchObject({ action_source: "chat", user_data: { ph: ["h"] } });
+    expect(e).not.toHaveProperty("messaging_channel");
+    expect(e.user_data).not.toHaveProperty("ctwa_clid");
+    expect(e.user_data).not.toHaveProperty("fbc");
+    expect(buildMetaPayload({ eventName: "Lead", eventId: "e", eventTime: 1, phoneHash: "h", actionSource: "system_generated" }).data[0].action_source)
+      .toBe("system_generated");
+  });
+  it("adds fbc when the chat carried an fbclid", () => {
+    expect(buildFbc("ABCdef123456", 1700000000000)).toBe("fb.1.1700000000000.ABCdef123456");
+    const e = buildMetaPayload({ eventName: "Purchase", eventId: "e", eventTime: 1700000500, phoneHash: "h", fbclid: "ABCdef123456", fbclidAtMs: 1700000000000 }).data[0];
+    expect(e.user_data).toMatchObject({ fbc: "fb.1.1700000000000.ABCdef123456", ph: ["h"] });
+    // no click time recorded: falls back to the event time
+    const f = buildMetaPayload({ eventName: "Lead", eventId: "e", eventTime: 42, phoneHash: "h", fbclid: "ABCdef123456" }).data[0];
+    expect(f.user_data).toMatchObject({ fbc: "fb.1.42000.ABCdef123456" });
   });
 });
 
@@ -52,6 +71,11 @@ describe("text attribution", () => {
   it("finds click id and campaign code", () => {
     expect(extractClidFromText("Hi I want this ttclid=ABC123xyz")).toBe("ABC123xyz");
     expect(extractClidFromText("hello")).toBeNull();
+    expect(extractClidFromText("clid=ABCDEF1")).toBe("ABCDEF1");
+    // a Meta fbclid must not be mistaken for a TikTok click id
+    expect(extractClidFromText("hi fbclid=IwAR0abcdefghij")).toBeNull();
+    expect(extractFbclid("hi fbclid=IwAR0abcdefghij")).toBe("IwAR0abcdefghij");
+    expect(extractFbclid("hi ttclid=ABC123xyz")).toBeNull();
     expect(extractCampaignCode("مرحبا cid=summer24")).toBe("summer24");
     expect(extractCampaignCode("no code")).toBeNull();
   });

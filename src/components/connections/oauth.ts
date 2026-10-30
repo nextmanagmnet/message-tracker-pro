@@ -1,7 +1,6 @@
 export type PendingOAuth = { clientId: string; state: string; createdAt: number };
 
 export const TIKTOK_KEY = "tiktok_oauth_pending";
-export const META_KEY = "meta_oauth_pending";
 
 export function beginOAuth(key: string, clientId: string): string {
   const state = crypto.randomUUID();

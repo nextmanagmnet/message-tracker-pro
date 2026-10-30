@@ -134,7 +134,7 @@ const Onboarding = () => {
                     {t("onboarding.connectTiktok")}
                     {done.tiktok && <Check className="h-4 w-4" />}
                   </Button>
-                  <Button variant="outline" disabled={!selectedClient} onClick={() => navigate("/connections?connect=meta")}>
+                  <Button variant="outline" disabled={!selectedClient} onClick={() => navigate("/connections")}>
                     {t("onboarding.connectMeta")}
                     {done.meta && <Check className="h-4 w-4" />}
                   </Button>

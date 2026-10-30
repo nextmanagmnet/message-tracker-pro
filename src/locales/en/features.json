@@ -142,13 +142,14 @@
     },
     "help": {
       "title": "How WOB knows which ad a chat came from",
-      "meta": "Click-to-WhatsApp ads attach the ad automatically. Nothing to set up.",
+      "meta": "Click-to-WhatsApp ads attach the ad automatically. For ads that open your website first, have your page add fbclid=<click id> from the page address to the prefilled message.",
       "tiktok": "TikTok doesn't pass the click to WhatsApp, so the ad's WhatsApp link must prefill a message that contains the click ID. Use the link below as your ad's destination.",
       "noNumber": "Connect a WhatsApp number first to get your ad link.",
       "defaultText": "Hi, I'd like to know more",
       "textLabel": "Prefilled message",
       "verify": "After launching, send yourself one test click and check the lead shows TikTok as its source. Don't remove the ttclid part of the message."
-    }
+    },
+    "metaSpendHint": "Meta campaign names and spend need the optional read-only token. Add it in Connections → Meta to see cost per qualified lead and per client for Meta."
   },
   "connections": {
     "title": "Connections",
@@ -181,22 +182,44 @@
     },
     "meta": {
       "title": "Meta Ads (Facebook & Instagram)",
-      "description": "Tracks Click-to-WhatsApp ads and sends qualified leads and clients back to Meta.",
-      "adAccount": "Ad account",
-      "dataset": "Dataset (pixel)",
-      "noDataset": "Not chosen yet",
-      "chooseDataset": "Choose dataset",
-      "datasetHint": "Pick the dataset Meta should receive lead and purchase events on.",
-      "noDatasets": "No datasets found on this ad account. Create one in Meta Events Manager, then try again.",
-      "datasetSaved": "Dataset saved",
-      "confirmDisconnect": "Disconnect this Meta ad account? WOB will stop sending events to Meta.",
+      "description": "Sends qualified leads and clients to your Meta pixel so Meta optimizes for buyers. No Facebook login needed.",
+      "pixel": "Pixel",
+      "pixelId": "Pixel (dataset) ID",
+      "capiToken": "Conversions API access token",
+      "tokenSaved": "Token saved",
+      "help": {
+        "step1": "Open Meta Events Manager and choose your pixel.",
+        "step2": "Go to Settings → Conversions API → Generate access token.",
+        "step3": "Paste the Pixel ID and the token here. The token is stored securely and is never shown again."
+      },
+      "savePixel": "Save pixel",
+      "updatePixel": "Update pixel",
+      "pixelRequired": "Enter the pixel ID and the access token",
+      "pixelSaved": "Pixel saved",
+      "testEvent": "Send test event",
+      "testPrompt": "Paste the Test Event Code from Meta Events Manager (Test events tab). Leave empty to send a live event.",
+      "testAccepted": "Meta accepted the test event",
+      "testRejected": "Meta rejected the event: {{message}}",
+      "adsTitle": "Campaign names and spend (optional)",
+      "adsHint": "Add a read-only token to see Meta campaign names, spend, and cost per qualified lead and per client. Without it, events are still sent to your pixel but Meta spend stays blank.",
+      "adsHelp": "Create the token in Meta Business Settings → System users (permission: ads_read), or use any token that can read the ad account.",
+      "adAccountId": "Ad account ID",
+      "adsToken": "Read-only access token",
+      "saveAds": "Save ad account",
+      "adsRequired": "Enter the ad account ID and the token",
+      "adsSaved": "Ad account connected",
+      "adsOn": "Spend sync on: {{name}}",
+      "adsDisconnect": "Remove ad account",
+      "confirmAdsDisconnect": "Remove the ad account? Campaign names and spend will stop updating.",
+      "adsDisconnected": "Ad account removed",
+      "confirmDisconnect": "Disconnect Meta? WOB will stop sending events to your pixel.",
       "disconnected": "Meta disconnected"
     }
   },
   "limits": {
     "whatsapp": "The Individual plan includes one WhatsApp number.",
     "tiktok": "The Individual plan includes one TikTok ad account.",
-    "meta": "The Individual plan includes one Meta ad account."
+    "meta": "The Individual plan includes one Meta connection."
   },
   "whatsapp": {
     "connected": "Connected",
@@ -229,16 +252,13 @@
   },
   "callback": {
     "tiktokTitle": "Connecting TikTok…",
-    "metaTitle": "Connecting Meta…",
     "working": "Finishing authorization and saving your ad account.",
     "cancelled": "Authorization was cancelled",
     "noPending": "No pending connection found. Please try connecting again.",
     "stateMismatch": "Security check failed. Please try connecting again.",
     "noAdAccounts": "No ad account was linked. Please try again.",
     "failed": "Couldn't complete the connection",
-    "tiktokConnected": "TikTok connected: {{count}} ad account(s)",
-    "metaConnected": "Meta ad account connected. Now choose a dataset.",
-    "pickAdAccount": "Choose an ad account"
+    "tiktokConnected": "TikTok connected: {{count}} ad account(s)"
   },
   "ai": {
     "title": "AI Agent",

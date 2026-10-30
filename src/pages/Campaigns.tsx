@@ -87,6 +87,20 @@ const Campaigns = () => {
             ))}
           </div>
 
+          {platform !== "tiktok" &&
+            rows.some((r) => r.platform === "meta") &&
+            !rows.some((r) => r.platform === "meta" && r.spend > 0) && (
+              <p className="mb-6 flex items-start gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>
+                  {t("campaigns.metaSpendHint")}{" "}
+                  <button type="button" className="text-primary underline" onClick={() => navigate("/connections")}>
+                    {t("campaigns.goConnections")}
+                  </button>
+                </span>
+              </p>
+            )}
+
           {visible.length === 0 ? (
             <div className="glass-card wob-mesh-card p-10 text-center">
               <p className="text-foreground font-medium">{t("campaigns.empty")}</p>

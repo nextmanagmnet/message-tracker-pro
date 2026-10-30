@@ -130,11 +130,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---- Meta ad accounts: campaign-level insights for the same window
+  // ---- Meta ad accounts: campaign-level insights for the same window.
+  // Only clients who pasted the optional read-only token + ad account id; others are skipped.
   let metaQuery = supabase
     .from("meta_accounts")
-    .select("id, client_id, ad_account_id, access_token")
-    .neq("ad_account_id", "pending");
+    .select("id, client_id, ad_account_id, ads_token")
+    .not("ads_token", "is", null)
+    .not("ad_account_id", "is", null);
   if (onlyClientId) metaQuery = metaQuery.eq("client_id", onlyClientId);
   const { data: metaAccounts } = await metaQuery;
 
@@ -145,9 +147,9 @@ Deno.serve(async (req) => {
         fields: "campaign_id,campaign_name,spend,clicks,impressions",
         time_range: JSON.stringify({ since: startDate, until: endDate }),
         limit: "500",
-        access_token: account.access_token,
+        access_token: account.ads_token,
       });
-      const res = await fetch(`https://graph.facebook.com/v21.0/${account.ad_account_id}/insights?${params}`);
+      const res = await fetch(`https://graph.facebook.com/v21.0/act_${account.ad_account_id}/insights?${params}`);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error?.message ?? `Meta error ${res.status}`);
 

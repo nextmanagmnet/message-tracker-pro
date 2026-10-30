@@ -56,14 +56,36 @@ export function buildTikTokPayload(pixelCode: string, e: EventInput) {
   };
 }
 
-export function buildMetaPayload(e: EventInput) {
+export interface MetaEventInput {
+  eventName: string;
+  eventId: string;
+  eventTime: number; // unix seconds
+  phoneHash: string; // sha256 of digits incl. country code (Meta's ph format)
+  value?: number | null;
+  currency?: string | null;
+  fbclid?: string | null;
+  fbclidAtMs?: number | null; // when the click was seen; defaults to eventTime
+  actionSource?: string;
+}
+
+// Meta wants fbc as fb.<subdomainIndex>.<clickTimeMs>.<fbclid>.
+export function buildFbc(fbclid: string, clickedAtMs: number): string {
+  return `fb.1.${Math.round(clickedAtMs)}.${fbclid}`;
+}
+
+// Events go to the client's pixel through the Conversions API. ctwa_clid and
+// messaging_channel are deliberately absent: they only work for WhatsApp Business
+// Account-linked datasets, which QR-connected numbers don't have. Matching is the
+// hashed phone, plus fbc when the first message carried an fbclid.
+export function buildMetaPayload(e: MetaEventInput) {
+  const userData: Record<string, unknown> = { ph: [e.phoneHash] };
+  if (e.fbclid) userData.fbc = buildFbc(e.fbclid, e.fbclidAtMs ?? e.eventTime * 1000);
   const event: Record<string, unknown> = {
     event_name: e.eventName,
     event_time: e.eventTime,
     event_id: e.eventId,
-    action_source: "business_messaging",
-    messaging_channel: "whatsapp",
-    user_data: { ctwa_clid: e.clickId, ph: [e.phoneHash] },
+    action_source: e.actionSource ?? "chat",
+    user_data: userData,
   };
   if (e.value != null) event.custom_data = { value: e.value, currency: e.currency ?? "USD" };
   return { data: [event] };
@@ -71,10 +93,17 @@ export function buildMetaPayload(e: EventInput) {
 
 // ---- message-text attribution (TikTok has no referral object) ----
 export function extractClidFromText(message: string): string | null {
-  const m = message.match(/(?:ttclid|ctwa_clid|clid)[=:]?\s*([a-zA-Z0-9_.-]{6,})/i);
+  // (?<!fb) keeps "fbclid=..." (Meta) from being read as a TikTok click id.
+  const m = message.match(/(?:ttclid|ctwa_clid|(?<!fb)clid)[=:]?\s*([a-zA-Z0-9_.-]{6,})/i);
   if (m) return m[1];
   const urlMatch = message.match(/[?&]tt?clid=([^&\s]+)/i);
   return urlMatch ? urlMatch[1] : null;
+}
+
+// Website-click Meta ads: the landing page puts the fbclid in the prefilled WhatsApp text.
+export function extractFbclid(message: string): string | null {
+  const m = message.match(/fbclid[=:]\s*([A-Za-z0-9_-]{8,})/i);
+  return m ? m[1] : null;
 }
 
 export function extractCampaignCode(message: string): string | null {

@@ -9,11 +9,28 @@ import {
 } from "./funnel.ts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
-const LEAD_COLS = "id, client_id, stage, ad_platform, ttclid, ctwa_clid, sender_phone_hash, order_value, order_currency";
+const LEAD_COLS =
+  "id, client_id, stage, ad_platform, ttclid, ctwa_clid, fbclid, message_received_at, sender_phone_hash, order_value, order_currency";
+
+// "chat" is accurate for WhatsApp conversations and needs no page URL. "website" would also
+// require event_source_url + client_user_agent, so only set META_ACTION_SOURCE to chat,
+// system_generated or other.
+export const metaActionSource = () => Deno.env.get("META_ACTION_SOURCE") || "chat";
+
+// POSTs events to a client's pixel with the token they pasted.
+export async function postMetaEvents(pixelId: string, token: string, payload: unknown) {
+  const res = await fetch(`${GRAPH}/${pixelId}/events?access_token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const result = await res.json().catch(() => ({}));
+  return { ok: res.ok && !result?.error, result };
+}
 
 function platformsFor(lead: any): Platform[] {
   if (lead.ad_platform === "meta" || lead.ad_platform === "tiktok") return [lead.ad_platform];
-  return lead.ttclid ? ["tiktok"] : [];
+  return lead.ttclid ? ["tiktok"] : lead.fbclid ? ["meta"] : [];
 }
 
 /**
@@ -124,23 +141,29 @@ export async function sendConversionEvent(supabase: any, ev: any, lead?: any) {
       return finish(result?.code === 0 ? "sent" : "failed", { code: result?.code, message: result?.message });
     }
 
-    if (!lead.ctwa_clid) return finish("skipped", { reason: "no_click_id" });
     const { data: meta } = await supabase
       .from("meta_accounts")
-      .select("access_token, dataset_id")
+      .select("capi_token, dataset_id")
       .eq("client_id", ev.client_id)
-      .not("dataset_id", "is", null)
-      .neq("ad_account_id", "pending")
-      .limit(1)
       .maybeSingle();
-    if (!meta?.access_token || !meta?.dataset_id) return finish("skipped", { reason: "no_meta_dataset" });
-    const res = await fetch(`${GRAPH}/${meta.dataset_id}/events?access_token=${encodeURIComponent(meta.access_token)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildMetaPayload({ ...input, clickId: lead.ctwa_clid })),
-    });
-    const result = await res.json().catch(() => ({}));
-    return finish(res.ok && !result?.error ? "sent" : "failed", result?.error ?? { events_received: result?.events_received });
+    if (!meta?.capi_token || !meta?.dataset_id) return finish("skipped", { reason: "no_meta_pixel" });
+    // Phone match works for any Meta-sourced lead; fbc is added when the chat carried an fbclid.
+    const { ok, result } = await postMetaEvents(
+      meta.dataset_id,
+      meta.capi_token,
+      buildMetaPayload({
+        eventName: input.eventName,
+        eventId: input.eventId,
+        eventTime: input.eventTime,
+        phoneHash: input.phoneHash,
+        value: input.value,
+        currency: input.currency,
+        fbclid: lead.fbclid,
+        fbclidAtMs: lead.message_received_at ? Date.parse(lead.message_received_at) : null,
+        actionSource: metaActionSource(),
+      }),
+    );
+    return finish(ok ? "sent" : "failed", result?.error ?? { events_received: result?.events_received });
   } catch (e) {
     return finish("failed", { error: e instanceof Error ? e.message : String(e) });
   }

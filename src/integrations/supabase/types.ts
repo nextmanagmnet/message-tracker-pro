@@ -388,6 +388,7 @@ export type Database = {
           client_id: string | null
           created_at: string
           ctwa_clid: string | null
+          fbclid: string | null
           first_message: string
           id: string
           is_real: boolean
@@ -420,6 +421,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           ctwa_clid?: string | null
+          fbclid?: string | null
           first_message: string
           id?: string
           is_real?: boolean
@@ -452,6 +454,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           ctwa_clid?: string | null
+          fbclid?: string | null
           first_message?: string
           id?: string
           is_real?: boolean
@@ -535,9 +538,10 @@ export type Database = {
       }
       meta_accounts: {
         Row: {
-          access_token: string | null
-          ad_account_id: string
+          ad_account_id: string | null
           ad_account_name: string | null
+          ads_token: string | null
+          capi_token: string | null
           client_id: string
           created_at: string
           dataset_id: string | null
@@ -548,9 +552,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          access_token?: string | null
-          ad_account_id: string
+          ad_account_id?: string | null
           ad_account_name?: string | null
+          ads_token?: string | null
+          capi_token?: string | null
           client_id: string
           created_at?: string
           dataset_id?: string | null
@@ -561,9 +566,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          access_token?: string | null
-          ad_account_id?: string
+          ad_account_id?: string | null
           ad_account_name?: string | null
+          ads_token?: string | null
+          capi_token?: string | null
           client_id?: string
           created_at?: string
           dataset_id?: string | null

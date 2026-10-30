@@ -91,7 +91,8 @@ be set manually.
 | `WHATSAPP_APP_SECRET` | `whatsapp-webhook` | Meta App Secret; verifies `X-Hub-Signature-256` on Meta Cloud API deliveries. **Required** for the Meta path (fails closed). |
 | `WHATSAPP_ACCESS_TOKEN` | `whatsapp-connect`, `refresh-tokens` | WhatsApp Business system-user access token (Meta Cloud API lines only). |
 | `TIKTOK_APP_ID` / `TIKTOK_APP_SECRET` | `tiktok-oauth`, `refresh-tokens`, `sync-campaigns` | TikTok for Business app credentials. |
-| `META_APP_ID` / `META_APP_SECRET` | `meta-oauth`, `refresh-tokens`, `whatsapp-connect` | Meta app credentials: ad-account login (scopes `ads_read`, `ads_management`, `business_management`), token health checks, embedded signup. |
+| `META_APP_ID` / `META_APP_SECRET` | `whatsapp-connect` | Optional. Only for Meta WhatsApp Cloud API embedded signup. Meta ads need no Meta app: clients paste their own pixel + tokens. |
+| `META_ACTION_SOURCE` | `meta-connect`, conversions | Optional. `action_source` sent with Meta events. Default `chat` (accurate for WhatsApp chats); `system_generated` or `other` also work. Don't use `website`, which would need a page URL and user agent. |
 | `ANTHROPIC_API_KEY` | `analyze-conversation`, `ai-agent`, `ai-followups` | Claude API key. Without it chats aren't analyzed (no Qualified/Client events) and the AI add-on is off. |
 | `EVOLUTION_API_URL` / `EVOLUTION_API_KEY` | `whatsapp-connect`, AI sends | Self-hosted Evolution API (QR / linked-device WhatsApp). The URL **must be HTTPS**; rotate the key if it was ever shared in plaintext. |
 | `CRON_SECRET` | scheduled functions | Optional static override for the scheduled-job auth check. If unset, the DB-generated token in `scheduler_config.cron_token` is used instead (see `drizzle/migrations/0000_scheduler_setup.sql`). |
@@ -105,9 +106,9 @@ be set manually.
 | `analyze-conversation` | cron, every 5 min | Reads chats that have been quiet for 3 minutes and moves leads to Qualified / Client (or Not a lead). |
 | `lead-actions` | app | `mark_client`, `mark_not_lead`, `accept_suggestion`, `take_over`, `hand_back`. |
 | `conversion-retry` | cron, every 30 min | Re-sends failed or stuck conversion events (max 5 attempts). |
-| `tiktok-oauth` / `meta-oauth` | app | Connect ad accounts; pick a Meta dataset. |
+| `tiktok-oauth` / `meta-connect` | app | Connect TikTok (login), and Meta (client pastes pixel ID + Conversions API token; optional read-only token for spend). Tokens are write-only. |
 | `sync-campaigns` | cron, hourly | Spend, clicks, impressions per campaign (TikTok + Meta). |
-| `refresh-tokens` | cron, hourly | Refreshes TikTok tokens, checks Meta and WhatsApp token health. |
+| `refresh-tokens` | cron, hourly | Refreshes TikTok tokens, checks WhatsApp token health. |
 | `ai-agent` | webhook / app playground | Optional AI auto-reply with human handoff. |
 | `ai-followups` | cron, every 15 min | Optional AI follow-up for quiet leads, within allowed hours. |
 
@@ -126,13 +127,16 @@ the ad platform the lead came from (`conversion_events` logs every send):
 `analyze-conversation` reports a stage automatically only at ≥ 0.8
 confidence; below that it saves a suggestion the user can accept from the
 Leads page. Events are skipped (status `skipped`) when the lead has no click
-id or the client has no TikTok pixel / Meta dataset connected.
+id (TikTok) or the client has no TikTok pixel / Meta pixel + token connected.
 
 ### WhatsApp via QR pairing
 
 `whatsapp-connect` creates the Evolution instance and QR code;
 `whatsapp-webhook` receives Meta Cloud API, Evolution and Green-API events.
-Meta Click-to-WhatsApp ads carry the click id in the message's ad context.
+Meta events go to the client's pixel (Conversions API) and match on the hashed
+phone number, plus `fbc` when the first message carried an `fbclid` (website-click
+ads: have the landing page put `fbclid=<id>` in the prefilled WhatsApp text).
+Meta Click-to-WhatsApp ads also give the ad id, used for campaign attribution.
 TikTok doesn't, so TikTok attribution relies on the ad's prefilled message
 containing a `ttclid` (and optionally `cid=<campaign>`); a plain `wa.me` link
 with no prefilled text never attributes. AI replies and follow-ups can only be

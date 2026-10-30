@@ -1,7 +1,7 @@
 import { scoreLead } from "../_shared/scoring.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
-import { extractCampaignCode, extractClidFromText, isOptOut, parseAdContext } from "../_shared/funnel.ts";
+import { extractCampaignCode, extractClidFromText, extractFbclid, isOptOut, parseAdContext } from "../_shared/funnel.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,11 +83,12 @@ async function findNumber(supabase: any, key: string) {
 }
 
 async function resolveMetaCampaign(supabase: any, clientId: string, adId: string): Promise<string | null> {
-  const { data: acct } = await supabase.from('meta_accounts').select('access_token')
-    .eq('client_id', clientId).neq('ad_account_id', 'pending').limit(1).maybeSingle();
-  if (!acct?.access_token) return null;
+  // Optional read-only token; without it the lead still counts, just without a campaign id.
+  const { data: acct } = await supabase.from('meta_accounts').select('ads_token')
+    .eq('client_id', clientId).not('ads_token', 'is', null).maybeSingle();
+  if (!acct?.ads_token) return null;
   try {
-    const r = await fetch(`${GRAPH}/${adId}?fields=campaign_id&access_token=${encodeURIComponent(acct.access_token)}`);
+    const r = await fetch(`${GRAPH}/${adId}?fields=campaign_id&access_token=${encodeURIComponent(acct.ads_token)}`);
     const d = await r.json();
     return d?.campaign_id ?? null;
   } catch {
@@ -97,9 +98,12 @@ async function resolveMetaCampaign(supabase: any, clientId: string, adId: string
 
 async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
   const textClid = extractClidFromText(m.text);
+  const fbclid = extractFbclid(m.text);
   const isMeta = Boolean(m.referral);
   const ctwaClid = m.referral?.ctwaClid ?? null;
-  const attributionSource = m.referral?.ctwaClid ? 'referral' : m.referral ? 'referral_partial' : textClid ? 'message_text' : 'none';
+  const attributionSource = m.referral?.ctwaClid
+    ? 'referral'
+    : m.referral ? 'referral_partial' : textClid || fbclid ? 'message_text' : 'none';
   const clientId = m.num.client_id;
 
   const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -117,7 +121,7 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
   const scored = scoreLead({
     message: m.text,
     hasReferral: isMeta,
-    ctwaClid: ctwaClid ?? textClid,
+    ctwaClid: ctwaClid ?? textClid ?? fbclid,
     clickToMessageSeconds,
     clientVelocity10m: velocityRes.count ?? 0,
     senderLeadCount: senderLeads.length,
@@ -125,7 +129,7 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
     duplicateMessageText: (dupRes.count ?? 0) > 0,
   });
 
-  const adPlatform = isMeta ? 'meta' : textClid ? 'tiktok' : null;
+  const adPlatform = isMeta ? 'meta' : textClid ? 'tiktok' : fbclid ? 'meta' : null;
   const campaignId = isMeta && m.referral?.adId
     ? await resolveMetaCampaign(supabase, clientId, m.referral.adId)
     : extractCampaignCode(m.text);
@@ -136,6 +140,7 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
     whatsapp_number_id: m.num.id,
     sender_phone_hash: phoneHash,
     ttclid: textClid,
+    fbclid,
     ctwa_clid: ctwaClid,
     source_id: m.referral?.adId ?? null,
     source_type: m.referral?.sourceType ?? null,

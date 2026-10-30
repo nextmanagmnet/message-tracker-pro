@@ -130,40 +130,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---- 3. Meta ad account tokens (long-lived, ~60 days; can't be refreshed server-side)
-  const metaAppId = Deno.env.get("META_APP_ID");
-  const metaAppSecret = Deno.env.get("META_APP_SECRET");
-  if (metaAppId && metaAppSecret) {
-    const { data: metaAccounts } = await supabase
-      .from("meta_accounts")
-      .select("id, client_id, ad_account_id, access_token, token_expires_at")
-      .neq("ad_account_id", "pending");
-    for (const account of metaAccounts ?? []) {
-      try {
-        const res = await fetch(
-          `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(account.access_token)}&access_token=${metaAppId}|${metaAppSecret}`
-        );
-        const info = (await res.json())?.data ?? {};
-        const expiresAt = info.expires_at ? info.expires_at * 1000 : null;
-        const expiringSoon = expiresAt !== null && expiresAt !== 0 && expiresAt - Date.now() < 7 * 24 * 3600 * 1000;
-        if (expiresAt) {
-          await supabase.from("meta_accounts")
-            .update({ token_expires_at: new Date(expiresAt).toISOString() }).eq("id", account.id);
-        }
-        const status = !info.is_valid ? "needs_reconnect" : expiringSoon ? "expiring_soon" : "success";
-        await logJob(supabase, "refresh-tokens", {
-          clientId: account.client_id,
-          status: status === "success" ? "success" : "needs_reconnect",
-          details: { provider: "meta", ad_account_id: account.ad_account_id, state: status },
-          error: status === "success" ? null : "Meta token invalid or expiring; client must reconnect Meta",
-        });
-        results.push({ provider: "meta", account: account.id, status });
-      } catch (e) {
-        results.push({ provider: "meta", account: account.id, status: "failed" });
-        console.error("Meta token check failed", account.id, e);
-      }
-    }
-  }
-
   return json({ success: true, whatsappTokenValid, results });
 });

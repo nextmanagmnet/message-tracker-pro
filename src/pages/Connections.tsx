@@ -15,10 +15,10 @@ const Connections = () => {
   const isIndividual = (agency as { isIndividual?: boolean }).isIndividual ?? false;
   const [params, setParams] = useSearchParams();
   // Capture the one-shot intents before stripping them from the URL.
-  const [intent] = useState(() => ({ connect: params.get("connect"), pick: params.get("pick") }));
+  const [intent] = useState(() => ({ connect: params.get("connect") }));
 
   useEffect(() => {
-    if (params.has("connect") || params.has("pick")) setParams({}, { replace: true });
+    if (params.has("connect")) setParams({}, { replace: true });
   }, [params, setParams]);
 
   return (
@@ -34,12 +34,7 @@ const Connections = () => {
             canManage={canManage}
             autoStart={intent.connect === "tiktok"}
           />
-          <MetaSection
-            clientId={selectedClient.id}
-            canManage={canManage}
-            autoStart={intent.connect === "meta"}
-            openDatasetPicker={intent.pick === "meta-dataset"}
-          />
+          <MetaSection clientId={selectedClient.id} canManage={canManage} />
         </div>
       )}
     </DashboardLayout>

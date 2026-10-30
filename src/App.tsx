@@ -19,7 +19,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const AgencyOverview = lazy(() => import("./pages/AgencyOverview"));
 const ClientsPage = lazy(() => import("./pages/ClientsPage"));
 const TikTokCallback = lazy(() => import("./pages/TikTokCallback"));
-const MetaCallback = lazy(() => import("./pages/MetaCallback"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -63,7 +62,6 @@ const App = () => (
                 <Route path="/agency" element={<AgencyOnly><AgencyOverview /></AgencyOnly>} />
                 <Route path="/clients" element={<AgencyOnly><ClientsPage /></AgencyOnly>} />
                 <Route path="/tiktok/callback" element={<P><TikTokCallback /></P>} />
-                <Route path="/meta/callback" element={<P><MetaCallback /></P>} />
 
                 {/* Old routes from before the WOB restructure */}
                 <Route path="/feed" element={<Navigate to="/leads" replace />} />
