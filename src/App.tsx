@@ -15,6 +15,7 @@ const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Connections = lazy(() => import("./pages/Connections"));
 const AIAgent = lazy(() => import("./pages/AIAgent"));
 const Catalog = lazy(() => import("./pages/Catalog"));
+const Funding = lazy(() => import("./pages/Funding"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AgencyOverview = lazy(() => import("./pages/AgencyOverview"));
@@ -72,6 +73,7 @@ const App = () => (
                 <Route path="/onboarding" element={<P><Onboarding /></P>} />
                 <Route path="/agency" element={<AgencyOnly><AgencyOverview /></AgencyOnly>} />
                 <Route path="/clients" element={<AgencyOnly><ClientsPage /></AgencyOnly>} />
+                <Route path="/funding" element={<AgencyOnly><Funding /></AgencyOnly>} />
                 <Route path="/tiktok/callback" element={<P><TikTokCallback /></P>} />
 
                 {/* Old routes from before the WOB restructure */}

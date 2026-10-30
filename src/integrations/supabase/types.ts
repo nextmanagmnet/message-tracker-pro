@@ -126,6 +126,53 @@ export type Database = {
           },
         ]
       }
+      bc_connections: {
+        Row: {
+          access_token: string
+          agency_id: string
+          bc_id: string | null
+          bc_name: string | null
+          connected_at: string
+          connected_by: string | null
+          id: string
+          max_transfer: number
+          refresh_token: string | null
+          token_expires_at: string | null
+        }
+        Insert: {
+          access_token: string
+          agency_id: string
+          bc_id?: string | null
+          bc_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          max_transfer?: number
+          refresh_token?: string | null
+          token_expires_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          agency_id?: string
+          bc_id?: string | null
+          bc_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          max_transfer?: number
+          refresh_token?: string | null
+          token_expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bc_connections_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: true
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           agency_id: string
@@ -313,6 +360,66 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fund_transfers: {
+        Row: {
+          advertiser_id: string
+          advertiser_name: string | null
+          agency_id: string
+          amount: number
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          request_id: string
+          response: Json | null
+          status: string
+          type: string
+        }
+        Insert: {
+          advertiser_id: string
+          advertiser_name?: string | null
+          agency_id: string
+          amount: number
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          request_id?: string
+          response?: Json | null
+          status?: string
+          type?: string
+        }
+        Update: {
+          advertiser_id?: string
+          advertiser_name?: string | null
+          agency_id?: string
+          amount?: number
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          request_id?: string
+          response?: Json | null
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fund_transfers_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fund_transfers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]

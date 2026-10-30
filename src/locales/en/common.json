@@ -17,7 +17,8 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "agencySection": "Agency",
-    "catalog": "Catalog"
+    "catalog": "Catalog",
+    "funding": "Funding"
   },
   "theme": {
     "label": "Theme",

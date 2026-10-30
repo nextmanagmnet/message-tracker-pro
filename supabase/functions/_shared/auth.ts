@@ -26,6 +26,30 @@ export async function authorizeClient(
   return { userId, supabase };
 }
 
+// Like authorizeClient, but for agency-level actions: the caller must be an owner or admin of agencyId.
+export async function authorizeAgencyAdmin(
+  req: Request,
+  agencyId: unknown,
+): Promise<{ userId: string; supabase: any } | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data, error } = await anon.auth.getClaims(authHeader.replace("Bearer ", ""));
+  if (error || !data?.claims) return json({ error: "Unauthorized" }, 401);
+  if (typeof agencyId !== "string" || !agencyId) return json({ error: "agencyId is required" }, 400);
+
+  const supabase = serviceClient();
+  const userId = data.claims.sub as string;
+  const [owner, admin] = await Promise.all(
+    ["owner", "admin"].map((role) =>
+      supabase.rpc("has_agency_role", { _user_id: userId, _agency_id: agencyId, _role: role })),
+  );
+  if (!owner.data && !admin.data) return json({ error: "Only agency owners and admins can do this" }, 403);
+  return { userId, supabase };
+}
+
 // Internal calls (webhook -> ai-agent) carry the service role key.
 export function isInternalCall(req: Request): boolean {
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

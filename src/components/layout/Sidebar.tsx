@@ -13,6 +13,7 @@ import {
   Building2,
   FileText,
   Package,
+  Wallet,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useAgency } from "@/hooks/useAgency";
@@ -32,6 +33,7 @@ const mainItems = [
 const agencyItems = [
   { icon: Building2, key: "nav.allClients", path: "/agency" },
   { icon: Users, key: "nav.clients", path: "/clients" },
+  { icon: Wallet, key: "nav.funding", path: "/funding" },
 ];
 
 interface SidebarProps {

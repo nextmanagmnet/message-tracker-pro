@@ -379,5 +379,43 @@
     "uploadFailed": "Upload failed",
     "confirmDelete": "Delete {{name}}?",
     "cancel": "Cancel"
+  },
+  "funding": {
+    "title": "Funding",
+    "subtitle": "Top up your clients' TikTok ad accounts from your Business Center",
+    "adminsOnly": "Only agency owners and admins can fund ad accounts.",
+    "connectTitle": "Connect your TikTok Business Center",
+    "connectHint": "Log in with a TikTok user who has Finance Manager permission on your Business Center. WOB uses your own Business Center balance to top up ad accounts; WOB never holds your money.",
+    "connect": "Connect Business Center",
+    "connected": "Business Center connected",
+    "disconnect": "Disconnect",
+    "confirmDisconnect": "Disconnect your Business Center? You will not be able to fund accounts until you connect again.",
+    "bcIdTitle": "Enter your Business Center ID",
+    "bcIdHint": "TikTok did not tell us which Business Center to use. Copy the ID from TikTok Business Center settings.",
+    "businessCenter": "Business Center",
+    "bcBalance": "Business Center balance",
+    "limit": "Limit per top-up: {{amount}}",
+    "search": "Search ad accounts",
+    "count": "{{count}} account(s)",
+    "unnamed": "Unnamed ad account",
+    "noAccounts": "No ad accounts found under this Business Center.",
+    "fund": "Fund",
+    "fundTitle": "Fund {{name}}",
+    "fundHint": "The money moves from your Business Center balance into this ad account.",
+    "amount": "Amount",
+    "minimum": "TikTok minimum: {{amount}}",
+    "confirmLine": "You are about to add {{amount}} to {{name}}.",
+    "confirm": "Confirm top-up",
+    "done": "Added {{amount}} to {{name}}",
+    "unknown": "TikTok did not confirm. Check the account in TikTok before trying again.",
+    "history": "Top-up history",
+    "noHistory": "No top-ups yet.",
+    "rawSample": "Technical: raw account data from TikTok",
+    "status": {
+      "sent": "Sent",
+      "pending": "In progress",
+      "unknown": "Unconfirmed, check TikTok",
+      "failed": "Failed"
+    }
   }
 }

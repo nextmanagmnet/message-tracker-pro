@@ -1,6 +1,8 @@
 export type PendingOAuth = { clientId: string; state: string; createdAt: number };
 
 export const TIKTOK_KEY = "tiktok_oauth_pending";
+// Business Center login (agency funding). `clientId` in the pending record holds the agency id here.
+export const BC_KEY = "tiktok_bc_oauth_pending";
 
 export function beginOAuth(key: string, clientId: string): string {
   const state = crypto.randomUUID();

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { invokeFn, isLimitError } from "@/components/leads/shared";
-import { readPending, TIKTOK_KEY } from "@/components/connections/oauth";
+import { BC_KEY, readPending, TIKTOK_KEY } from "@/components/connections/oauth";
 
 const TikTokCallback = () => {
   const { t } = useTranslation("features");
@@ -23,6 +23,18 @@ const TikTokCallback = () => {
       const code = params.get("code") ?? params.get("auth_code");
       const state = params.get("state");
       if (params.get("error")) return done(false, params.get("error_description") || t("callback.cancelled"));
+      const bc = readPending(BC_KEY);
+      if (code && state && bc && bc.state === state) {
+        try {
+          await invokeFn("tiktok-bc", { action: "callback", code, agencyId: bc.clientId });
+          sessionStorage.removeItem(BC_KEY);
+          toast.success(t("funding.connected"));
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : t("callback.failed"));
+        }
+        navigate("/funding", { replace: true });
+        return;
+      }
       const pending = readPending(TIKTOK_KEY);
       if (!code || !state || !pending) return done(false, t("callback.noPending"));
       if (pending.state !== state) return done(false, t("callback.stateMismatch"));
