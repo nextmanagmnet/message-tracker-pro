@@ -161,7 +161,14 @@
     "welcomeToast": "Welcome back!",
     "createdToast": "Account created!",
     "checkEmail": "Check your email to confirm your account, then sign in.",
-    "failed": "Authentication failed"
+    "failed": "Authentication failed",
+    "forgot": "Forgot password?",
+    "resend": "Resend confirmation email",
+    "resetSent": "If that email has an account, a reset link is on its way.",
+    "resendSent": "Confirmation email sent. Check your inbox and spam folder.",
+    "enterEmailFirst": "Type your email first",
+    "badLogin": "Wrong email or password. If you just signed up, confirm your email first, or use \"Forgot password?\".",
+    "notConfirmed": "Your email is not confirmed yet. Open the confirmation email, or press \"Resend confirmation email\"."
   },
   "onboarding": {
     "title": "Let's set up WOB",

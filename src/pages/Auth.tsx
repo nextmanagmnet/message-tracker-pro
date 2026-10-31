@@ -25,6 +25,7 @@ const Auth = () => {
   const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
   const [accountType, setAccountType] = useState<AccountType>("individual");
   const [formData, setFormData] = useState({
     email: "",
@@ -72,10 +73,32 @@ const Auth = () => {
       }
     } catch (error) {
       console.error("Auth error:", error);
-      toast.error(error instanceof Error ? error.message : t("auth.failed"));
+      const msg = error instanceof Error ? error.message : "";
+      setNeedsConfirm(/not confirmed/i.test(msg));
+      if (/not confirmed/i.test(msg)) toast.error(t("auth.notConfirmed"));
+      else if (/invalid login credentials/i.test(msg)) toast.error(t("auth.badLogin"));
+      else toast.error(msg || t("auth.failed"));
     } finally {
       setLoading(false);
     }
+  };
+
+  const forgotPassword = async () => {
+    if (!formData.email.trim()) return toast.error(t("auth.enterEmailFirst"));
+    const { error } = await supabase.auth.resetPasswordForEmail(formData.email.trim(), { redirectTo: `${window.location.origin}/` });
+    if (error) toast.error(error.message);
+    else toast.success(t("auth.resetSent"));
+  };
+
+  const resendConfirmation = async () => {
+    if (!formData.email.trim()) return toast.error(t("auth.enterEmailFirst"));
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: formData.email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/onboarding` },
+    });
+    if (error) toast.error(error.message);
+    else toast.success(t("auth.resendSent"));
   };
 
   const typeOptions: { value: AccountType; icon: typeof User; title: string; desc: string }[] = [
@@ -226,6 +249,15 @@ const Auth = () => {
                   {loading ? t("common.pleaseWait") : isLogin ? t("auth.signIn") : t("auth.createAccount")}
                 </Button>
               </form>
+
+              {isLogin && (
+                <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
+                  <button type="button" className="text-primary hover:underline" onClick={forgotPassword}>{t("auth.forgot")}</button>
+                  {needsConfirm && (
+                    <button type="button" className="text-primary hover:underline" onClick={resendConfirmation}>{t("auth.resend")}</button>
+                  )}
+                </div>
+              )}
 
               <div className="mt-6 text-center">
                 <button

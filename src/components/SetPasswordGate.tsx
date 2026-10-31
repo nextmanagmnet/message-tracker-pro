@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -17,8 +17,20 @@ export function SetPasswordGate({ children }: { children: ReactNode }) {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [recovering, setRecovering] = useState(false);
 
-  if (!user?.user_metadata?.needs_password || done) return <>{children}</>;
+  // A password-reset link signs the person in; ask for the new password right away.
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecovering(true);
+        setDone(false);
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  if (!(user?.user_metadata?.needs_password || recovering) || done) return <>{children}</>;
 
   const save = async () => {
     if (password.length < 8) return toast.error(t("invite.tooShort"));
