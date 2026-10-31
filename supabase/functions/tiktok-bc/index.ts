@@ -104,13 +104,30 @@ Deno.serve(async (req) => {
 
     if (action === "diagnose") {
       // What this login can see at TikTok, to find a wrong Business Center ID or a missing permission.
-      const [bcs, advs] = await Promise.all([
+      const bcForCalls = conn.bc_id;
+      const [bcs, advs, bal, assets] = await Promise.all([
         tt("/bc/get/", conn.access_token).catch((e) => ({ code: -1, message: String(e) })),
         tt("/oauth2/advertiser/get/", conn.access_token, {
           query: { app_id: Deno.env.get("TIKTOK_APP_ID") ?? "", secret: Deno.env.get("TIKTOK_APP_SECRET") ?? "" },
         }).catch((e) => ({ code: -1, message: String(e) })),
+        // What the funding list is built from: ad accounts this Business Center *administers*.
+        bcForCalls
+          ? tt("/advertiser/balance/get/", conn.access_token, { query: { bc_id: bcForCalls, page: "1", page_size: "50" } }).catch((e) => ({ code: -1, message: String(e) }))
+          : Promise.resolve(null),
+        // Everything shared with or owned by the Business Center, with the permission level.
+        bcForCalls
+          ? tt("/bc/asset/get/", conn.access_token, { query: { bc_id: bcForCalls, asset_type: "ADVERTISER", page: "1", page_size: "50" } }).catch((e) => ({ code: -1, message: String(e) }))
+          : Promise.resolve(null),
       ]);
       return json({
+        balanceList: bal && { code: bal.code, message: bal.message, count: (bal.data?.list ?? []).length, total: bal.data?.page_info?.total_number ?? null },
+        assets: assets && {
+          code: assets.code, message: assets.message, total: assets.data?.page_info?.total_number ?? null,
+          items: (assets.data?.list ?? []).slice(0, 10).map((i: any) => ({
+            id: String(i?.asset_id ?? i?.advertiser_id ?? ""), name: i?.asset_name ?? i?.advertiser_name ?? null,
+            permission: i?.advertiser_role ?? i?.asset_role ?? i?.permission ?? i?.relation_type ?? null,
+          })),
+        },
         savedBcId: conn.bc_id,
         businessCenters: {
           code: bcs.code, message: bcs.message,

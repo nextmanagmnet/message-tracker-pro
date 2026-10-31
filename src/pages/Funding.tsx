@@ -20,6 +20,8 @@ type Diagnosis = {
   savedBcId: string | null;
   businessCenters: { code: number; message: string; list: { id: string; name: string | null; role: string | null }[] };
   authorizedAdAccounts: { code: number; message: string; count: number };
+  balanceList: { code: number; message: string; count: number; total: number | null } | null;
+  assets: { code: number; message: string; total: number | null; items: { id: string; name: string | null; permission: string | null }[] } | null;
 };
 type Transfer = { id: string; advertiser_id: string; advertiser_name: string | null; amount: number; status: "pending" | "sent" | "failed" | "unknown"; response: { message?: string } | null; created_at: string };
 
@@ -126,7 +128,7 @@ const Funding = () => {
     }
   };
 
-  const useBc = async (id: string, name: string | null) => {
+  const pickBc = async (id: string, name: string | null) => {
     setBusy(true);
     try {
       await invokeFn("tiktok-bc", { action: "set-bc", agencyId, bcId: id, bcName: name });
@@ -169,6 +171,35 @@ const Funding = () => {
   const accounts = (data?.accounts ?? []).filter((a) => `${a.name ?? ""} ${a.advertiserId}`.toLowerCase().includes(search.toLowerCase()));
   const amountNum = Number(amount);
   const amountOk = amount !== "" && Number.isFinite(amountNum) && amountNum > 0;
+
+  const diagPanel = diag && (
+                <div className="space-y-2 rounded-lg bg-secondary/50 p-3 text-foreground">
+                  <p dir="ltr">{t("funding.savedBc")}: {diag.savedBcId}</p>
+                  <p>
+                    {t("funding.visibleBcs")}:{" "}
+                    {diag.businessCenters.list.length === 0 ? `${t("funding.none")} (${diag.businessCenters.message || diag.businessCenters.code})` : ""}
+                  </p>
+                  {diag.businessCenters.list.map((b) => (
+                    <div key={b.id} className="flex items-center gap-2" dir="ltr">
+                      <span className="flex-1">{b.name ?? "—"} · {b.id}{b.role ? ` · ${b.role}` : ""}</span>
+                      <Button size="sm" onClick={() => pickBc(b.id, b.name)} disabled={busy}>{t("funding.useThis")}</Button>
+                    </div>
+                  ))}
+                  <p>{t("funding.authorizedAds", { count: diag.authorizedAdAccounts.count })}</p>
+                  {diag.balanceList && (
+                    <p dir="ltr">
+                      {t("funding.balanceListLine")}: {diag.balanceList.code === 0 ? `${diag.balanceList.total ?? diag.balanceList.count} account(s)` : `${diag.balanceList.code} ${diag.balanceList.message}`}
+                    </p>
+                  )}
+                  {diag.assets && (
+                    <div dir="ltr" className="space-y-1">
+                      <p>{t("funding.assetsLine")}: {diag.assets.code === 0 ? `${diag.assets.total ?? diag.assets.items.length} account(s)` : `${diag.assets.code} ${diag.assets.message}`}</p>
+                      {diag.assets.items.map((a) => <p key={a.id} className="text-xs text-muted-foreground">{a.name ?? "—"} · {a.id}{a.permission ? ` · ${a.permission}` : ""}</p>)}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">{t("funding.diagnoseHint")}</p>
+                </div>
+  );
 
   return (
     <DashboardLayout title={t("funding.title")} subtitle={t("funding.subtitle")}>
@@ -215,23 +246,7 @@ const Funding = () => {
               <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.diagnose")}
               </Button>
-              {diag && (
-                <div className="space-y-2 rounded-lg bg-secondary/50 p-3 text-foreground">
-                  <p dir="ltr">{t("funding.savedBc")}: {diag.savedBcId}</p>
-                  <p>
-                    {t("funding.visibleBcs")}:{" "}
-                    {diag.businessCenters.list.length === 0 ? `${t("funding.none")} (${diag.businessCenters.message || diag.businessCenters.code})` : ""}
-                  </p>
-                  {diag.businessCenters.list.map((b) => (
-                    <div key={b.id} className="flex items-center gap-2" dir="ltr">
-                      <span className="flex-1">{b.name ?? "—"} · {b.id}{b.role ? ` · ${b.role}` : ""}</span>
-                      <Button size="sm" onClick={() => useBc(b.id, b.name)} disabled={busy}>{t("funding.useThis")}</Button>
-                    </div>
-                  ))}
-                  <p>{t("funding.authorizedAds", { count: diag.authorizedAdAccounts.count })}</p>
-                  <p className="text-xs text-muted-foreground">{t("funding.diagnoseHint")}</p>
-                </div>
-              )}
+              {diagPanel}
             </div>
           ) : (
             <section className="glass-card overflow-hidden">
@@ -255,7 +270,13 @@ const Funding = () => {
                       <Button size="sm" variant="outline" onClick={() => setTarget(a)}>{t("funding.fund")}</Button>
                     </div>
                   ))}
-                  {accounts.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">{t("funding.noAccounts")}</p>}
+                  {accounts.length === 0 && (
+                    <div className="space-y-3 p-8 text-center text-sm text-muted-foreground">
+                      <p>{t("funding.noAccounts")}</p>
+                      <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>{t("funding.diagnose")}</Button>
+                      <div className="text-start">{diagPanel}</div>
+                    </div>
+                  )}
                 </div>
               )}
             </section>

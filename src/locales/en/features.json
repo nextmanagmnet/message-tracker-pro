@@ -423,7 +423,9 @@
     "none": "none",
     "useThis": "Use this one",
     "authorizedAds": "Ad accounts shared with WOB by this login: {{count}}",
-    "diagnoseHint": "If your Business Center is not listed, log in with a TikTok user who is an admin or Finance Manager of it (Disconnect, then Connect again)."
+    "diagnoseHint": "If an account appears under \"shared\" but not under \"administers\", TikTok only lets WOB top up accounts your Business Center has Admin access to. In TikTok Business Center, give your Business Center admin permission on that ad account.",
+    "balanceListLine": "Ad accounts this Business Center administers (what Funding lists)",
+    "assetsLine": "Ad accounts shared with or owned by this Business Center"
   },
   "invite": {
     "menu": "Invite client login",
