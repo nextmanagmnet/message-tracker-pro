@@ -92,12 +92,15 @@ export function buildMetaPayload(e: MetaEventInput) {
 }
 
 // ---- message-text attribution (TikTok has no referral object) ----
+// A URL placeholder TikTok didn't fill in (e.g. "__CLICKID__") is not a real id.
+const unfilled = (v: string | null) => (v && /^__\w+__$/.test(v) ? null : v);
+
 export function extractClidFromText(message: string): string | null {
   // (?<!fb) keeps "fbclid=..." (Meta) from being read as a TikTok click id.
   const m = message.match(/(?:ttclid|ctwa_clid|(?<!fb)clid)[=:]?\s*([a-zA-Z0-9_.-]{6,})/i);
-  if (m) return m[1];
+  if (m) return unfilled(m[1]);
   const urlMatch = message.match(/[?&]tt?clid=([^&\s]+)/i);
-  return urlMatch ? urlMatch[1] : null;
+  return urlMatch ? unfilled(urlMatch[1]) : null;
 }
 
 // Website-click Meta ads: the landing page puts the fbclid in the prefilled WhatsApp text.
@@ -108,7 +111,7 @@ export function extractFbclid(message: string): string | null {
 
 export function extractCampaignCode(message: string): string | null {
   const m = message.match(/\bcid[=:]\s*([a-zA-Z0-9_-]{3,})/i);
-  return m ? m[1] : null;
+  return m ? unfilled(m[1]) : null;
 }
 
 // ---- Click-to-WhatsApp ad context from a Baileys message ----

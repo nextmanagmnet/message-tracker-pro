@@ -78,6 +78,10 @@ describe("text attribution", () => {
     expect(extractFbclid("hi ttclid=ABC123xyz")).toBeNull();
     expect(extractCampaignCode("مرحبا cid=summer24")).toBe("summer24");
     expect(extractCampaignCode("no code")).toBeNull();
+    // TikTok left its placeholders unfilled: not ids
+    expect(extractClidFromText("Hi ttclid=__CLICKID__")).toBeNull();
+    expect(extractCampaignCode("Hi cid=__CAMPAIGN_ID__")).toBeNull();
+    expect(extractCampaignCode("Hi ttclid=abc123 cid=1880559249832065")).toBe("1880559249832065");
   });
 });
 

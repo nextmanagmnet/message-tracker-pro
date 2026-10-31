@@ -150,7 +150,7 @@
       "noNumber": "Connect a WhatsApp number first to get your ad link.",
       "defaultText": "Hi, I'd like to know more",
       "textLabel": "Prefilled message",
-      "verify": "After launching, send yourself one test click and check the lead shows TikTok as its source. Don't remove the ttclid part of the message."
+      "verify": "After launching, send yourself one test click and check the lead shows TikTok as its source. The message should show real numbers after ttclid= and cid=; if you still see __CLICKID__ or __CAMPAIGN_ID__, TikTok didn't fill them in. Don't remove that part of the message."
     },
     "metaSpendHint": "Meta campaign names and spend need the optional read-only token. Add it in Connections → Meta to see cost per qualified lead and per client for Meta."
   },

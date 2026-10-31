@@ -167,8 +167,9 @@ function AttributionHelp({ clientId }: { clientId: string }) {
   }, [clientId]);
 
   const digits = numbers.find((n) => n.id === numberId)?.phone_number.replace(/\D/g, "") ?? "";
-  // TikTok substitutes __CLICKID__ in destination URLs; the webhook parses "ttclid=<id>" out of the first message.
-  const link = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(`${text} ttclid=__CLICKID__`)}` : "";
+  // TikTok fills placeholders in destination URLs; the webhook reads "ttclid=" (click) and "cid=" (campaign) from the first message.
+  // ponytail: __CLICKID__ isn't in TikTok's documented macro list; the test click confirms it. cid= alone still links the campaign.
+  const link = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(`${text} ttclid=__CLICKID__ cid=__CAMPAIGN_ID__`)}` : "";
 
   return (
     <div className="glass-card mt-6 p-6">

@@ -130,10 +130,14 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
     duplicateMessageText: (dupRes.count ?? 0) > 0,
   });
 
-  const adPlatform = isMeta ? 'meta' : textClid ? 'tiktok' : fbclid ? 'meta' : null;
   const campaignId = isMeta && m.referral?.adId
     ? await resolveMetaCampaign(supabase, clientId, m.referral.adId)
     : extractCampaignCode(m.text);
+  // No click id, but a cid= matching one of this client's TikTok campaigns still ties the chat to that campaign.
+  const knownTikTokCampaign = !isMeta && !textClid && !fbclid && campaignId
+    ? !!(await supabase.from('tiktok_campaigns').select('id').eq('client_id', clientId).eq('campaign_id', campaignId).limit(1).maybeSingle()).data
+    : false;
+  const adPlatform = isMeta ? 'meta' : textClid || knownTikTokCampaign ? 'tiktok' : fbclid ? 'meta' : null;
 
   const { data: lead, error } = await supabase.from('leads').insert({
     client_id: clientId,
