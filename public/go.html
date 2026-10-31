@@ -12,8 +12,9 @@
 <script>
 // Bridge for website-destination ads: TikTok needs a real web URL (it rejects wa.me once a pixel is on)
 // and appends ?ttclid=... to it. Fold the click id and campaign id into the WhatsApp message and hand over.
-// The client's pixel (px=) runs here, so users never paste pixel code anywhere: PageView + ClickButton
-// per ad click give TikTok enough events to learn; WOB's server sends Contact / SubmitForm / Purchase later.
+// The client's pixel (px=) runs here so users never paste pixel code: it sends PageView only (keeps the pixel
+// active and stores the click). Conversions come solely from WOB's server once a chat is judged real:
+// Contact (real conversation), SubmitForm (qualified), Purchase (client). Clicks are never a conversion.
 // /go.html?to=<digits>&text=<message>&px=<pixel code>&cid=__CAMPAIGN_ID__
 function whatsappUrl(search) {
   var q = new URLSearchParams(search);
@@ -40,7 +41,7 @@ function loadPixel(code) {
       n = d.createElement("script"); n.type = "text/javascript", n.async = !0, n.src = r + "?sdkid=" + e + "&lib=" + t;
       e = d.getElementsByTagName("script")[0]; e.parentNode.insertBefore(n, e);
     };
-    ttq.load(code); ttq.page(); ttq.track("ClickButton", { content_name: "whatsapp" });
+    ttq.load(code); ttq.page();
   }(window, document, "ttq");
 }
 
