@@ -158,19 +158,23 @@ function AttributionHelp({ clientId }: { clientId: string }) {
   const [numberId, setNumberId] = useState<string>("");
   const [text, setText] = useState(() => t("campaigns.help.defaultText"));
 
+  const [pixel, setPixel] = useState("");
+
   useEffect(() => {
     supabase.from("whatsapp_numbers").select("id, phone_number").eq("client_id", clientId).eq("status", "connected")
       .then(({ data }) => {
         setNumbers(data ?? []);
         setNumberId(data?.[0]?.id ?? "");
       });
+    supabase.from("tiktok_pixels").select("pixel_code").eq("client_id", clientId).limit(1).maybeSingle()
+      .then(({ data }) => setPixel(data?.pixel_code ?? ""));
   }, [clientId]);
 
   const digits = numbers.find((n) => n.id === numberId)?.phone_number.replace(/\D/g, "") ?? "";
   // A real web page (TikTok rejects wa.me once a pixel is on). TikTok appends ttclid and fills __CAMPAIGN_ID__;
-  // public/go.html folds both into the WhatsApp message, where the webhook reads them.
+  // public/go.html runs the client's pixel and folds both ids into the WhatsApp message, where the webhook reads them.
   const link = digits
-    ? `${window.location.origin}/go.html?${new URLSearchParams({ to: digits, text })}&cid=__CAMPAIGN_ID__`
+    ? `${window.location.origin}/go.html?${new URLSearchParams({ to: digits, text, ...(pixel ? { px: pixel } : {}) })}&cid=__CAMPAIGN_ID__`
     : "";
 
   return (

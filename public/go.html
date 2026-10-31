@@ -12,7 +12,9 @@
 <script>
 // Bridge for website-destination ads: TikTok needs a real web URL (it rejects wa.me once a pixel is on)
 // and appends ?ttclid=... to it. Fold the click id and campaign id into the WhatsApp message and hand over.
-// /go.html?to=<digits>&text=<message>&cid=__CAMPAIGN_ID__
+// The client's pixel (px=) runs here, so users never paste pixel code anywhere: PageView + ClickButton
+// per ad click give TikTok enough events to learn; WOB's server sends Contact / SubmitForm / Purchase later.
+// /go.html?to=<digits>&text=<message>&px=<pixel code>&cid=__CAMPAIGN_ID__
 function whatsappUrl(search) {
   var q = new URLSearchParams(search);
   var to = (q.get("to") || "").replace(/\D/g, "");
@@ -23,9 +25,37 @@ function whatsappUrl(search) {
   if (real(q.get("cid"))) parts.push("cid=" + q.get("cid"));
   return "https://wa.me/" + to + "?text=" + encodeURIComponent(parts.join(" ").trim());
 }
+
+function loadPixel(code) {
+  // TikTok's standard base code, with the pixel id passed in.
+  !function (w, d, t) {
+    w.TiktokAnalyticsObject = t; var ttq = w[t] = w[t] || [];
+    ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie", "holdConsent", "revokeConsent", "grantConsent"];
+    ttq.setAndDefer = function (t, e) { t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))) } };
+    for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
+    ttq.instance = function (t) { for (var e = ttq._i[t] || [], n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(e, ttq.methods[n]); return e };
+    ttq.load = function (e, n) {
+      var r = "https://analytics.tiktok.com/i18n/pixel/events.js";
+      ttq._i = ttq._i || {}, ttq._i[e] = [], ttq._i[e]._u = r, ttq._t = ttq._t || {}, ttq._t[e] = +new Date, ttq._o = ttq._o || {}, ttq._o[e] = n || {};
+      n = d.createElement("script"); n.type = "text/javascript", n.async = !0, n.src = r + "?sdkid=" + e + "&lib=" + t;
+      e = d.getElementsByTagName("script")[0]; e.parentNode.insertBefore(n, e);
+    };
+    ttq.load(code); ttq.page(); ttq.track("ClickButton", { content_name: "whatsapp" });
+  }(window, document, "ttq");
+}
+
 var url = whatsappUrl(location.search);
-if (url) { document.getElementById("wa").href = url; location.replace(url); }
-else document.body.textContent = "Invalid link";
+var px = new URLSearchParams(location.search).get("px");
+if (!url) document.body.textContent = "Invalid link";
+else {
+  document.getElementById("wa").href = url;
+  var go = function () { location.replace(url); };
+  if (px && /^[A-Z0-9]{10,30}$/.test(px)) {
+    loadPixel(px);
+    // ponytail: fixed wait for the pixel to send; ~1s is the cost of a tracked click.
+    setTimeout(go, 900);
+  } else go();
+}
 </script>
 </body>
 </html>
