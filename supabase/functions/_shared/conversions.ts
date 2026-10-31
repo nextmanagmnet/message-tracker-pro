@@ -4,6 +4,7 @@ import {
   canAdvance,
   eventIdFor,
   eventNameFor,
+  stagesPassed,
   type Platform,
   type Stage,
 } from "./funnel.ts";
@@ -16,6 +17,9 @@ const LEAD_COLS =
 // require event_source_url + client_user_agent, so only set META_ACTION_SOURCE to chat,
 // system_generated or other.
 export const metaActionSource = () => Deno.env.get("META_ACTION_SOURCE") || "chat";
+
+// The page TikTok events name: WOB's WhatsApp bridge, i.e. the site the ad actually linked to.
+const bridgeUrl = () => `${(Deno.env.get("APP_ORIGINS") ?? "https://wob-platform.vercel.app").split(",")[0].trim()}/go.html`;
 
 // POSTs events to a client's pixel with the token they pasted.
 export async function postMetaEvents(pixelId: string, token: string, payload: unknown) {
@@ -46,6 +50,7 @@ export async function reportStage(
 ): Promise<{ changed: boolean }> {
   const { data: lead } = await supabase.from("leads").select(LEAD_COLS).eq("id", leadId).maybeSingle();
   if (!lead || !canAdvance(lead.stage, stage)) return { changed: false };
+  const passed = stagesPassed(lead.stage, stage);
 
   const patch: Record<string, unknown> = { stage, stage_updated_at: new Date().toISOString() };
   if (stage === "not_lead") Object.assign(patch, { status: "trash", is_real: false });
@@ -62,29 +67,31 @@ export async function reportStage(
   if (stage === "not_lead") return { changed: true };
 
   for (const platform of platformsFor(lead)) {
-    const eventName = eventNameFor(platform, stage);
-    if (!eventName) continue;
-    const { data: ev, error: insErr } = await supabase
-      .from("conversion_events")
-      .insert({
-        client_id: lead.client_id,
-        lead_id: leadId,
-        platform,
-        event_name: eventName,
-        stage,
-        value: stage === "client" ? patch.order_value : null,
-        currency: stage === "client" ? patch.order_currency : null,
-        event_id: eventIdFor(leadId, stage, platform),
-        status: "pending",
-        attempts: 0,
-      })
-      .select("*")
-      .single();
-    if (insErr) {
-      if (insErr.code !== "23505") console.error("conversion_events insert failed", insErr); // 23505 = already sent
-      continue;
+    for (const s of passed) {
+      const eventName = eventNameFor(platform, s);
+      if (!eventName) continue;
+      const { data: ev, error: insErr } = await supabase
+        .from("conversion_events")
+        .insert({
+          client_id: lead.client_id,
+          lead_id: leadId,
+          platform,
+          event_name: eventName,
+          stage: s,
+          value: s === "client" ? patch.order_value : null,
+          currency: s === "client" ? patch.order_currency : null,
+          event_id: eventIdFor(leadId, s, platform),
+          status: "pending",
+          attempts: 0,
+        })
+        .select("*")
+        .single();
+      if (insErr) {
+        if (insErr.code !== "23505") console.error("conversion_events insert failed", insErr); // 23505 = already sent
+        continue;
+      }
+      await sendConversionEvent(supabase, ev, lead);
     }
-    await sendConversionEvent(supabase, ev, lead);
   }
   return { changed: true };
 }
@@ -135,7 +142,7 @@ export async function sendConversionEvent(supabase: any, ev: any, lead?: any) {
       const res = await fetch("https://business-api.tiktok.com/open_api/v1.3/event/track/", {
         method: "POST",
         headers: { "Access-Token": acct.access_token, "Content-Type": "application/json" },
-        body: JSON.stringify(buildTikTokPayload(pixel.pixel_code, { ...input, phoneHash, clickId: lead.ttclid })),
+        body: JSON.stringify(buildTikTokPayload(pixel.pixel_code, { ...input, phoneHash, clickId: lead.ttclid, pageUrl: bridgeUrl() })),
       });
       const result = await res.json().catch(() => ({}));
       return finish(result?.code === 0 ? "sent" : "failed", { code: result?.code, message: result?.message });

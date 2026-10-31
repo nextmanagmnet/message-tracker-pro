@@ -4,6 +4,7 @@ import {
   buildMetaPayload,
   buildTikTokPayload,
   canAdvance,
+  stagesPassed,
   eventIdFor,
   eventNameFor,
   extractCampaignCode,
@@ -147,5 +148,16 @@ describe("misc guards", () => {
       .toMatchObject({ stage: "client", order_value: 120, currency: "SAR", confidence: 0.9 });
     expect(parseAnalysis('{"is_spam":false,"stage":"vip"}')).toBeNull();
     expect(parseAnalysis("not json")).toBeNull();
+  });
+});
+
+describe("stagesPassed", () => {
+  it("reports every stage a chat skipped over", () => {
+    expect(stagesPassed("new", "client")).toEqual(["real", "qualified", "client"]);
+    expect(stagesPassed("real", "client")).toEqual(["qualified", "client"]);
+    expect(stagesPassed("qualified", "qualified")).toEqual([]);
+    expect(stagesPassed("client", "real")).toEqual([]);
+    expect(stagesPassed("new", "not_lead")).toEqual([]);
+    expect(stagesPassed("not_lead", "client")).toEqual([]);
   });
 });

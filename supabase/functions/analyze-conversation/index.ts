@@ -1,10 +1,8 @@
 import { corsHeaders, isAuthorizedCron, json } from "../_shared/cron.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
-import { canAdvance, parseAnalysis } from "../_shared/funnel.ts";
+import { AUTO_REPORT_CONFIDENCE, canAdvance, parseAnalysis } from "../_shared/funnel.ts";
 import { CLASSIFIER_MODEL, hasLlm, jsonCompletion, transcript } from "../_shared/llm.ts";
-
-const AUTO_REPORT_CONFIDENCE = 0.8;
 
 const SYSTEM = `You review WhatsApp chats between a business and a person who messaged it from an ad.
 Decide how far the person got in the buying journey. Chats may be in Arabic, English, or a mix.
@@ -86,11 +84,11 @@ Deno.serve(async (req) => {
 
     if (a.is_spam) {
       // Never auto-discard someone already showing buying intent; the user can still do it by hand.
-      if (a.confidence >= AUTO_REPORT_CONFIDENCE && lead.stage !== "qualified") {
+      if (a.confidence >= AUTO_REPORT_CONFIDENCE.not_lead! && lead.stage !== "qualified") {
         if ((await reportStage(supabase, lead.id, "not_lead")).changed) reported++;
       }
     } else if (canAdvance(lead.stage, a.stage)) {
-      if (a.confidence >= AUTO_REPORT_CONFIDENCE) {
+      if (a.confidence >= AUTO_REPORT_CONFIDENCE[a.stage]!) {
         if ((await reportStage(supabase, lead.id, a.stage, { value: a.order_value, currency: a.currency })).changed) reported++;
       } else {
         await supabase.from("leads").update({

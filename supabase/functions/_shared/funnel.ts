@@ -13,6 +13,19 @@ export function canAdvance(current: Stage | null | undefined, next: Stage): bool
   return RANK[next] > RANK[cur];
 }
 
+// Every funnel stage passed on the way from `current` to `next`, in order. A chat that jumps
+// straight to "client" still counts as a real conversation and a qualified lead, so campaigns
+// optimizing on Contact or SubmitForm learn from buyers too.
+export function stagesPassed(current: Stage | null | undefined, next: Stage): Stage[] {
+  if (!canAdvance(current, next) || next === "not_lead") return [];
+  const from = RANK[(current ?? "new") as Stage];
+  return (["real", "qualified", "client"] as Stage[]).filter((s) => RANK[s] > from && RANK[s] <= RANK[next]);
+}
+
+// How sure the analyzer must be before WOB reports a stage on its own. A wrong Contact costs little;
+// a wrong Purchase teaches the ad platform the wrong buyer, so that bar stays high.
+export const AUTO_REPORT_CONFIDENCE: Partial<Record<Stage, number>> = { real: 0.6, qualified: 0.7, client: 0.8, not_lead: 0.8 };
+
 const EVENTS: Record<Platform, Partial<Record<Stage, string>>> = {
   tiktok: { real: "Contact", qualified: "SubmitForm", client: "Purchase" },
   meta: { real: "Contact", qualified: "Lead", client: "Purchase" },
@@ -34,6 +47,7 @@ export interface EventInput {
   phoneHash: string;
   value?: number | null;
   currency?: string | null;
+  pageUrl?: string; // the web page the ad sent the person to (WOB's WhatsApp bridge)
 }
 
 export function buildTikTokPayload(pixelCode: string, e: EventInput) {
@@ -51,7 +65,7 @@ export function buildTikTokPayload(pixelCode: string, e: EventInput) {
       event_id: e.eventId,
       user: { ttclid: e.clickId, phone: e.phoneHash },
       properties,
-      page: { url: "https://wa.me/" },
+      page: { url: e.pageUrl ?? "https://wa.me/" },
     }],
   };
 }
