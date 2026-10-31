@@ -12,13 +12,20 @@ export interface BcAdvertiser {
   minTransferable: number | null;
 }
 
+/** TikTok names the account array differently per endpoint (balance/get uses advertiser_account_list). */
+export function extractList(data: any): any[] {
+  if (Array.isArray(data?.advertiser_account_list)) return data.advertiser_account_list;
+  if (Array.isArray(data?.list)) return data.list;
+  return Object.values(data ?? {}).find(Array.isArray) ?? [];
+}
+
 export function parseAdvertiserBalance(row: any): BcAdvertiser | null {
   const id = row?.advertiser_id ?? row?.advertiserId;
   if (!id) return null;
   return {
     advertiserId: String(id),
     name: row.advertiser_name ?? row.name ?? null,
-    balance: firstNum(row, ["balance", "advertiser_balance", "cash_balance", "available_balance"]),
+    balance: firstNum(row, ["account_balance", "balance", "advertiser_balance", "cash_balance", "available_balance"]),
     currency: row.currency ?? null,
     minTransferable: num(row.min_transferable_amount),
   };

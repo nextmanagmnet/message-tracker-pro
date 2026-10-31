@@ -1,6 +1,6 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin } from "../_shared/auth.ts";
-import { checkFundAmount, parseAdvertiserBalance, type BcAdvertiser } from "../_shared/bcFunding.ts";
+import { checkFundAmount, extractList, parseAdvertiserBalance, type BcAdvertiser } from "../_shared/bcFunding.ts";
 
 // Agency-level TikTok Business Center: connect it, list ad-account balances, top accounts up.
 // Body: { action, agencyId, ... }. Only agency owners/admins; the token never leaves the server.
@@ -30,13 +30,14 @@ async function listBalances(bcId: string, token: string): Promise<{ rows: BcAdve
       d = await tt("/advertiser/balance/get/", token, { query });
     }
     if (d.code !== 0) return { rows, sample, error: d.message ?? `TikTok error ${d.code}` };
-    const list: any[] = d.data?.list ?? [];
+    const list: any[] = extractList(d.data);
     sample ??= list[0] ?? null;
     for (const r of list) {
       const p = parseAdvertiserBalance(r);
       if (p) rows.push(p);
     }
-    if (list.length < PAGE_SIZE) break;
+    const totalPages = Number(d.data?.page_info?.total_page);
+    if (list.length === 0 || (Number.isFinite(totalPages) ? page >= totalPages : list.length < PAGE_SIZE)) break;
   }
   return { rows, sample };
 }
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
           : Promise.resolve(null),
       ]);
       return json({
-        balanceList: bal && { code: bal.code, message: bal.message, count: (bal.data?.list ?? []).length, total: bal.data?.page_info?.total_number ?? null },
+        balanceList: bal && { code: bal.code, message: bal.message, count: extractList(bal.data).length, total: bal.data?.page_info?.total_number ?? null },
         assets: assets && {
           code: assets.code, message: assets.message, total: assets.data?.page_info?.total_number ?? null,
           items: (assets.data?.list ?? []).slice(0, 10).map((i: any) => ({
