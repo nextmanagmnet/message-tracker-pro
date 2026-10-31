@@ -299,50 +299,41 @@ serve(async (req) => {
         
         if (campaignIds.length === 0) continue;
 
-        // Fetch spend data from TikTok reporting API
+        // Fetch spend data from TikTok reporting API. The endpoint is GET-only (POST returns an HTML 405);
+        // arrays go JSON-encoded in the query string.
+        const reportParams = new URLSearchParams({
+          advertiser_id: account.advertiser_id,
+          report_type: 'BASIC',
+          dimensions: JSON.stringify(['campaign_id']),
+          data_level: 'AUCTION_CAMPAIGN',
+          metrics: JSON.stringify(['spend', 'clicks', 'impressions']),
+          start_date: startDate,
+          end_date: endDate,
+          page_size: '200',
+        });
         const reportResponse = await fetch(
-          'https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Token': account.access_token,
-            },
-            body: JSON.stringify({
-              advertiser_id: account.advertiser_id,
-              report_type: 'BASIC',
-              dimensions: ['campaign_id'],
-              data_level: 'AUCTION_CAMPAIGN',
-              metrics: ['spend', 'clicks', 'impressions', 'reach', 'conversion'],
-              start_date: startDate,
-              end_date: endDate,
-              page_size: 200,
-              filtering: {
-                campaign_ids: campaignIds,
-              },
-            }),
-          }
+          `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?${reportParams}`,
+          { headers: { 'Access-Token': account.access_token } }
         );
+        const reportData = await reportResponse.json().catch(() => ({ code: -1 }));
+        if (reportData.code !== 0) console.error('TikTok report failed', account.advertiser_id, reportData.message);
 
-        const reportData = await reportResponse.json();
-        
         // Build a map of campaign_id -> spend data
-        const spendMap = new Map<string, { spend: number; clicks: number; conversions: number }>();
-        
+        const spendMap = new Map<string, { spend: number; clicks: number; impressions: number }>();
         if (reportData.code === 0 && reportData.data?.list) {
           for (const row of reportData.data.list) {
             const metrics = row.metrics;
             spendMap.set(row.dimensions.campaign_id, {
               spend: parseFloat(metrics.spend) || 0,
               clicks: parseInt(metrics.clicks) || 0,
-              conversions: parseInt(metrics.conversion) || 0,
+              impressions: parseInt(metrics.impressions) || 0,
             });
           }
         }
-        
+
         // Upsert campaigns with spend data
         for (const campaign of campaignsData.data.list) {
-          const spendInfo = spendMap.get(campaign.campaign_id) || { spend: 0, clicks: 0, conversions: 0 };
+          const spendInfo = spendMap.get(campaign.campaign_id) || { spend: 0, clicks: 0, impressions: 0 };
           
           await supabase.from('tiktok_campaigns').upsert({
             client_id: clientId,
@@ -351,6 +342,8 @@ serve(async (req) => {
             campaign_id: campaign.campaign_id,
             campaign_name: campaign.campaign_name,
             spend: spendInfo.spend,
+            clicks: spendInfo.clicks,
+            impressions: spendInfo.impressions,
             // Note: real_conversations and trash_conversations come from WhatsApp webhook
           }, {
             onConflict: 'tenant_id,campaign_id',
