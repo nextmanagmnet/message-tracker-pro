@@ -30,7 +30,8 @@ Deno.serve(async (req) => {
     // no body — full sync
   }
 
-  const endDate = new Date().toISOString().split("T")[0];
+  // Tomorrow (UTC): ad accounts ahead of UTC (e.g. Beirut) are already in "tomorrow"; TikTok accepts it.
+  const endDate = new Date(Date.now() + 86400000).toISOString().split("T")[0];
   const startDate = new Date(Date.now() - days * 86400000)
     .toISOString()
     .split("T")[0];

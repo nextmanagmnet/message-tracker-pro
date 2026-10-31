@@ -167,9 +167,11 @@ function AttributionHelp({ clientId }: { clientId: string }) {
   }, [clientId]);
 
   const digits = numbers.find((n) => n.id === numberId)?.phone_number.replace(/\D/g, "") ?? "";
-  // TikTok fills placeholders in destination URLs; the webhook reads "ttclid=" (click) and "cid=" (campaign) from the first message.
-  // ponytail: __CLICKID__ isn't in TikTok's documented macro list; the test click confirms it. cid= alone still links the campaign.
-  const link = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(`${text} ttclid=__CLICKID__ cid=__CAMPAIGN_ID__`)}` : "";
+  // A real web page (TikTok rejects wa.me once a pixel is on). TikTok appends ttclid and fills __CAMPAIGN_ID__;
+  // public/go.html folds both into the WhatsApp message, where the webhook reads them.
+  const link = digits
+    ? `${window.location.origin}/go.html?${new URLSearchParams({ to: digits, text })}&cid=__CAMPAIGN_ID__`
+    : "";
 
   return (
     <div className="glass-card mt-6 p-6">

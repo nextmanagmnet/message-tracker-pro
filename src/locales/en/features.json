@@ -146,11 +146,11 @@
     "help": {
       "title": "How WOB knows which ad a chat came from",
       "meta": "Click-to-WhatsApp ads attach the ad automatically. For ads that open your website first, have your page add fbclid=<click id> from the page address to the prefilled message.",
-      "tiktok": "TikTok doesn't pass the click to WhatsApp, so the ad's WhatsApp link must prefill a message that contains the click ID. Use the link below as your ad's destination.",
+      "tiktok": "TikTok doesn't pass the click to WhatsApp. Use the link below as your ad's website URL: it's a real web page (so the pixel works) that opens WhatsApp with the click ID and campaign in the message.",
       "noNumber": "Connect a WhatsApp number first to get your ad link.",
       "defaultText": "Hi, I'd like to know more",
       "textLabel": "Prefilled message",
-      "verify": "After launching, send yourself one test click and check the lead shows TikTok as its source. The message should show real numbers after ttclid= and cid=; if you still see __CLICKID__ or __CAMPAIGN_ID__, TikTok didn't fill them in. Don't remove that part of the message."
+      "verify": "After launching, send yourself one test click and check the lead shows TikTok as its source. The WhatsApp message should end with ttclid=… and cid=… followed by real values. Don't remove that part of the message."
     },
     "metaSpendHint": "Meta campaign names and spend need the optional read-only token. Add it in Connections → Meta to see cost per qualified lead and per client for Meta."
   },

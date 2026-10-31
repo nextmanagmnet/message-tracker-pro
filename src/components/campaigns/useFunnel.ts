@@ -51,14 +51,14 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
   const [conversionsSent, setConversionsSent] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!clientId) {
       setLeads([]);
       setCampaigns({ tiktok: [], meta: [] });
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     const cols = "campaign_id, campaign_name, spend, clicks, impressions";
     const [l, tt, mt, ev] = await Promise.all([
       db.from("leads").select(LEAD_COLUMNS).eq("client_id", clientId)
@@ -80,6 +80,9 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
 
   useEffect(() => {
     load();
+    // Quiet refresh so new chats and the 15-minute spend sync show up without reloading the page.
+    const id = setInterval(() => load(true), 60_000);
+    return () => clearInterval(id);
   }, [load]);
 
   const rows = useMemo(() => {
