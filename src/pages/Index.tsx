@@ -45,6 +45,7 @@ const Index = () => {
 
   const steps = [
     { key: "clicks", value: totals.clicks },
+    { key: "chats", value: totals.leads },
     { key: "real", value: totals.real },
     { key: "qualified", value: totals.qualified },
     { key: "clients", value: totals.clients },
@@ -73,7 +74,7 @@ const Index = () => {
         <>
           <section className="glass-card wob-mesh-hero p-6 mb-6" aria-label={t("dashboard.funnel")}>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/80 mb-4">{t("dashboard.funnel")}</h2>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
               {steps.map((s, i) => {
                 const prev = i > 0 ? steps[i - 1].value : 0;
                 return (

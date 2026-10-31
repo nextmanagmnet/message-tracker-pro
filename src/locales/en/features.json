@@ -48,6 +48,7 @@
     "funnel": "From click to client",
     "step": {
       "clicks": "Ad clicks",
+      "chats": "All chats",
       "real": "Real conversations",
       "qualified": "Qualified leads",
       "clients": "Clients"

@@ -53,31 +53,26 @@ Deno.serve(async (req) => {
         { headers: { "Access-Token": account.access_token } }
       );
       const listData = await listRes.json();
-      if (listData.code !== 0 || !listData.data?.list?.length) {
-        throw new Error(listData.message ?? "No campaigns returned");
-      }
+      if (listData.code !== 0) throw new Error(listData.message ?? "Campaign list failed");
+      const campaignList: any[] = listData.data?.list ?? [];
 
-      const campaignIds = listData.data.list.map((c: any) => c.campaign_id);
-
-      const reportRes = await fetch(`${TT_BASE}/report/integrated/get/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Token": account.access_token,
-        },
-        body: JSON.stringify({
-          advertiser_id: account.advertiser_id,
-          report_type: "BASIC",
-          dimensions: ["campaign_id"],
-          data_level: "AUCTION_CAMPAIGN",
-          metrics: ["spend", "clicks", "impressions", "conversion"],
-          start_date: startDate,
-          end_date: endDate,
-          page_size: 200,
-          filtering: { campaign_ids: campaignIds },
-        }),
+      // report/integrated/get is GET-only (POST returns an HTML 405); arrays go JSON-encoded in the query.
+      const reportParams = new URLSearchParams({
+        advertiser_id: account.advertiser_id,
+        report_type: "BASIC",
+        dimensions: JSON.stringify(["campaign_id"]),
+        data_level: "AUCTION_CAMPAIGN",
+        metrics: JSON.stringify(["spend", "clicks", "impressions"]),
+        start_date: startDate,
+        end_date: endDate,
+        page_size: "200",
       });
-      const reportData = await reportRes.json();
+      const reportData = campaignList.length
+        ? await (await fetch(`${TT_BASE}/report/integrated/get/?${reportParams}`, {
+            headers: { "Access-Token": account.access_token },
+          })).json()
+        : { code: 0, data: { list: [] } };
+      if (reportData.code !== 0) console.error("TikTok report failed", account.advertiser_id, reportData.message);
 
       const metricsMap = new Map<string, { spend: number; clicks: number; impressions: number }>();
       if (reportData.code === 0) {
@@ -90,7 +85,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      for (const campaign of listData.data.list) {
+      for (const campaign of campaignList) {
         const m = metricsMap.get(campaign.campaign_id);
         await supabase.from("tiktok_campaigns").upsert(
           {
@@ -113,7 +108,7 @@ Deno.serve(async (req) => {
         status: "success",
         details: {
           advertiser_id: account.advertiser_id,
-          campaigns: listData.data.list.length,
+          campaigns: campaignList.length,
           window: { startDate, endDate },
         },
       });
