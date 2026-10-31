@@ -4,5 +4,8 @@
   "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/go", "destination": "/api/go" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }

@@ -47,7 +47,7 @@ function loadPixel(code) {
 
 var url = whatsappUrl(location.search);
 var px = new URLSearchParams(location.search).get("px");
-if (!url) document.body.textContent = "Invalid link";
+if (!url) { document.body.textContent = "Invalid link"; if (px && /^[A-Z0-9]{10,30}$/.test(px)) loadPixel(px); }
 else {
   document.getElementById("wa").href = url;
   var go = function () { location.replace(url); };

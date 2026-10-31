@@ -172,9 +172,9 @@ function AttributionHelp({ clientId }: { clientId: string }) {
 
   const digits = numbers.find((n) => n.id === numberId)?.phone_number.replace(/\D/g, "") ?? "";
   // A real web page (TikTok rejects wa.me once a pixel is on). TikTok appends ttclid and fills __CAMPAIGN_ID__;
-  // public/go.html runs the client's pixel and folds both ids into the WhatsApp message, where the webhook reads them.
+  // api/go.js renders the client's pixel base code and folds both ids into the WhatsApp message for the webhook.
   const link = digits
-    ? `${window.location.origin}/go.html?${new URLSearchParams({ to: digits, text, ...(pixel ? { px: pixel } : {}) })}&cid=__CAMPAIGN_ID__`
+    ? `${window.location.origin}/go?${new URLSearchParams({ to: digits, text, ...(pixel ? { px: pixel } : {}) })}&cid=__CAMPAIGN_ID__`
     : "";
 
   return (
