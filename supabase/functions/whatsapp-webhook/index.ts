@@ -2,7 +2,7 @@ import { scoreLead } from "../_shared/scoring.ts";
 import { isOrderMessage, parseOrder } from "../_shared/orders.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
-import { extractCampaignCode, extractClidFromText, extractFbclid, isOptOut, parseAdContext } from "../_shared/funnel.ts";
+import { decodeRef, extractCampaignCode, extractClidFromText, extractFbclid, isOptOut, parseAdContext } from "../_shared/funnel.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,7 +98,12 @@ async function resolveMetaCampaign(supabase: any, clientId: string, adId: string
 }
 
 async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
-  const textClid = extractClidFromText(m.text);
+  // Clicks through WOB's /go bridge carry a hidden ad_clicks id; older links put ttclid=/cid= in the text.
+  const ref = decodeRef(m.text);
+  const click = ref
+    ? (await supabase.from('ad_clicks').select('ttclid, campaign_id').eq('id', ref).maybeSingle()).data
+    : null;
+  const textClid = click?.ttclid ?? extractClidFromText(m.text);
   const fbclid = extractFbclid(m.text);
   const isMeta = Boolean(m.referral);
   const ctwaClid = m.referral?.ctwaClid ?? null;
@@ -132,7 +137,7 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
 
   const campaignId = isMeta && m.referral?.adId
     ? await resolveMetaCampaign(supabase, clientId, m.referral.adId)
-    : extractCampaignCode(m.text);
+    : click?.campaign_id ?? extractCampaignCode(m.text);
   // No click id, but a cid= matching one of this client's TikTok campaigns still ties the chat to that campaign.
   const knownTikTokCampaign = !isMeta && !textClid && !fbclid && campaignId
     ? !!(await supabase.from('tiktok_campaigns').select('id').eq('client_id', clientId).eq('campaign_id', campaignId).limit(1).maybeSingle()).data

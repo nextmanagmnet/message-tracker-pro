@@ -1,11 +1,50 @@
 // /go — WhatsApp bridge for TikTok website ads, rendered on the server so the client's pixel id sits
-// literally in TikTok's standard base code. TikTok's "detect base code on your page" check reads the HTML;
-// it can't see a pixel loaded from a URL parameter by script (public/go.html, kept for older ad links).
+// literally in TikTok's standard base code (TikTok's "detect base code on your page" check reads the HTML).
+// The TikTok click id + campaign are stored in ad_clicks and only the row id rides in the WhatsApp
+// message, as invisible characters, so customers see just the prefilled text.
 // /go?to=<digits>&text=<message>&px=<pixel code>&cid=__CAMPAIGN_ID__ (TikTok appends &ttclid=...)
 const PIXEL = /^[A-Z0-9]{10,30}$/;
 // Page checkers (TikTok's scanner, link previews) stay on the page instead of leaving for WhatsApp.
 // Not "tiktok"/"bytedance": real ad clicks open in TikTok's in-app browser.
 const CHECKER = /bot|crawl|spider|headless|lighthouse|preview/i;
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+const str = (v) => (typeof v === "string" ? v : "");
+const real = (v) => v && !/^__\w+__$/.test(v);
+
+// Keep in sync with encodeRef/decodeRef in supabase/functions/_shared/funnel.ts.
+const encodeRef = (id) => "‍" + Number(id).toString(2).replace(/0/g, "​").replace(/1/g, "‌") + "‍";
+
+async function recordClick(ttclid, cid, to) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_ad_click`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_ttclid: ttclid || null, p_campaign_id: cid || null, p_to: to }),
+      signal: AbortSignal.timeout(3000),
+    });
+    const id = r.ok ? await r.json() : null;
+    return Number.isSafeInteger(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+async function whatsappUrl(q, record) {
+  const to = str(q.to).replace(/\D/g, "");
+  if (to.length < 8) return null;
+  const ttclid = real(str(q.ttclid)) ? str(q.ttclid) : "";
+  const cid = real(str(q.cid)) ? str(q.cid) : "";
+  let text = str(q.text).slice(0, 500);
+  if (ttclid || cid) {
+    const id = record ? await recordClick(ttclid, cid, to) : null;
+    // If the click couldn't be stored, fall back to the visible codes so the chat is still attributed.
+    text = id ? text + encodeRef(id) : [text, ttclid && `ttclid=${ttclid}`, cid && `cid=${cid}`].filter(Boolean).join(" ");
+  }
+  return `https://wa.me/${to}?text=${encodeURIComponent(text.trim())}`;
+}
 
 const baseCode = (px) => `<script>
 !function (w, d, t) {
@@ -15,30 +54,14 @@ const baseCode = (px) => `<script>
 }(window, document, 'ttq');
 </script>`;
 
-// Same logic as public/go.html: click id + campaign id go into the WhatsApp message for WOB's webhook.
-const redirect = (delayMs) => `<script>
-function whatsappUrl(search) {
-  var q = new URLSearchParams(search);
-  var to = (q.get("to") || "").replace(/\\D/g, "");
-  if (to.length < 8) return null;
-  var real = function (v) { return v && !/^__\\w+__$/.test(v); };
-  var parts = [q.get("text") || ""];
-  if (real(q.get("ttclid"))) parts.push("ttclid=" + q.get("ttclid"));
-  if (real(q.get("cid"))) parts.push("cid=" + q.get("cid"));
-  return "https://wa.me/" + to + "?text=" + encodeURIComponent(parts.join(" ").trim());
-}
-var url = whatsappUrl(location.search);
-if (url) {
-  document.getElementById("wa").href = url;
-  ${delayMs === null ? "" : `setTimeout(function () { location.replace(url); }, ${delayMs});`}
-}
-</script>`;
-
-export default function handler(req, res) {
-  const px = typeof req.query.px === "string" && PIXEL.test(req.query.px) ? req.query.px : null;
+export default async function handler(req, res) {
+  const px = PIXEL.test(str(req.query.px)) ? req.query.px : null;
   const checker = CHECKER.test(req.headers["user-agent"] || "");
+  const url = await whatsappUrl(req.query, !checker);
   // ponytail: fixed wait for the pixel's PageView before leaving; ~1s is the cost of a tracked click.
-  const delay = checker ? null : px ? 900 : 0;
+  const delay = px ? 900 : 0;
+  // JSON + escaped "<" keeps the URL inert inside the script tag.
+  const urlJs = JSON.stringify(url).replace(/</g, "\\u003c");
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.send(`<!doctype html>
@@ -53,7 +76,13 @@ ${px ? baseCode(px) : ""}
 </head>
 <body>
 <a id="wa" href="#">WhatsApp</a>
-${redirect(delay)}
+<script>
+var url = ${urlJs};
+if (url) {
+  document.getElementById("wa").href = url;
+  ${checker ? "" : `setTimeout(function () { location.replace(url); }, ${delay});`}
+} else document.body.textContent = "Invalid link";
+</script>
 </body>
 </html>`);
 }

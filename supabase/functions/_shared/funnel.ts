@@ -117,6 +117,18 @@ export function extractClidFromText(message: string): string | null {
   return urlMatch ? unfilled(urlMatch[1]) : null;
 }
 
+// Hidden click reference: the /go bridge (api/go.js) appends an ad_clicks row id to the prefilled message
+// as zero-width characters (ZWSP = 0, ZWNJ = 1, wrapped in ZWJ), invisible to the customer.
+// Keep in sync with encodeRef in api/go.js.
+export function encodeRef(id: number): string {
+  return "‍" + id.toString(2).replace(/0/g, "​").replace(/1/g, "‌") + "‍";
+}
+
+export function decodeRef(message: string): number | null {
+  const m = message.match(/‍([​‌]{1,48})‍/);
+  return m ? parseInt(m[1].replace(/​/g, "0").replace(/‌/g, "1"), 2) : null;
+}
+
 // Website-click Meta ads: the landing page puts the fbclid in the prefilled WhatsApp text.
 export function extractFbclid(message: string): string | null {
   const m = message.match(/fbclid[=:]\s*([A-Za-z0-9_-]{8,})/i);

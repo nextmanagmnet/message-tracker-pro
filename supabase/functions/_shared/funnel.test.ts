@@ -4,6 +4,8 @@ import {
   buildMetaPayload,
   buildTikTokPayload,
   canAdvance,
+  decodeRef,
+  encodeRef,
   stagesPassed,
   eventIdFor,
   eventNameFor,
@@ -159,5 +161,16 @@ describe("stagesPassed", () => {
     expect(stagesPassed("client", "real")).toEqual([]);
     expect(stagesPassed("new", "not_lead")).toEqual([]);
     expect(stagesPassed("not_lead", "client")).toEqual([]);
+  });
+});
+
+describe("hidden click reference", () => {
+  it("round-trips an id through invisible characters", () => {
+    for (const id of [1, 42, 123456789]) {
+      const msg = `Hi, I'd like to know more${encodeRef(id)}`;
+      expect(msg.replace(/[​-‍]/g, "")).toBe("Hi, I'd like to know more");
+      expect(decodeRef(msg)).toBe(id);
+    }
+    expect(decodeRef("plain hello")).toBeNull();
   });
 });
