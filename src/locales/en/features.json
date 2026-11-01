@@ -352,6 +352,11 @@
     "markerLabel": "Key phrase WOB looks for",
     "saved": "Sales message saved",
     "tooShort": "Use at least 4 characters",
+    "defaultTitle": "Default order value",
+    "defaultHint": "Used when your confirmation message has no Total, so TikTok/Meta still get a purchase value.",
+    "defaultAmount": "Amount",
+    "defaultCurrency": "Currency (e.g. USD)",
+    "defaultInvalid": "Enter an amount above zero and a 3-letter currency, or leave both empty",
     "rule": "Only messages you send that contain the key phrase count. Keep \"Total: <amount> <currency>\" so the order value is reported."
   },
   "catalog": {

@@ -1,3 +1,4 @@
+import { pickOrderValue } from "./orders.ts";
 import {
   buildMetaPayload,
   buildTikTokPayload,
@@ -56,8 +57,15 @@ export async function reportStage(
   if (stage === "not_lead") Object.assign(patch, { status: "trash", is_real: false });
   else Object.assign(patch, { status: "verified", is_real: true, stage_suggestion: null });
   if (stage === "client") {
-    patch.order_value = opts.value ?? lead.order_value ?? null;
-    patch.order_currency = opts.currency ?? lead.order_currency ?? null;
+    // Amount from the message / AI / manual entry first, then the client's default order value.
+    const { data: client } = await supabase
+      .from("clients").select("default_order_value, default_order_currency").eq("id", lead.client_id).maybeSingle();
+    const order = pickOrderValue(
+      { value: opts.value ?? lead.order_value ?? null, currency: opts.currency ?? lead.order_currency ?? null },
+      { value: client?.default_order_value ?? null, currency: client?.default_order_currency ?? null },
+    );
+    patch.order_value = order.value;
+    patch.order_currency = order.currency;
   }
   const { error } = await supabase.from("leads").update(patch).eq("id", leadId);
   if (error) {

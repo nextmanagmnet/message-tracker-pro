@@ -12,8 +12,57 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      ad_clicks: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          id: number
+          to_number: string | null
+          ttclid: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: never
+          to_number?: string | null
+          ttclid?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: never
+          to_number?: string | null
+          ttclid?: string | null
+        }
+        Relationships: []
+      }
       agencies: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -235,6 +284,8 @@ export type Database = {
         Row: {
           agency_id: string
           created_at: string
+          default_order_currency: string | null
+          default_order_value: number | null
           id: string
           name: string
           order_marker: string
@@ -243,6 +294,8 @@ export type Database = {
         Insert: {
           agency_id: string
           created_at?: string
+          default_order_currency?: string | null
+          default_order_value?: number | null
           id?: string
           name: string
           order_marker?: string
@@ -251,6 +304,8 @@ export type Database = {
         Update: {
           agency_id?: string
           created_at?: string
+          default_order_currency?: string | null
+          default_order_value?: number | null
           id?: string
           name?: string
           order_marker?: string
@@ -1204,6 +1259,10 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      record_ad_click: {
+        Args: { p_campaign_id: string; p_to: string; p_ttclid: string }
+        Returns: number
+      }
       user_can_access_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -1344,6 +1403,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       account_type: ["individual", "agency"],

@@ -12,13 +12,33 @@ export function SalesMessage({ clientId, canManage }: { clientId: string; canMan
   const { t } = useTranslation("features");
   const [marker, setMarker] = useState("");
   const [saved, setSaved] = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [savedDefault, setSavedDefault] = useState("|");
 
   useEffect(() => {
-    supabase.from("clients").select("order_marker").eq("id", clientId).maybeSingle().then(({ data }) => {
+    supabase.from("clients").select("order_marker, default_order_value, default_order_currency").eq("id", clientId).maybeSingle().then(({ data }) => {
       setMarker(data?.order_marker ?? "");
       setSaved(data?.order_marker ?? "");
+      const a = data?.default_order_value != null ? String(data.default_order_value) : "";
+      const c = data?.default_order_currency ?? "";
+      setAmount(a);
+      setCurrency(c);
+      setSavedDefault(`${a}|${c}`);
     });
   }, [clientId]);
+
+  const saveDefault = async () => {
+    const value = amount.trim() === "" ? null : Number(amount);
+    const code = currency.trim().toUpperCase() || null;
+    const empty = value === null && code === null;
+    if (!empty && !(value !== null && value > 0 && code && /^[A-Z]{3}$/.test(code))) return toast.error(t("sales.defaultInvalid"));
+    const { error } = await supabase.from("clients").update({ default_order_value: value, default_order_currency: code }).eq("id", clientId);
+    if (error) return toast.error(t("common.error"));
+    setCurrency(code ?? "");
+    setSavedDefault(`${value ?? ""}|${code ?? ""}`);
+    toast.success(t("sales.saved"));
+  };
 
   const template = t("sales.template", { marker: saved || "ORDER CONFIRMED" });
 
@@ -51,6 +71,23 @@ export function SalesMessage({ clientId, canManage }: { clientId: string; canMan
         )}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{t("sales.rule")}</p>
+      <div className="mt-4 border-t border-border pt-3">
+        <h4 className="text-sm font-semibold text-foreground">{t("sales.defaultTitle")}</h4>
+        <p className="mt-1 text-xs text-muted-foreground">{t("sales.defaultHint")}</p>
+        {canManage && (
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="default-amount" className="text-xs">{t("sales.defaultAmount")}</Label>
+              <Input id="default-amount" dir="ltr" inputMode="decimal" className="w-28" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="default-currency" className="text-xs">{t("sales.defaultCurrency")}</Label>
+              <Input id="default-currency" dir="ltr" className="w-28" maxLength={3} value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+            </div>
+            <Button size="sm" onClick={saveDefault} disabled={`${amount.trim()}|${currency.trim().toUpperCase()}` === savedDefault}>{t("common.save")}</Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -7,7 +7,21 @@ const DIGITS: Record<string, string> = { "٠": "0", "١": "1", "٢": "2", "٣": 
 const CURRENCY: Record<string, string> = { "$": "USD", "€": "EUR", "£": "GBP", "ر.س": "SAR", "ريال": "SAR", "ر.س.": "SAR", "دولار": "USD" };
 const TOTAL = /(?:total|amount|sum|المجموع|الإجمالي|الاجمالي|المبلغ)\s*[:：=-]?\s*(\$|€|£)?\s*([\d.,]+)\s*([A-Za-z]{3}\b|\$|€|£|ر\.?س\.?|ريال|دولار)?/i;
 
-export const isOrderMessage = (text: string, marker: string | null) =>
+/**
+ * Fills what the message/AI/manual entry left out from the client's default order value.
+ * An amount found in the message always wins; a missing currency falls back to the default one.
+ */
+export function pickOrderValue(
+  found: { value: number | null; currency: string | null },
+  defaults: { value: number | string | null; currency: string | null },
+): { value: number | null; currency: string | null } {
+  const fallback = Number(defaults.value);
+  const value = found.value ?? (Number.isFinite(fallback) && fallback > 0 ? fallback : null);
+  const currency = found.currency ?? (value !== null ? defaults.currency : null);
+  return { value, currency };
+}
+
+export const isOrderMessage =(text: string, marker: string | null) =>
   Boolean(marker?.trim()) && text.toLowerCase().includes(marker!.trim().toLowerCase());
 
 export function parseOrder(text: string): { value: number | null; currency: string | null } {
