@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { scoreLead } from "../_shared/scoring.ts";
 import { isOrderMessage, parseOrder } from "../_shared/orders.ts";
 import { serviceClient } from "../_shared/auth.ts";
@@ -54,7 +55,17 @@ interface Referral {
   clickTs: number | null;
 }
 
-function readMetaReferral(message: any): Referral | null {
+// The referral block Meta attaches to a message that came from an ad.
+interface MetaReferral {
+  ctwa_clid?: string;
+  ctwaClid?: string;
+  source_type?: string;
+  source_id?: string;
+  headline?: string;
+  click_timestamp?: string | number;
+}
+
+function readMetaReferral(message: { referral?: MetaReferral; context?: { referral?: MetaReferral } } | null): Referral | null {
   const ref = message?.referral ?? message?.context?.referral ?? null;
   if (!ref) return null;
   return {
@@ -76,14 +87,14 @@ interface WaMessage {
   referral: Referral | null;
 }
 
-async function findNumber(supabase: any, key: string) {
+async function findNumber(supabase: SupabaseClient, key: string) {
   const { data } = await supabase
     .from('whatsapp_numbers').select('id, client_id, tenant_id, status')
     .eq('phone_number_id', key).maybeSingle();
   return data?.client_id ? data : null;
 }
 
-async function resolveMetaCampaign(supabase: any, clientId: string, adId: string): Promise<string | null> {
+async function resolveMetaCampaign(supabase: SupabaseClient, clientId: string, adId: string): Promise<string | null> {
   // Optional read-only token; without it the lead still counts, just without a campaign id.
   const { data: acct } = await supabase.from('meta_accounts').select('ads_token')
     .eq('client_id', clientId).not('ads_token', 'is', null).maybeSingle();
@@ -97,7 +108,7 @@ async function resolveMetaCampaign(supabase: any, clientId: string, adId: string
   }
 }
 
-async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
+async function createLead(supabase: SupabaseClient, m: WaMessage, phoneHash: string): Promise<{ id: string; isReal: boolean } | null> {
   // Clicks through WOB's /go bridge carry a hidden ad_clicks id; older links put ttclid=/cid= in the text.
   const ref = decodeRef(m.text);
   const click = ref
@@ -119,7 +130,7 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
     supabase.from('leads').select('id', { count: 'exact', head: true }).eq('client_id', clientId).eq('first_message', m.text),
   ]);
   const senderLeads = senderRes.data ?? [];
-  const distinctSources = new Set(senderLeads.map((l: any) => l.source_id).filter(Boolean)).size;
+  const distinctSources = new Set(senderLeads.map((l: { source_id: string | null }) => l.source_id).filter(Boolean)).size;
   const clickToMessageSeconds = m.referral?.clickTs
     ? Math.max(0, Math.round((m.ts.getTime() - m.referral.clickTs * 1000) / 1000))
     : null;
@@ -177,7 +188,7 @@ async function createLead(supabase: any, m: WaMessage, phoneHash: string) {
   return { id: lead.id, isReal: scored.isReal };
 }
 
-async function aiEnabled(supabase: any, clientId: string): Promise<boolean> {
+async function aiEnabled(supabase: SupabaseClient, clientId: string): Promise<boolean> {
   const { data } = await supabase.from('ai_agent_settings').select('enabled').eq('client_id', clientId).maybeSingle();
   return Boolean(data?.enabled);
 }
@@ -189,11 +200,10 @@ function triggerAiAgent(conversationId: string) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'x-internal-key': key },
     body: JSON.stringify({ conversationId }),
   }).catch((e) => console.error('ai-agent trigger failed', e));
-  // deno-lint-ignore no-explicit-any
-  (globalThis as any).EdgeRuntime?.waitUntil(p);
+  (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(p);
 }
 
-async function handleMessage(supabase: any, m: WaMessage) {
+async function handleMessage(supabase: SupabaseClient, m: WaMessage) {
   const clientId = m.num.client_id;
   const phoneHash = await hashPhone(m.jid.split('@')[0]);
   const now = m.ts.toISOString();
@@ -281,7 +291,24 @@ async function handleMessage(supabase: any, m: WaMessage) {
 }
 
 // Evolution API (QR / linked device) events
-async function handleEvolution(supabase: any, body: any) {
+// Evolution API webhook body; only the fields read below.
+interface EvolutionKey { remoteJid?: string; remoteJidAlt?: string; senderPn?: string; id?: string; fromMe?: boolean }
+interface EvolutionItem {
+  key?: EvolutionKey;
+  message?: {
+    conversation?: string;
+    extendedTextMessage?: { text?: string };
+    imageMessage?: { caption?: string };
+    videoMessage?: { caption?: string };
+    buttonsResponseMessage?: { selectedDisplayText?: string };
+    listResponseMessage?: { title?: string };
+  };
+  messageType?: string;
+  messageTimestamp?: string | number;
+}
+interface EvolutionBody { instance?: unknown; event?: unknown; data?: unknown }
+
+async function handleEvolution(supabase: SupabaseClient, body: EvolutionBody) {
   const num = await findNumber(supabase, String(body.instance));
   if (!num) {
     console.log('Gateway instance not mapped to a client, skipping');
@@ -290,7 +317,7 @@ async function handleEvolution(supabase: any, body: any) {
   const event = String(body.event).toLowerCase().replace(/_/g, '.');
 
   if (event === 'connection.update') {
-    const s = body.data?.state;
+    const s = (body.data as { state?: string } | undefined)?.state;
     if (s === 'open' || s === 'close') {
       await supabase.from('whatsapp_numbers')
         .update({ status: s === 'open' ? 'connected' : 'disconnected' }).eq('id', num.id);
@@ -299,12 +326,12 @@ async function handleEvolution(supabase: any, body: any) {
   }
   if (event !== 'messages.upsert') return;
 
-  const items = Array.isArray(body.data) ? body.data : [body.data];
+  const items: EvolutionItem[] = Array.isArray(body.data) ? body.data : [body.data as EvolutionItem];
   for (const d of items) {
-    const key = d?.key || {};
+    const key: EvolutionKey = d?.key || {};
     // Prefer the real phone JID when WhatsApp hides it behind a @lid id
     const jid: string = [key.remoteJid, key.remoteJidAlt, key.senderPn]
-      .find((j: any) => typeof j === 'string' && j.endsWith('@s.whatsapp.net')) || '';
+      .find((j) => typeof j === 'string' && j.endsWith('@s.whatsapp.net')) || '';
     if (!jid) continue; // groups, broadcasts, status, or unresolved lid
 
     const msg = d.message || {};
@@ -332,7 +359,23 @@ async function handleEvolution(supabase: any, body: any) {
 }
 
 // Green-API (QR / linked device) notifications
-async function handleGreen(supabase: any, body: any) {
+// Green-API notification body; only the fields read below.
+interface GreenBody {
+  instanceData?: { idInstance?: string | number };
+  typeWebhook?: string;
+  stateInstance?: string;
+  senderData?: { chatId?: string };
+  messageData?: {
+    textMessageData?: { textMessage?: string };
+    extendedTextMessageData?: { text?: string };
+    fileMessageData?: { caption?: string };
+    typeMessage?: string;
+  };
+  timestamp?: string | number;
+  idMessage?: string;
+}
+
+async function handleGreen(supabase: SupabaseClient, body: GreenBody) {
   const num = await findNumber(supabase, String(body.instanceData?.idInstance ?? ''));
   if (!num) {
     console.log('Gateway instance not mapped to a client, skipping');

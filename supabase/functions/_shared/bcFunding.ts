@@ -2,7 +2,18 @@
 // aren't fully documented, so read the likely names and keep the raw row for the UI to show.
 
 const num = (v: unknown) => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
-const firstNum = (row: any, keys: string[]) => keys.map((k) => num(row?.[k])).find((n) => n !== null) ?? null;
+const firstNum = (row: BalanceRow, keys: string[]) => keys.map((k) => num(row?.[k])).find((n) => n !== null) ?? null;
+
+// One row of TikTok's balance list; any field may be missing.
+interface BalanceRow {
+  advertiser_id?: string | number;
+  advertiserId?: string | number;
+  advertiser_name?: string | null;
+  name?: string | null;
+  currency?: string | null;
+  min_transferable_amount?: unknown;
+  [key: string]: unknown;
+}
 
 export interface BcAdvertiser {
   advertiserId: string;
@@ -13,15 +24,17 @@ export interface BcAdvertiser {
 }
 
 /** TikTok names the account array differently per endpoint (balance/get uses advertiser_account_list). */
-export function extractList(data: any): any[] {
-  if (Array.isArray(data?.advertiser_account_list)) return data.advertiser_account_list;
-  if (Array.isArray(data?.list)) return data.list;
+export function extractList(data: unknown): unknown[] {
+  const d = data as { advertiser_account_list?: unknown; list?: unknown } | null | undefined;
+  if (Array.isArray(d?.advertiser_account_list)) return d.advertiser_account_list;
+  if (Array.isArray(d?.list)) return d.list;
   return Object.values(data ?? {}).find(Array.isArray) ?? [];
 }
 
-export function parseAdvertiserBalance(row: any): BcAdvertiser | null {
+export function parseAdvertiserBalance(input: unknown): BcAdvertiser | null {
+  const row = input as BalanceRow | null | undefined;
   const id = row?.advertiser_id ?? row?.advertiserId;
-  if (!id) return null;
+  if (!row || !id) return null;
   return {
     advertiserId: String(id),
     name: row.advertiser_name ?? row.name ?? null,

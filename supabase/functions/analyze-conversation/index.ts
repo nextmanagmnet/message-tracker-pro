@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   if (error) return json({ error: error.message }, 500);
   // ponytail: column-vs-column filter done in JS; move to an RPC if the backlog grows past a few hundred rows.
   const due = (candidates ?? [])
-    .filter((c: any) => !c.analyzed_at || Date.parse(c.analyzed_at) < Date.parse(c.last_message_at))
+    .filter((c: { analyzed_at: string | null; last_message_at: string }) => !c.analyzed_at || Date.parse(c.analyzed_at) < Date.parse(c.last_message_at))
     .slice(0, 50);
 
   let analyzed = 0;

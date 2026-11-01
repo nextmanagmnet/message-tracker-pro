@@ -1,10 +1,12 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 // Sends a WhatsApp text on behalf of the business (AI replies and follow-ups).
 // Only Evolution (QR) lines can send; Meta Cloud API / Green-API lines are receive-only here.
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function sendWhatsAppText(
-  supabase: any,
+  supabase: SupabaseClient,
   conversationId: string,
   text: string,
   opts: { humanDelay?: boolean; author?: "ai" | "owner" } = {},
@@ -62,7 +64,7 @@ export async function sendWhatsAppText(
 
 // Sends a product image/video with a caption (AI catalog replies). Evolution lines only.
 export async function sendWhatsAppMedia(
-  supabase: any,
+  supabase: SupabaseClient,
   conversationId: string,
   url: string,
   mediatype: "image" | "video",

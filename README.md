@@ -1,76 +1,29 @@
-# Welcome to your Lovable project
+# WOB — World of Business
 
-## Project info
+WOB reads the WhatsApp conversations that ad clicks start, separates real prospects from noise, and reports
+qualified leads and confirmed sales back to TikTok and Meta so campaigns optimize for buyers, not clicks.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, react-i18next (English + Arabic, RTL). Hosted on Vercel.
+- **Backend:** Supabase (Postgres with row-level security, Auth, Edge Functions in TypeScript on Deno).
+- **WhatsApp:** self-hosted Evolution API (QR / linked device). **AI:** Anthropic Claude API.
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Run locally
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env.local   # fill in the Supabase URL / anon key
+npm run dev                  # http://localhost:8080
+npm run lint && npm run typecheck && npm test
 ```
 
-**Edit a file directly in GitHub**
+## Tests
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `npm test` runs the Vitest unit tests (frontend and `supabase/functions/_shared`).
+- `npm run lint` (zero warnings allowed) and `npm run typecheck` check the frontend; CI also runs `deno check` / `deno lint` on the edge functions.
+- `npm run test:db` runs `supabase/tests/client_isolation.sql` against the linked project (needs `npx supabase login`). It checks that a client user only sees their own data, and always rolls back.
+- CI blocks a push or PR on any lint warning, type error, failing unit test, failed build, or edge-function check/lint error. `npm audit` (high severity) is reported but doesn't block. The DB test runs on pushes to main when the `SUPABASE_ACCESS_TOKEN` secret is set.
 
 ## Environment variables
 
@@ -124,8 +77,8 @@ the ad platform the lead came from (`conversion_events` logs every send):
 | qualified | `SubmitForm` | `Lead` |
 | client | `Purchase` (with value) | `Purchase` (with value) |
 
-`analyze-conversation` reports a stage automatically only at ≥ 0.8
-confidence; below that it saves a suggestion the user can accept from the
+`analyze-conversation` reports a stage automatically at real ≥ 0.6, qualified ≥ 0.7
+and client ≥ 0.8 confidence (a chat that skips stages reports each one); below that it saves a suggestion the user can accept from the
 Leads page. Events are skipped (status `skipped`) when the lead has no click
 id (TikTok) or the client has no TikTok pixel / Meta pixel + token connected.
 
@@ -137,9 +90,10 @@ Meta events go to the client's pixel (Conversions API) and match on the hashed
 phone number, plus `fbc` when the first message carried an `fbclid` (website-click
 ads: have the landing page put `fbclid=<id>` in the prefilled WhatsApp text).
 Meta Click-to-WhatsApp ads also give the ad id, used for campaign attribution.
-TikTok doesn't, so TikTok attribution relies on the ad's prefilled message
-containing a `ttclid` (and optionally `cid=<campaign>`); a plain `wa.me` link
-with no prefilled text never attributes. AI replies and follow-ups can only be
+TikTok doesn't, so TikTok ads point to WOB's bridge page `/go` (`api/go.js`): it runs
+the client's pixel, stores TikTok's `ttclid` and the campaign id in `ad_clicks`, and
+opens WhatsApp with the row id hidden in the prefilled text as zero-width characters,
+which the webhook decodes. A plain `wa.me` link with no prefilled text never attributes. AI replies and follow-ups can only be
 sent on Evolution (QR) lines.
 
 ## Database migrations
@@ -149,12 +103,11 @@ database, in this order:
 
 1. `supabase/migrations/*.sql` — via the Supabase CLI (`supabase db push`) or
    pasted into the SQL editor.
-2. `drizzle/migrations/*.sql` — applied against `LOVABLE_DB_MIGRATION_URL`
+2. `drizzle/migrations/*.sql` — applied against `DB_MIGRATION_URL`
    (see `drizzle.config.ts`); this is where `scheduler_config`,
    `notification_preferences`, and the `pg_cron`/`pg_net` extensions come from.
 
 After applying migrations that change the schema, regenerate
 `src/integrations/supabase/types.ts` (`supabase gen types typescript
---project-id <id> > src/integrations/supabase/types.ts`, or let Lovable
-resync it) — it's hand-kept-accurate in the meantime but is meant to be
-generated, not maintained by hand.
+--project-id <id> > src/integrations/supabase/types.ts`) — it is generated,
+not maintained by hand.

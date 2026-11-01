@@ -144,26 +144,28 @@ const Settings = () => {
   }, [agency?.id, isIndividual, isClientUser]);
 
   // Background jobs
+  const agencyId = agency?.id;
   useEffect(() => {
-    if (!agency) return;
+    if (!agencyId) return;
     supabase
       .from("integration_jobs")
       .select("id, job_name, status, error_message, started_at")
       .order("started_at", { ascending: false })
       .limit(8)
       .then(({ data }) => setJobs((data as Job[]) ?? []));
-  }, [agency?.id]);
+  }, [agencyId]);
 
   // Notification preferences
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     supabase
       .from("notification_preferences")
       .select("new_verified, daily_summary, campaign_alerts, number_status")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => data && setPrefs(data as Prefs));
-  }, [user?.id]);
+  }, [userId]);
 
   const saveCompany = async () => {
     if (!agency || !companyName.trim()) return;

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 // Automatic TikTok pixel setup: reuse the ad account's pixel (or create one) and register the three
 // events WOB reports from the server, so users never paste a pixel code or open Events Manager.
 
@@ -13,8 +15,16 @@ export const WOB_PIXEL_EVENTS = [
 export const missingEvents = (existing: Array<{ event_type?: string }>) =>
   WOB_PIXEL_EVENTS.filter((e) => !existing.some((x) => x.event_type === e.event_type));
 
+// A pixel as pixel/list/ returns it.
+export interface TikTokPixel {
+  pixel_id: string;
+  pixel_code: string;
+  pixel_name?: string | null;
+  events?: Array<{ event_type?: string }>;
+}
+
 // Keep the pixel the client already chose; otherwise the first one on the account.
-export const pickPixel = (list: any[], saved: string | null) =>
+export const pickPixel = (list: TikTokPixel[], saved: string | null) =>
   list.find((p) => p.pixel_code === saved) ?? list[0] ?? null;
 
 // TikTok: at most 40 characters, no emojis, unique per advertiser.
@@ -42,7 +52,7 @@ export interface PixelSetup {
 }
 
 /** Idempotent: safe to run on every connect and on demand. Throws with TikTok's message on failure. */
-export async function ensurePixel(supabase: any, clientId: string): Promise<PixelSetup> {
+export async function ensurePixel(supabase: SupabaseClient, clientId: string): Promise<PixelSetup> {
   const [{ data: account }, { data: saved }, { data: client }] = await Promise.all([
     supabase.from("tiktok_accounts").select("advertiser_id, access_token").eq("client_id", clientId).limit(1).maybeSingle(),
     supabase.from("tiktok_pixels").select("id, pixel_code").eq("client_id", clientId).limit(1).maybeSingle(),
@@ -50,7 +60,7 @@ export async function ensurePixel(supabase: any, clientId: string): Promise<Pixe
   ]);
   if (!account?.access_token) throw new Error("Connect a TikTok ad account first");
   const base = { advertiser_id: account.advertiser_id };
-  const listPixels = async () => (await tt("pixel/list/", account.access_token, undefined, { ...base, page_size: "20" })).pixels ?? [];
+  const listPixels = async (): Promise<TikTokPixel[]> => (await tt("pixel/list/", account.access_token, undefined, { ...base, page_size: "20" })).pixels ?? [];
 
   let pixel = pickPixel(await listPixels(), saved?.pixel_code ?? null);
   let created = false;

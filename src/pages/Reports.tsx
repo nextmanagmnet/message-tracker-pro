@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { DateRangePicker, DateRange, getDefaultDateRange } from "@/components/dashboard/DateRangePicker";
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { getDefaultDateRange, type DateRange } from "@/components/dashboard/dateRange";
 import { Button } from "@/components/ui/button";
 import { useAgency } from "@/hooks/useAgency";
 import { downloadCsv } from "@/lib/metrics";

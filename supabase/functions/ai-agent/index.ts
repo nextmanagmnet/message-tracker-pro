@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeClient, isInternalCall, serviceClient } from "../_shared/auth.ts";
 import { hasLlm, jsonCompletion, REPLY_MODEL, transcript } from "../_shared/llm.ts";
@@ -28,9 +29,17 @@ interface AgentResult {
   send_product_ids: string[];
 }
 
+// ai_agent_settings columns the prompt reads.
+interface AgentSettings {
+  handoff_rules: string | null;
+  tone: string | null;
+  qualifying_questions: string | null;
+  business_knowledge: string | null;
+}
+
 type Product = { id: string; name: string; description: string | null; price: number | null; currency: string; in_stock: boolean; images: string[]; videos: string[] };
 
-const loadProducts = async (supabase: any, clientId: string): Promise<Product[]> =>
+const loadProducts = async (supabase: SupabaseClient, clientId: string): Promise<Product[]> =>
   (await supabase.from("products").select("id, name, description, price, currency, in_stock, images, videos")
     .eq("client_id", clientId).order("created_at").limit(60)).data ?? [];
 
@@ -42,7 +51,7 @@ function catalogText(products: Product[]): string {
   ).join("\n");
 }
 
-function systemPrompt(s: any, products: Product[]): string {
+function systemPrompt(s: AgentSettings | null, products: Product[]): string {
   return `You are the WhatsApp assistant for a business. You chat with people who messaged after seeing the business's ad.
 Goal: answer their questions from the business information, ask the qualifying questions naturally, and help them order or book.
 Reply in the customer's language and dialect (Arabic or English). Keep replies short, warm, and human, like a WhatsApp chat. Never invent prices, stock, or policies that are not in the business information; if you don't know, say a team member will confirm.
@@ -63,7 +72,7 @@ ${catalogText(products)}
 When the customer asks about or would benefit from seeing a product that has photos/video, put its id in send_product_ids (max 3) and the photos are sent after your reply. Otherwise send_product_ids is [].`;
 }
 
-async function runAgent(settings: any, products: Product[], chat: string): Promise<AgentResult | null> {
+async function runAgent(settings: AgentSettings | null, products: Product[], chat: string): Promise<AgentResult | null> {
   const raw = await jsonCompletion({
     model: REPLY_MODEL,
     system: systemPrompt(settings, products),
@@ -94,7 +103,7 @@ Deno.serve(async (req) => {
       if (auth instanceof Response) return auth;
       if (!Array.isArray(body.messages) || body.messages.length === 0) return json({ error: "messages are required" }, 400);
       const { data: settings } = await auth.supabase.from("ai_agent_settings").select("*").eq("client_id", body.clientId).maybeSingle();
-      const chat = transcript(body.messages.slice(-30).map((m: any) => ({
+      const chat = transcript(body.messages.slice(-30).map((m: { role?: unknown; text?: unknown }) => ({
         direction: m.role === "lead" ? "in" : "out",
         author: "owner",
         text: String(m.text ?? "").slice(0, 2000),

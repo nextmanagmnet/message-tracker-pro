@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,27 +12,75 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # This project is deployed via Lovable, which maintains bun.lockb as the
-      # canonical lockfile (package-lock.json exists but isn't kept in sync) —
-      # install the same way to catch what actually ships.
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-      # ponytail: not --frozen-lockfile until bun.lockb picks up i18next/react-i18next
-      # (bun crashes on the dev Windows box); restore once Lovable re-syncs the lockfile.
-      - run: bun install
+      # Same install as the Vercel build (vercel.json).
+      - run: npm install --no-audit --no-fund
 
-      - name: Lint
-        run: bun run lint
+      - name: Lint (no warnings allowed)
+        run: npm run lint
 
       - name: Typecheck
-        run: bun run typecheck
+        run: npm run typecheck
 
       - name: Test
-        run: bun run test
+        run: npm run test
 
       - name: Build
-        run: bun run build
+        run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+
+      # Visibility only: shows newly introduced vulnerable runtime packages without blocking.
+      - name: Audit (non-blocking)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
+
+  edge-functions:
+    runs-on: ubuntu-latest
+    env:
+      # Functions deploy without the root package.json; without this, deno resolves npm: imports
+      # from node_modules (not installed in this job) and fails.
+      DENO_NO_PACKAGE_JSON: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Entry points only; the *.test.ts files are Vitest (node imports) and run in the build job.
+      - name: Deno check
+        run: deno check supabase/functions/*/index.ts
+
+      # Excluded rules match the codebase's conventions (inline https:/npm: imports, `any` on API payloads).
+      - name: Deno lint
+        run: deno lint --rules-exclude=no-import-prefix --ignore='supabase/functions/**/*.test.ts' supabase/functions
+
+  db-security:
+    # Client-isolation (RLS) test against the linked project; the SQL always rolls back.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+
+      - uses: actions/setup-node@v4
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        with:
+          node-version: 20
+
+      - name: Client isolation test
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: npm run test:db
+
+      - name: Skipped (no SUPABASE_ACCESS_TOKEN secret)
+        if: env.SUPABASE_ACCESS_TOKEN == ''
+        run: echo "::notice::db-security skipped, set the SUPABASE_ACCESS_TOKEN secret to enable it"

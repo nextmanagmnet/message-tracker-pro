@@ -7,6 +7,13 @@ import { checkFundAmount, extractList, parseAdvertiserBalance, type BcAdvertiser
 const API = "https://business-api.tiktok.com/open_api/v1.3";
 const PAGE_SIZE = 50; // TikTok rejects anything larger
 
+// Rows from /bc/asset/get/ and /bc/get/; field names vary, so every one is optional.
+type BcAsset = {
+  asset_id?: string | number; advertiser_id?: string | number; asset_name?: string; advertiser_name?: string;
+  advertiser_role?: string; asset_role?: string; permission?: string; relation_type?: string;
+} | null;
+type BcInfo = { bc_info?: { bc_id?: string | number; name?: string } | null; bc_id?: string | number; name?: string; user_role?: string } | null;
+
 async function tt(path: string, token: string, init: { method?: string; body?: string; query?: Record<string, string> } = {}) {
   const url = new URL(`${API}${path}`);
   for (const [k, v] of Object.entries(init.query ?? {})) url.searchParams.set(k, v);
@@ -30,7 +37,7 @@ async function listBalances(bcId: string, token: string): Promise<{ rows: BcAdve
       d = await tt("/advertiser/balance/get/", token, { query });
     }
     if (d.code !== 0) return { rows, sample, error: d.message ?? `TikTok error ${d.code}` };
-    const list: any[] = extractList(d.data);
+    const list = extractList(d.data);
     sample ??= list[0] ?? null;
     for (const r of list) {
       const p = parseAdvertiserBalance(r);
@@ -124,7 +131,7 @@ Deno.serve(async (req) => {
         balanceList: bal && { code: bal.code, message: bal.message, count: extractList(bal.data).length, total: bal.data?.page_info?.total_number ?? null },
         assets: assets && {
           code: assets.code, message: assets.message, total: assets.data?.page_info?.total_number ?? null,
-          items: (assets.data?.list ?? []).slice(0, 10).map((i: any) => ({
+          items: (assets.data?.list ?? []).slice(0, 10).map((i: BcAsset) => ({
             id: String(i?.asset_id ?? i?.advertiser_id ?? ""), name: i?.asset_name ?? i?.advertiser_name ?? null,
             permission: i?.advertiser_role ?? i?.asset_role ?? i?.permission ?? i?.relation_type ?? null,
           })),
@@ -132,7 +139,7 @@ Deno.serve(async (req) => {
         savedBcId: conn.bc_id,
         businessCenters: {
           code: bcs.code, message: bcs.message,
-          list: (bcs.data?.list ?? []).map((i: any) => ({ id: String(i?.bc_info?.bc_id ?? i?.bc_id ?? ""), name: i?.bc_info?.name ?? i?.name ?? null, role: i?.user_role ?? null })),
+          list: (bcs.data?.list ?? []).map((i: BcInfo) => ({ id: String(i?.bc_info?.bc_id ?? i?.bc_id ?? ""), name: i?.bc_info?.name ?? i?.name ?? null, role: i?.user_role ?? null })),
         },
         authorizedAdAccounts: { code: advs.code, message: advs.message, count: (advs.data?.list ?? []).length },
       });
@@ -148,7 +155,7 @@ Deno.serve(async (req) => {
       if (accounts.error && accounts.rows.length === 0) return json({ error: accounts.error }, 502);
       // Match ad accounts to WOB clients where the client connected the same advertiser.
       const { data: mine } = await supabase.from("tiktok_accounts").select("advertiser_id, client_id").eq("tenant_id", agencyId);
-      const clientOf = new Map<string, string>((mine ?? []).map((m: any) => [m.advertiser_id, m.client_id]));
+      const clientOf = new Map<string, string>((mine ?? []).map((m: { advertiser_id: string; client_id: string }) => [m.advertiser_id, m.client_id]));
       return json({
         bcId: conn.bc_id,
         maxTransfer: Number(conn.max_transfer),
@@ -181,7 +188,7 @@ Deno.serve(async (req) => {
       if (insErr || !row) return json({ error: "Could not record the top-up, nothing was sent" }, 500);
 
       let status: "sent" | "failed" | "unknown" = "unknown";
-      let response: unknown = null;
+      let response: { code?: number; message?: string; request_id?: string; error?: string } | null = null;
       try {
         const d = await tt("/bc/transfer/", conn.access_token, {
           method: "POST",
@@ -194,7 +201,7 @@ Deno.serve(async (req) => {
         response = { error: e instanceof Error ? e.message : String(e) };
       }
       await supabase.from("fund_transfers").update({ status, response }).eq("id", row.id);
-      return json({ success: status === "sent", status, message: (response as any)?.message ?? null }, status === "failed" ? 502 : 200);
+      return json({ success: status === "sent", status, message: response?.message ?? null }, status === "failed" ? 502 : 200);
     }
 
     return json({ error: "Unknown action" }, 400);

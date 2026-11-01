@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     // Resolve the agency from the client / invite, never from the caller's say-so.
     let agencyId: string | undefined;
-    let invite: any = null;
+    let invite: { id: string; agency_id: string; email: string; accepted_at: string | null } | null = null;
     if (body.action === "create") {
       const { data: client } = await admin.from("clients").select("id, agency_id, name").eq("id", body.clientId).maybeSingle();
       agencyId = client?.agency_id;
@@ -36,11 +36,14 @@ Deno.serve(async (req) => {
     if (auth instanceof Response) return auth;
 
     if (body.action === "revoke") {
-      if (invite.accepted_at) return json({ error: "This invite was already accepted" }, 409);
-      await admin.from("client_invites").delete().eq("id", invite.id);
-      // Drop the half-created login too, if they never signed in.
-      const { data: u } = await admin.rpc("auth_user_by_email", { _email: invite.email });
-      if (u?.[0] && !u[0].last_sign_in_at) await admin.auth.admin.deleteUser(u[0].id);
+      if (invite!.accepted_at) return json({ error: "This invite was already accepted" }, 409);
+      await admin.from("client_invites").delete().eq("id", invite!.id);
+      // Drop the half-created login too, but only one this invite created (needs_password) that never signed in.
+      const { data: u } = await admin.rpc("auth_user_by_email", { _email: invite!.email });
+      if (u?.[0] && !u[0].last_sign_in_at) {
+        const { data: found } = await admin.auth.admin.getUserById(u[0].id);
+        if (found?.user?.user_metadata?.needs_password === true) await admin.auth.admin.deleteUser(u[0].id);
+      }
       return json({ success: true });
     }
 

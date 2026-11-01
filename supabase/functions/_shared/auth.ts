@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { json } from "./cron.ts";
 
 export function serviceClient() {
@@ -9,7 +9,7 @@ export function serviceClient() {
 export async function authorizeClient(
   req: Request,
   clientId: unknown,
-): Promise<{ userId: string; supabase: any } | Response> {
+): Promise<{ userId: string; supabase: SupabaseClient } | Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
   const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -30,7 +30,7 @@ export async function authorizeClient(
 export async function authorizeAgencyAdmin(
   req: Request,
   agencyId: unknown,
-): Promise<{ userId: string; supabase: any } | Response> {
+): Promise<{ userId: string; supabase: SupabaseClient } | Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
   const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {

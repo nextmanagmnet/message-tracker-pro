@@ -5,7 +5,7 @@ import { useAuth } from "./useAuth";
 export type AccountType = "individual" | "agency";
 
 /** True when a Postgres error came from the plan-limits trigger (raises with a WOB_LIMIT prefix). */
-export function isPlanLimitError(message: string | null | undefined): boolean {
+function isPlanLimitError(message: string | null | undefined): boolean {
   return !!message && message.includes("WOB_LIMIT");
 }
 
@@ -83,6 +83,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
       setSelectedClient(null);
       setLoading(false);
     }
+    // Refetch only when the signed-in user changes; fetchAgencyData is rebuilt each render and reads current state itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchAgencyData = async (retried = false): Promise<void> => {
@@ -260,6 +262,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// The provider and its hook share the private context; splitting them would just export the context instead.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAgency() {
   const context = useContext(AgencyContext);
   if (context === undefined) {

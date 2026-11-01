@@ -83,13 +83,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get tenant_id from agency
-    const { data: agencyData } = await supabase
-      .from("agencies")
-      .select("id")
-      .eq("id", clientData.agency_id)
-      .single();
-
     // For now, we'll use the agency_id as tenant_id since we're in agency model
     // The tenant_id column exists for legacy compatibility
     const tenantId = clientData.agency_id;
@@ -197,7 +190,7 @@ Deno.serve(async (req) => {
 
       case "validate-token": {
         // Validate the WhatsApp token by fetching business info
-        const meRes = await fetch(`${GRAPH_BASE}/me?access_token=${whatsappToken}`);
+        const meRes = await fetch(`${GRAPH_BASE}/me?access_token=${encodeURIComponent(whatsappToken)}`);
         if (!meRes.ok) {
           const errData = await meRes.json();
           return new Response(
@@ -219,7 +212,7 @@ Deno.serve(async (req) => {
         const seen = new Set<string>();
 
         const debugRes = await fetch(
-          `${GRAPH_BASE}/debug_token?input_token=${whatsappToken}&access_token=${whatsappToken}`
+          `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(whatsappToken)}&access_token=${encodeURIComponent(whatsappToken)}`
         );
         const debugData = await debugRes.json().catch(() => ({}));
         const wabaIds: string[] = [];
@@ -231,7 +224,7 @@ Deno.serve(async (req) => {
 
         for (const id of wabaIds) {
           const r = await fetch(
-            `${GRAPH_BASE}/${id}?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+            `${GRAPH_BASE}/${id}?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`
           );
           if (!r.ok) {
             console.error(`WABA ${id} lookup failed`, r.status, await r.text());
@@ -250,11 +243,11 @@ Deno.serve(async (req) => {
 
         // System users: assets assigned directly to the token's user
         if (wabas.length === 0) {
-          const meRes = await fetch(`${GRAPH_BASE}/me?fields=id&access_token=${whatsappToken}`);
+          const meRes = await fetch(`${GRAPH_BASE}/me?fields=id&access_token=${encodeURIComponent(whatsappToken)}`);
           const me = await meRes.json().catch(() => ({}));
           if (me?.id) {
             const aRes = await fetch(
-              `${GRAPH_BASE}/${me.id}/assigned_whatsapp_business_accounts?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+              `${GRAPH_BASE}/${me.id}/assigned_whatsapp_business_accounts?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`
             );
             const aData = await aRes.json().catch(() => ({}));
             if (!aRes.ok) console.error("assigned WABAs lookup failed", aRes.status, JSON.stringify(aData));
@@ -276,7 +269,7 @@ Deno.serve(async (req) => {
         let fallbackError: string | null = null;
         if (wabas.length === 0) {
           const wabasRes = await fetch(
-            `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${whatsappToken}`
+            `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${encodeURIComponent(whatsappToken)}`
           );
           const wabasData = await wabasRes.json().catch(() => ({}));
           if (!wabasRes.ok) {
@@ -323,7 +316,7 @@ Deno.serve(async (req) => {
           });
         }
         const r = await fetch(
-          `${GRAPH_BASE}/${wabaId}?fields=id,name,account_review_status,owner_business_info&access_token=${whatsappToken}`
+          `${GRAPH_BASE}/${wabaId}?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`
         );
         const w = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -356,7 +349,7 @@ Deno.serve(async (req) => {
 
         // Fetch phone numbers for a WABA
         const phonesRes = await fetch(
-          `${GRAPH_BASE}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,platform_type&access_token=${whatsappToken}`
+          `${GRAPH_BASE}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,platform_type&access_token=${encodeURIComponent(whatsappToken)}`
         );
         if (!phonesRes.ok) {
           const errData = await phonesRes.json();
@@ -367,7 +360,7 @@ Deno.serve(async (req) => {
         }
         const phonesData = await phonesRes.json();
 
-        const phones = (phonesData.data || []).map((p: any) => ({
+        const phones = (phonesData.data || []).map((p: { id: string; display_phone_number?: string; verified_name?: string; quality_rating?: string; platform_type?: string }) => ({
           id: p.id,
           phoneNumber: p.display_phone_number,
           verifiedName: p.verified_name,
@@ -545,7 +538,7 @@ Deno.serve(async (req) => {
         }
 
         // Validate the token is still valid
-        const tokenValidRes = await fetch(`${GRAPH_BASE}/me?access_token=${whatsappToken}`);
+        const tokenValidRes = await fetch(`${GRAPH_BASE}/me?access_token=${encodeURIComponent(whatsappToken)}`);
         if (!tokenValidRes.ok) {
           return new Response(
             JSON.stringify({ error: "WhatsApp token is no longer valid. Please contact support." }),
@@ -570,7 +563,7 @@ Deno.serve(async (req) => {
 
         // Verify the phone number still exists in Meta
         const phoneRes = await fetch(
-          `${GRAPH_BASE}/${numberData.phone_number_id}?fields=display_phone_number,verified_name&access_token=${whatsappToken}`
+          `${GRAPH_BASE}/${numberData.phone_number_id}?fields=display_phone_number,verified_name&access_token=${encodeURIComponent(whatsappToken)}`
         );
 
         if (!phoneRes.ok) {

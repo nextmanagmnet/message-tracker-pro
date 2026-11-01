@@ -150,8 +150,24 @@ export interface AdContext {
   headline: string | null;
 }
 
-export function parseAdContext(message: any): AdContext | null {
-  if (!message || typeof message !== "object") return null;
+interface BaileysContextInfo {
+  externalAdReply?: { ctwaClid?: unknown; sourceId?: unknown; sourceUrl?: string | null; title?: string | null } | null;
+  ctwaClid?: unknown;
+  conversionData?: { ctwaClid?: unknown } | null;
+  conversionSource?: unknown;
+}
+
+interface BaileysMessage {
+  contextInfo?: BaileysContextInfo | null;
+  extendedTextMessage?: { contextInfo?: BaileysContextInfo | null } | null;
+  imageMessage?: { contextInfo?: BaileysContextInfo | null } | null;
+  videoMessage?: { contextInfo?: BaileysContextInfo | null } | null;
+  messageContextInfo?: BaileysContextInfo | null;
+}
+
+export function parseAdContext(input: unknown): AdContext | null {
+  if (!input || typeof input !== "object") return null;
+  const message = input as BaileysMessage;
   const ci =
     message.contextInfo ??
     message.extendedTextMessage?.contextInfo ??

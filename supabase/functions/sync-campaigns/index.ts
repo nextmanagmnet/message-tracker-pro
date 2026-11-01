@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       );
       const listData = await listRes.json();
       if (listData.code !== 0) throw new Error(listData.message ?? "Campaign list failed");
-      const campaignList: any[] = listData.data?.list ?? [];
+      const campaignList: { campaign_id: string; campaign_name: string }[] = listData.data?.list ?? [];
 
       // report/integrated/get is GET-only (POST returns an HTML 405); arrays go JSON-encoded in the query.
       const reportParams = new URLSearchParams({

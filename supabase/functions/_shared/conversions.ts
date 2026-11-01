@@ -1,4 +1,6 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { pickOrderValue } from "./orders.ts";
+import type { ConversionEventRow, LeadRow } from "./types.ts";
 import {
   buildMetaPayload,
   buildTikTokPayload,
@@ -33,7 +35,7 @@ export async function postMetaEvents(pixelId: string, token: string, payload: un
   return { ok: res.ok && !result?.error, result };
 }
 
-function platformsFor(lead: any): Platform[] {
+function platformsFor(lead: Pick<LeadRow, "ad_platform" | "ttclid" | "fbclid">): Platform[] {
   if (lead.ad_platform === "meta" || lead.ad_platform === "tiktok") return [lead.ad_platform];
   return lead.ttclid ? ["tiktok"] : lead.fbclid ? ["meta"] : [];
 }
@@ -44,7 +46,7 @@ function platformsFor(lead: any): Platform[] {
  * and each (lead, stage, platform) event is sent at most once.
  */
 export async function reportStage(
-  supabase: any,
+  supabase: SupabaseClient,
   leadId: string,
   stage: Stage,
   opts: { value?: number | null; currency?: string | null } = {},
@@ -106,7 +108,7 @@ export async function reportStage(
 
 // TikTok matches on SHA-256 of the E.164 number ("+9665..."); leads only store a
 // digits-only hash (Meta's format), so rebuild it from the stored WhatsApp contact.
-async function tiktokPhoneHash(supabase: any, leadId: string): Promise<string | null> {
+async function tiktokPhoneHash(supabase: SupabaseClient, leadId: string): Promise<string | null> {
   const { data: conv } = await supabase.from("conversations").select("id").eq("lead_id", leadId).maybeSingle();
   if (!conv) return null;
   const { data: contact } = await supabase
@@ -118,7 +120,7 @@ async function tiktokPhoneHash(supabase: any, leadId: string): Promise<string | 
 }
 
 // Sends (or re-sends) one conversion_events row and records the outcome.
-export async function sendConversionEvent(supabase: any, ev: any, lead?: any) {
+export async function sendConversionEvent(supabase: SupabaseClient, ev: ConversionEventRow, lead?: LeadRow | null) {
   lead ??= (await supabase.from("leads").select(LEAD_COLS).eq("id", ev.lead_id).maybeSingle()).data;
   const finish = (status: string, response: unknown) =>
     supabase.from("conversion_events").update({

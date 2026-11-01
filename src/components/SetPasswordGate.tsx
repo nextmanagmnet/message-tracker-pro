@@ -47,7 +47,7 @@ export function SetPasswordGate({ children }: { children: ReactNode }) {
       <div className="glass-card w-full max-w-md space-y-4 p-8">
         <Logo variant="horizontal" className="h-10" />
         <h1 className="text-xl font-semibold text-foreground">{t("invite.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("invite.hint", { email: user.email })}</p>
+        <p className="text-sm text-muted-foreground">{t("invite.hint", { email: user?.email })}</p>
         <div className="space-y-1.5">
           <Label htmlFor="pw">{t("invite.password")}</Label>
           <Input id="pw" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />

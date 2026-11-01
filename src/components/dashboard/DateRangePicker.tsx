@@ -19,10 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type DateRange = {
-  from: Date;
-  to: Date;
-};
+import type { DateRange } from "./dateRange";
+
+export type { DateRange };
 
 type PresetValue = "7d" | "14d" | "30d" | "90d" | "custom";
 
@@ -118,11 +117,4 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
       </Popover>
     </div>
   );
-}
-
-export function getDefaultDateRange(): DateRange {
-  return {
-    from: startOfDay(subDays(new Date(), 7)),
-    to: endOfDay(new Date()),
-  };
 }

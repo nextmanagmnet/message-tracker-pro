@@ -1,10 +1,18 @@
-import Anthropic from "npm:@anthropic-ai/sdk";
+import Anthropic from "npm:@anthropic-ai/sdk@1.3.0";
 
 // Cheap model for classifying chats at volume; strongest model for customer-facing replies.
 export const CLASSIFIER_MODEL = "claude-haiku-5-5";
 export const REPLY_MODEL = "claude-opus-5-5";
 
 let client: Anthropic | null = null;
+
+// The fields read from a Messages API response (plain or beta).
+interface LlmResponse {
+  stop_reason: string | null;
+  stop_details?: { category?: string | null } | null;
+  content: Array<{ type: string; text?: string }>;
+}
+
 export function hasLlm(): boolean {
   return Boolean(Deno.env.get("ANTHROPIC_API_KEY"));
 }
@@ -22,7 +30,7 @@ export async function jsonCompletion(opts: {
   maxTokens?: number;
 }): Promise<string | null> {
   client ??= new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
-  const params: any = {
+  const params: Anthropic.MessageCreateParamsNonStreaming = {
     model: opts.model,
     max_tokens: opts.maxTokens ?? 2048,
     system: opts.system,
@@ -31,14 +39,14 @@ export async function jsonCompletion(opts: {
   };
   try {
     // Server-side refusal fallback is only available for the Opus/Sonnet tier.
-    const response: any = opts.model === REPLY_MODEL
+    const response: LlmResponse = opts.model === REPLY_MODEL
       ? await client.beta.messages.create({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" })
       : await client.messages.create(params);
     if (response.stop_reason === "refusal") {
       console.warn("LLM refused", response.stop_details?.category);
       return null;
     }
-    const text = response.content.find((b: any) => b.type === "text");
+    const text = response.content.find((b) => b.type === "text");
     return text?.text ?? null;
   } catch (e) {
     if (e instanceof Anthropic.RateLimitError) console.warn("LLM rate limited");

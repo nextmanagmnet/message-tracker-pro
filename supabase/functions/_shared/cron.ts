@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -8,7 +10,7 @@ export const corsHeaders = {
  * Scheduled functions accept either the platform CRON_SECRET or the
  * database scheduler token (stored in a service-role-only table).
  */
-export async function isAuthorizedCron(req: Request, supabase: any): Promise<boolean> {
+export async function isAuthorizedCron(req: Request, supabase: SupabaseClient): Promise<boolean> {
   const provided =
     req.headers.get("x-cron-secret") ??
     new URL(req.url).searchParams.get("cron_secret");
@@ -20,7 +22,7 @@ export async function isAuthorizedCron(req: Request, supabase: any): Promise<boo
     .select("cron_token")
     .eq("id", 1)
     .maybeSingle();
-  return Boolean(data?.cron_token) && provided === data.cron_token;
+  return Boolean(data?.cron_token) && provided === data?.cron_token;
 }
 
 export function json(body: unknown, status = 200) {
@@ -31,7 +33,7 @@ export function json(body: unknown, status = 200) {
 }
 
 export async function logJob(
-  supabase: any,
+  supabase: SupabaseClient,
   jobName: string,
   payload: {
     clientId?: string | null;

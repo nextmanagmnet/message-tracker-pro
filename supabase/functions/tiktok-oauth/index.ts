@@ -17,8 +17,8 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     // Support action via query param (legacy) OR JSON body (preferred for function invoke)
-    let action = url.searchParams.get('action');
-    let parsedBody: any = null;
+    let action: string | null | undefined = url.searchParams.get('action');
+    let parsedBody: { action?: string; clientId?: unknown; testEventCode?: unknown } | null = null;
     if (!action && req.method !== 'GET') {
       try {
         parsedBody = await req.json();
@@ -87,7 +87,7 @@ serve(async (req) => {
       const auth = await authorizeClient(req, clientId);
       if (auth instanceof Response) return auth;
       try {
-        const pixel = await ensurePixel(createClient(supabaseUrl, supabaseServiceKey), clientId);
+        const pixel = await ensurePixel(createClient(supabaseUrl, supabaseServiceKey), clientId as string); // authorizeClient checked it
         return new Response(JSON.stringify({ success: true, ...pixel }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       } catch (e) {
         // 200 + error so the UI can show TikTok's message and offer the manual pixel field
@@ -100,12 +100,8 @@ serve(async (req) => {
       const { redirectUri, state } = parsedBody ?? (await req.json());
       // APP_ORIGINS: comma-separated site origins, e.g. https://wob.vercel.app,https://app.wob.com
       const appOrigins = (Deno.env.get('APP_ORIGINS') ?? '').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
-      const allowed = [
-        'https://message-tracker-pro.lovable.app/tiktok/callback',
-        ...appOrigins.map((o) => `${o}/tiktok/callback`),
-      ];
-      const isPreview = typeof redirectUri === 'string' && /^https:\/\/[a-z0-9-]+\.lovable\.app\/tiktok\/callback$/.test(redirectUri);
-      if (!allowed.includes(redirectUri) && !isPreview) {
+      const allowed = appOrigins.map((o) => `${o}/tiktok/callback`);
+      if (!allowed.includes(redirectUri)) {
         return new Response(JSON.stringify({ error: 'Redirect URI not allowed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       
@@ -318,7 +314,7 @@ serve(async (req) => {
           continue;
         }
 
-        const campaignIds = campaignsData.data.list.map((c: any) => c.campaign_id);
+        const campaignIds = campaignsData.data.list.map((c: { campaign_id: string }) => c.campaign_id);
         
         if (campaignIds.length === 0) continue;
 
