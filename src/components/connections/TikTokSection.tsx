@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ExternalLink, Loader2, Zap } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,9 @@ export function TikTokSection({
   const [pixelCode, setPixelCode] = useState("");
   const [savingPixel, setSavingPixel] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const triedSetup = useRef(false);
 
   const load = useCallback(async () => {
     const [a, p] = await Promise.all([
@@ -43,6 +46,28 @@ export function TikTokSection({
   useEffect(() => {
     load();
   }, [load]);
+
+  const setupTracking = useCallback(async () => {
+    setSettingUp(true);
+    setSetupError(null);
+    try {
+      const d = await invokeFn<{ pixelCode?: string; error?: string }>("tiktok-oauth", { action: "ensure-pixel", clientId });
+      if (d.error) setSetupError(d.error);
+      else await load();
+    } catch (e) {
+      setSetupError(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setSettingUp(false);
+    }
+  }, [clientId, load, t]);
+
+  // A connected account without a pixel gets one automatically (once per visit; the button retries).
+  useEffect(() => {
+    if (canManage && accounts && accounts.length > 0 && !pixelId && !triedSetup.current) {
+      triedSetup.current = true;
+      setupTracking();
+    }
+  }, [accounts, pixelId, canManage, setupTracking]);
 
   const connect = useCallback(async () => {
     setConnecting(true);
@@ -129,7 +154,22 @@ export function TikTokSection({
           ))}
         </ul>
       )}
-      <div className="space-y-2">
+      {connected && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
+          {settingUp ? (
+            <><Loader2 className="h-4 w-4 animate-spin text-primary" /> {t("connections.tiktok.settingUp")}</>
+          ) : pixelId ? (
+            <><CheckCircle2 className="h-4 w-4 text-success" /> {t("connections.tiktok.trackingReady")} <span className="text-xs text-muted-foreground" dir="ltr">{pixelCode}</span></>
+          ) : (
+            <>
+              <span className="text-muted-foreground">{setupError ?? t("connections.tiktok.noTracking")}</span>
+              {canManage && <Button size="sm" variant="outline" onClick={setupTracking}>{t("connections.tiktok.setupTracking")}</Button>}
+            </>
+          )}
+        </div>
+      )}
+      <details open={!pixelId && !settingUp && !!setupError} className="space-y-2">
+        <summary className="cursor-pointer text-sm text-muted-foreground">{t("connections.tiktok.ownPixel")}</summary>
         <Label htmlFor="tiktok-pixel">{t("connections.tiktok.pixel")}</Label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
@@ -146,7 +186,7 @@ export function TikTokSection({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t("connections.tiktok.pixelHint")}</p>
-      </div>
+      </details>
       {isIndividual && (accounts?.length ?? 0) >= 1 && <p className="mt-3 text-xs text-muted-foreground">{t("limits.tiktok")}</p>}
     </ConnectionCard>
   );

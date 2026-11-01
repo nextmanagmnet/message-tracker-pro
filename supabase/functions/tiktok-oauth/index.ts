@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authorizeClient, limitError } from "../_shared/auth.ts";
+import { ensurePixel } from "../_shared/tiktokPixel.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,6 +79,20 @@ serve(async (req) => {
       const result = await resp.json();
       console.log('TikTok test event result:', result?.code, result?.message);
       return new Response(JSON.stringify({ accepted: result?.code === 0, code: result?.code, message: result?.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Reuse (or create) the ad account's pixel and register WOB's events on it.
+    if (action === 'ensure-pixel') {
+      const { clientId } = parsedBody ?? {};
+      const auth = await authorizeClient(req, clientId);
+      if (auth instanceof Response) return auth;
+      try {
+        const pixel = await ensurePixel(createClient(supabaseUrl, supabaseServiceKey), clientId);
+        return new Response(JSON.stringify({ success: true, ...pixel }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } catch (e) {
+        // 200 + error so the UI can show TikTok's message and offer the manual pixel field
+        return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Pixel setup failed' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     // Generate OAuth URL for TikTok login
@@ -230,8 +245,16 @@ serve(async (req) => {
         );
       }
 
+      // Tracking setup is best effort: the connection itself already succeeded.
+      let pixel: unknown = null;
+      try {
+        pixel = await ensurePixel(supabase, clientId);
+      } catch (e) {
+        console.error('ensurePixel after connect failed:', e instanceof Error ? e.message : e);
+      }
+
       return new Response(
-        JSON.stringify({ success: true, message: `Connected ${saved} advertiser account(s)`, advertiserCount: saved }),
+        JSON.stringify({ success: true, message: `Connected ${saved} advertiser account(s)`, advertiserCount: saved, pixel }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
