@@ -56,6 +56,19 @@ interface AgencyContextType {
 
 const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 
+async function loadClients(agencyId: string): Promise<Client[] | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("agency_id", agencyId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Error fetching clients:", error);
+    return null;
+  }
+  return data || [];
+}
+
 export function AgencyProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [agency, setAgency] = useState<Agency | null>(null);
@@ -73,106 +86,103 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const accountType: AccountType = agency?.account_type === "individual" ? "individual" : "agency";
   const isIndividual = accountType === "individual";
 
+  const userId = user?.id ?? null;
+
+  // Refetch whenever the signed-in user changes. `cancelled` makes a response that arrives after
+  // the user changed (or the provider unmounted) a no-op, so one user's data never lands under another.
   useEffect(() => {
-    if (user) {
-      fetchAgencyData();
-    } else {
+    if (!userId) {
       setAgency(null);
       setMembership(null);
       setClients([]);
       setSelectedClient(null);
       setLoading(false);
-    }
-    // Refetch only when the signed-in user changes; fetchAgencyData is rebuilt each render and reads current state itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const fetchAgencyData = async (retried = false): Promise<void> => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-
-      // Get user's agency membership. A user could in principle belong to more
-      // than one agency (agency_members has no unique constraint on user_id
-      // alone) — there's no multi-agency switcher yet, so just pick one
-      // deterministically rather than letting maybeSingle() error on >1 row.
-      const { data: membershipData, error: membershipError } = await supabase
-        .from("agency_members")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (membershipError) {
-        console.error("Error fetching membership:", membershipError);
-        setLoading(false);
-        return;
-      }
-
-      if (!membershipData) {
-        // A client the agency invited has no membership until their invite is accepted.
-        if (!retried) {
-          const { data: acceptedClient } = await supabase.rpc("accept_client_invite");
-          if (acceptedClient) return fetchAgencyData(true);
-        }
-        console.log("No agency membership found");
-        setLoading(false);
-        return;
-      }
-
-      setMembership(membershipData as AgencyMember);
-
-      // Get agency details
-      const { data: agencyData, error: agencyError } = await supabase
-        .from("agencies")
-        .select("*")
-        .eq("id", membershipData.agency_id)
-        .single();
-
-      if (agencyError) {
-        console.error("Error fetching agency:", agencyError);
-        setLoading(false);
-        return;
-      }
-
-      setAgency(agencyData);
-
-      // Get clients
-      await fetchClients(membershipData.agency_id);
-    } catch (error) {
-      console.error("Error fetching agency data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchClients = async (agencyId?: string) => {
-    const id = agencyId || agency?.id;
-    if (!id) return;
-
-    const { data: clientsData, error: clientsError } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("agency_id", id)
-      .order("created_at", { ascending: false });
-
-    if (clientsError) {
-      console.error("Error fetching clients:", clientsError);
       return;
     }
 
-    setClients(clientsData || []);
+    let cancelled = false;
 
-    // Auto-select first client if none selected
-    if (!selectedClient && clientsData && clientsData.length > 0) {
-      setSelectedClient(clientsData[0]);
-    }
-  };
+    const load = async () => {
+      try {
+        setLoading(true);
+
+        // A user could in principle belong to more than one agency (no unique constraint on
+        // user_id alone) and there's no switcher yet, so pick one deterministically.
+        const fetchMembership = () =>
+          supabase
+            .from("agency_members")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        let { data: membershipData, error: membershipError } = await fetchMembership();
+        if (cancelled) return;
+
+        if (membershipError) {
+          console.error("Error fetching membership:", membershipError);
+          return;
+        }
+
+        if (!membershipData) {
+          // A client the agency invited has no membership until their invite is accepted.
+          const { data: acceptedClient } = await supabase.rpc("accept_client_invite");
+          if (cancelled) return;
+          if (acceptedClient) {
+            ({ data: membershipData, error: membershipError } = await fetchMembership());
+            if (cancelled) return;
+            if (membershipError) {
+              console.error("Error fetching membership:", membershipError);
+              return;
+            }
+          }
+          if (!membershipData) {
+            console.log("No agency membership found");
+            return;
+          }
+        }
+
+        setMembership(membershipData as AgencyMember);
+
+        const { data: agencyData, error: agencyError } = await supabase
+          .from("agencies")
+          .select("*")
+          .eq("id", membershipData.agency_id)
+          .single();
+        if (cancelled) return;
+
+        if (agencyError) {
+          console.error("Error fetching agency:", agencyError);
+          return;
+        }
+
+        setAgency(agencyData);
+
+        const loaded = await loadClients(membershipData.agency_id);
+        if (cancelled || !loaded) return;
+        setClients(loaded);
+        setSelectedClient((prev) => prev ?? loaded[0] ?? null);
+      } catch (error) {
+        console.error("Error fetching agency data:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const refreshClients = async () => {
-    await fetchClients();
+    if (!agency) return;
+    const loaded = await loadClients(agency.id);
+    if (!loaded) return;
+    setClients(loaded);
+    // Auto-select first client if none selected
+    setSelectedClient((prev) => prev ?? loaded[0] ?? null);
   };
 
   const createClient = async (name: string): Promise<CreateClientResult> => {

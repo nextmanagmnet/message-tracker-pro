@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { setMonitoringUser } from "@/lib/monitoring";
 
 interface Profile {
   id: string;
@@ -24,6 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setMonitoringUser(user?.id ?? null);
+  }, [user?.id]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
