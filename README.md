@@ -48,7 +48,7 @@ be set manually.
 | `META_ACTION_SOURCE` | `meta-connect`, conversions | Optional. `action_source` sent with Meta events. Default `chat` (accurate for WhatsApp chats); `system_generated` or `other` also work. Don't use `website`, which would need a page URL and user agent. |
 | `ANTHROPIC_API_KEY` | `analyze-conversation`, `ai-agent`, `ai-followups` | Claude API key. Without it chats aren't analyzed (no Qualified/Client events) and the AI add-on is off. |
 | `EVOLUTION_API_URL` / `EVOLUTION_API_KEY` | `whatsapp-connect`, AI sends | Self-hosted Evolution API (QR / linked-device WhatsApp). The URL **must be HTTPS**; rotate the key if it was ever shared in plaintext. |
-| `CRON_SECRET` | scheduled functions | Optional static override for the scheduled-job auth check. If unset, the DB-generated token in `scheduler_config.cron_token` is used instead (see `drizzle/migrations/0000_scheduler_setup.sql`). |
+| `CRON_SECRET` | scheduled functions | Optional static override for the scheduled-job auth check. If unset, the DB-generated token in `scheduler_config.cron_token` is used instead (see `supabase/migrations/20261012110000_scheduler_setup.sql`). |
 
 ### Edge functions
 
@@ -98,16 +98,23 @@ sent on Evolution (QR) lines.
 
 ## Database migrations
 
-Schema changes live in two places that both need to be applied to a fresh
-database, in this order:
+All schema changes live in `supabase/migrations/*.sql` and are applied with
+the Supabase CLI, in filename (timestamp) order. That includes the `pg_cron` /
+`pg_net` extensions, `scheduler_config` and `notification_preferences`
+(`20261012110000_scheduler_setup.sql`) and every scheduled job.
 
-1. `supabase/migrations/*.sql` — via the Supabase CLI (`supabase db push`) or
-   pasted into the SQL editor.
-2. `drizzle/migrations/*.sql` — applied against `DB_MIGRATION_URL`
-   (see `drizzle.config.ts`); this is where `scheduler_config`,
-   `notification_preferences`, and the `pg_cron`/`pg_net` extensions come from.
+```sh
+npx supabase migration new <name>     # new file in supabase/migrations/
+npx supabase db reset                 # rebuild a local database from scratch
+npx supabase link --project-ref oiidzysiucznvzgwrtfp
+npx supabase db push                  # apply pending migrations to the linked project
+```
 
-After applying migrations that change the schema, regenerate
-`src/integrations/supabase/types.ts` (`supabase gen types typescript
---project-id <id> > src/integrations/supabase/types.ts`) — it is generated,
-not maintained by hand.
+Write migrations idempotently (`IF NOT EXISTS`, guarded `DO` blocks,
+`cron.schedule` upserts by job name) so re-running one is harmless.
+
+After a schema change, regenerate the generated (never hand-edited) types:
+
+```sh
+npx supabase gen types typescript --project-id oiidzysiucznvzgwrtfp > src/integrations/supabase/types.ts
+```
