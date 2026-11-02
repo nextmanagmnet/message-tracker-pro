@@ -2,6 +2,7 @@ import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeClient, limitError } from "../_shared/auth.ts";
 import { buildMetaPayload } from "../_shared/funnel.ts";
 import { metaActionSource, postMetaEvents } from "../_shared/conversions.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -17,7 +18,7 @@ const sha256 = async (s: string) =>
     .map((b) => b.toString(16).padStart(2, "0")).join("");
 
 // Meta pixel + pasted tokens for a client. Tokens are write-only: nothing here returns them.
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({}));
@@ -118,4 +119,4 @@ Deno.serve(async (req) => {
     console.error("meta-connect error", e);
     return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
   }
-});
+}));

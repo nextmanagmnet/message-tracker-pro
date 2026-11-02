@@ -1,5 +1,6 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin, serviceClient } from "../_shared/auth.ts";
+import { appOrigins, withCors } from "../_shared/cors.ts";
 
 // Agency owners/admins invite a client's own user. We hand back a one-time sign-in link to send
 // (WhatsApp, email, anything), so this works without email delivery set up.
@@ -8,12 +9,12 @@ import { authorizeAgencyAdmin, serviceClient } from "../_shared/auth.ts";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function appOrigin(req: Request): string {
-  const allowed = (Deno.env.get("APP_ORIGINS") ?? "").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+  const allowed = appOrigins(Deno.env.get("APP_ORIGINS"));
   const asked = req.headers.get("origin")?.replace(/\/$/, "") ?? "";
   return allowed.includes(asked) ? asked : allowed[0] ?? "";
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({}));
@@ -73,4 +74,4 @@ Deno.serve(async (req) => {
     console.error("client-invite error", e);
     return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
   }
-});
+}));

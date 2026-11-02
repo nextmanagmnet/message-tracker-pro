@@ -3,6 +3,7 @@ import { serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
 import { AUTO_REPORT_CONFIDENCE, canAdvance, parseAnalysis } from "../_shared/funnel.ts";
 import { CLASSIFIER_MODEL, hasLlm, jsonCompletion, transcript } from "../_shared/llm.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const SYSTEM = `You review WhatsApp chats between a business and a person who messaged it from an ad.
 Decide how far the person got in the buying journey. Chats may be in Arabic, English, or a mix.
@@ -31,7 +32,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const supabase = serviceClient();
   if (!(await isAuthorizedCron(req, supabase))) return json({ error: "Unauthorized" }, 401);
@@ -103,4 +104,4 @@ Deno.serve(async (req) => {
   }
 
   return json({ success: true, candidates: due.length, analyzed, reported });
-});
+}));

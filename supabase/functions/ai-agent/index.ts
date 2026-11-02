@@ -3,6 +3,7 @@ import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeClient, isInternalCall, serviceClient } from "../_shared/auth.ts";
 import { hasLlm, jsonCompletion, REPLY_MODEL, transcript } from "../_shared/llm.ts";
 import { sendWhatsAppMedia, sendWhatsAppText } from "../_shared/whatsappSend.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const SCHEMA = {
   type: "object",
@@ -91,7 +92,7 @@ async function runAgent(settings: AgentSettings | null, products: Product[], cha
   }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (!hasLlm()) return json({ error: "AI is not configured (ANTHROPIC_API_KEY missing)" }, 503);
   try {
@@ -166,4 +167,4 @@ Deno.serve(async (req) => {
     console.error("ai-agent error", e);
     return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
   }
-});
+}));

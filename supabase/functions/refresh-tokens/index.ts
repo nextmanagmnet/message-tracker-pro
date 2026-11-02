@@ -1,9 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isAuthorizedCron, json, logJob } from "../_shared/cron.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const GRAPH_BASE = "https://graph.facebook.com/v21.0";
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -131,4 +132,4 @@ Deno.serve(async (req) => {
   }
 
   return json({ success: true, whatsappTokenValid, results });
-});
+}));

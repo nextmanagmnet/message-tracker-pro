@@ -1,6 +1,7 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin } from "../_shared/auth.ts";
 import { checkFundAmount, extractList, parseAdvertiserBalance, type BcAdvertiser } from "../_shared/bcFunding.ts";
+import { withCors } from "../_shared/cors.ts";
 
 // Agency-level TikTok Business Center: connect it, list ad-account balances, top accounts up.
 // Body: { action, agencyId, ... }. Only agency owners/admins; the token never leaves the server.
@@ -49,7 +50,7 @@ async function listBalances(bcId: string, token: string): Promise<{ rows: BcAdve
   return { rows, sample };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({}));
@@ -209,4 +210,4 @@ Deno.serve(async (req) => {
     console.error("tiktok-bc error", e);
     return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
   }
-});
+}));

@@ -3,9 +3,10 @@ import { authorizeClient, serviceClient } from "../_shared/auth.ts";
 import { reportStage } from "../_shared/conversions.ts";
 import type { Stage } from "../_shared/funnel.ts";
 import { sendWhatsAppText } from "../_shared/whatsappSend.ts";
+import { withCors } from "../_shared/cors.ts";
 
 // User actions on a lead from the Leads page. Body: { action, leadId, value?, currency? }.
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (!req.headers.get("Authorization")?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
   try {
@@ -64,4 +65,4 @@ Deno.serve(async (req) => {
     console.error("lead-actions error", e);
     return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
   }
-});
+}));

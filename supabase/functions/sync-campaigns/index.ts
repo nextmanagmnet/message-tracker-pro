@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isAuthorizedCron, json, logJob } from "../_shared/cron.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const TT_BASE = "https://business-api.tiktok.com/open_api/v1.3";
 
@@ -8,7 +9,7 @@ const TT_BASE = "https://business-api.tiktok.com/open_api/v1.3";
  * Runs hourly from the database scheduler; also callable manually with the
  * cron secret for a single client.
  */
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -187,4 +188,4 @@ Deno.serve(async (req) => {
     campaignsSynced: synced,
     failures,
   });
-});
+}));

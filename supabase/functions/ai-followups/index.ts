@@ -3,6 +3,7 @@ import { serviceClient } from "../_shared/auth.ts";
 import { isFollowUpEligible } from "../_shared/funnel.ts";
 import { hasLlm, jsonCompletion, REPLY_MODEL, transcript } from "../_shared/llm.ts";
 import { sendWhatsAppText } from "../_shared/whatsappSend.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const SCHEMA = {
   type: "object",
@@ -11,7 +12,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const supabase = serviceClient();
   if (!(await isAuthorizedCron(req, supabase))) return json({ error: "Unauthorized" }, 401);
@@ -74,4 +75,4 @@ Business information: ${s.business_knowledge || "(none)"}. Tone: ${s.tone || "fr
     }
   }
   return json({ success: true, sent });
-});
+}));

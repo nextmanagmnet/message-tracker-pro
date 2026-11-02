@@ -1,9 +1,10 @@
 import { corsHeaders, isAuthorizedCron, json } from "../_shared/cron.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { sendConversionEvent } from "../_shared/conversions.ts";
+import { withCors } from "../_shared/cors.ts";
 
 // Re-sends conversion events that failed or never left (e.g. the function was killed mid-send).
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const supabase = serviceClient();
   if (!(await isAuthorizedCron(req, supabase))) return json({ error: "Unauthorized" }, 401);
@@ -20,4 +21,4 @@ Deno.serve(async (req) => {
 
   for (const ev of events ?? []) await sendConversionEvent(supabase, ev);
   return json({ success: true, retried: events?.length ?? 0 });
-});
+}));
