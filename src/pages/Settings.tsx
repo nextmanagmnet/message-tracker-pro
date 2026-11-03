@@ -13,6 +13,7 @@ import { Building2, Users, Shield, Bell, Plug, Activity, Loader2, ExternalLink, 
 import { setLanguage, type Language } from "@/i18n";
 import { setTheme, useTheme } from "@/components/brand/theme";
 import { cn } from "@/lib/utils";
+import { WeeklyReportSection } from "@/components/settings/WeeklyReportSection";
 
 type Member = {
   member_id: string;
@@ -406,6 +407,8 @@ const Settings = () => {
             </Button>
           </div>
         </div>
+
+        <WeeklyReportSection />
 
         {/* Notifications */}
         <div className="glass-card p-6">

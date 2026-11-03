@@ -63,6 +63,162 @@ export type Database = {
         }
         Relationships: []
       }
+      ad_launches: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          params: Json
+          status: string
+          tiktok_ad_ids: string[]
+          tiktok_adgroup_id: string | null
+          tiktok_campaign_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          params?: Json
+          status?: string
+          tiktok_ad_ids?: string[]
+          tiktok_adgroup_id?: string | null
+          tiktok_campaign_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          params?: Json
+          status?: string
+          tiktok_ad_ids?: string[]
+          tiktok_adgroup_id?: string | null
+          tiktok_campaign_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_launches_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_media: {
+        Row: {
+          client_id: string
+          created_at: string
+          error: string | null
+          file_name: string | null
+          id: string
+          kind: string
+          status: string
+          storage_path: string | null
+          tiktok_image_id: string | null
+          tiktok_video_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          error?: string | null
+          file_name?: string | null
+          id?: string
+          kind: string
+          status?: string
+          storage_path?: string | null
+          tiktok_image_id?: string | null
+          tiktok_video_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          error?: string | null
+          file_name?: string | null
+          id?: string
+          kind?: string
+          status?: string
+          storage_path?: string | null
+          tiktok_image_id?: string | null
+          tiktok_video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_media_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_recommendations: {
+        Row: {
+          action: Json
+          client_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          kind: string
+          level: string
+          platform: string
+          rationale: string
+          result: Json | null
+          status: string
+          target_id: string
+          title: string
+        }
+        Insert: {
+          action?: Json
+          client_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          kind: string
+          level: string
+          platform?: string
+          rationale: string
+          result?: Json | null
+          status?: string
+          target_id: string
+          title: string
+        }
+        Update: {
+          action?: Json
+          client_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          kind?: string
+          level?: string
+          platform?: string
+          rationale?: string
+          result?: Json | null
+          status?: string
+          target_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_recommendations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agencies: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -143,6 +299,9 @@ export type Database = {
           qualifying_questions: string | null
           timezone: string
           tone: string | null
+          tone_profile: string | null
+          tone_sample_size: number | null
+          tone_updated_at: string | null
           updated_at: string
         }
         Insert: {
@@ -158,6 +317,9 @@ export type Database = {
           qualifying_questions?: string | null
           timezone?: string
           tone?: string | null
+          tone_profile?: string | null
+          tone_sample_size?: number | null
+          tone_updated_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -173,6 +335,9 @@ export type Database = {
           qualifying_questions?: string | null
           timezone?: string
           tone?: string | null
+          tone_profile?: string | null
+          tone_sample_size?: number | null
+          tone_updated_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -286,9 +451,12 @@ export type Database = {
           created_at: string
           default_order_currency: string | null
           default_order_value: number | null
+          delivery_marker: string
           id: string
           name: string
           order_marker: string
+          purchase_trigger: string
+          return_marker: string
           updated_at: string
         }
         Insert: {
@@ -296,9 +464,12 @@ export type Database = {
           created_at?: string
           default_order_currency?: string | null
           default_order_value?: number | null
+          delivery_marker?: string
           id?: string
           name: string
           order_marker?: string
+          purchase_trigger?: string
+          return_marker?: string
           updated_at?: string
         }
         Update: {
@@ -306,9 +477,12 @@ export type Database = {
           created_at?: string
           default_order_currency?: string | null
           default_order_value?: number | null
+          delivery_marker?: string
           id?: string
           name?: string
           order_marker?: string
+          purchase_trigger?: string
+          return_marker?: string
           updated_at?: string
         }
         Relationships: [
@@ -348,8 +522,11 @@ export type Database = {
         Row: {
           agent_status: string
           analyzed_at: string | null
+          assigned_at: string | null
+          assigned_to: string | null
           client_id: string
           created_at: string
+          first_reply_at: string | null
           follow_up_count: number
           id: string
           last_follow_up_at: string | null
@@ -362,8 +539,11 @@ export type Database = {
         Insert: {
           agent_status?: string
           analyzed_at?: string | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           client_id: string
           created_at?: string
+          first_reply_at?: string | null
           follow_up_count?: number
           id?: string
           last_follow_up_at?: string | null
@@ -376,8 +556,11 @@ export type Database = {
         Update: {
           agent_status?: string
           analyzed_at?: string | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           client_id?: string
           created_at?: string
+          first_reply_at?: string | null
           follow_up_count?: number
           id?: string
           last_follow_up_at?: string | null
@@ -604,17 +787,21 @@ export type Database = {
           client_id: string | null
           created_at: string
           ctwa_clid: string | null
+          delivered_at: string | null
           fbclid: string | null
           first_message: string
           id: string
           is_real: boolean
           is_repeat_lead: boolean
           message_received_at: string | null
+          order_confirmed_at: string | null
           order_currency: string | null
+          order_status: string | null
           order_value: number | null
           quality_score: number
           quality_signals: Json
           referral_headline: string | null
+          returned_at: string | null
           sender_phone_hash: string
           source_id: string | null
           source_type: string | null
@@ -637,17 +824,21 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           ctwa_clid?: string | null
+          delivered_at?: string | null
           fbclid?: string | null
           first_message: string
           id?: string
           is_real?: boolean
           is_repeat_lead?: boolean
           message_received_at?: string | null
+          order_confirmed_at?: string | null
           order_currency?: string | null
+          order_status?: string | null
           order_value?: number | null
           quality_score?: number
           quality_signals?: Json
           referral_headline?: string | null
+          returned_at?: string | null
           sender_phone_hash: string
           source_id?: string | null
           source_type?: string | null
@@ -670,17 +861,21 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           ctwa_clid?: string | null
+          delivered_at?: string | null
           fbclid?: string | null
           first_message?: string
           id?: string
           is_real?: boolean
           is_repeat_lead?: boolean
           message_received_at?: string | null
+          order_confirmed_at?: string | null
           order_currency?: string | null
+          order_status?: string | null
           order_value?: number | null
           quality_score?: number
           quality_signals?: Json
           referral_headline?: string | null
+          returned_at?: string | null
           sender_phone_hash?: string
           source_id?: string | null
           source_type?: string | null
@@ -1080,6 +1275,56 @@ export type Database = {
           },
         ]
       }
+      tiktok_audiences: {
+        Row: {
+          client_id: string
+          created_at: string
+          error: string | null
+          id: string
+          last_synced_at: string | null
+          member_count: number | null
+          name: string
+          source: string
+          status: string
+          tiktok_audience_id: string | null
+          tiktok_lookalike_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          last_synced_at?: string | null
+          member_count?: number | null
+          name: string
+          source: string
+          status?: string
+          tiktok_audience_id?: string | null
+          tiktok_lookalike_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          last_synced_at?: string | null
+          member_count?: number | null
+          name?: string
+          source?: string
+          status?: string
+          tiktok_audience_id?: string | null
+          tiktok_lookalike_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiktok_audiences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tiktok_campaigns: {
         Row: {
           campaign_id: string
@@ -1173,6 +1418,50 @@ export type Database = {
             foreignKeyName: "tiktok_pixels_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_report_settings: {
+        Row: {
+          client_id: string
+          enabled: boolean
+          hour: number
+          language: string
+          last_sent_at: string | null
+          phone: string | null
+          timezone: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          client_id: string
+          enabled?: boolean
+          hour?: number
+          language?: string
+          last_sent_at?: string | null
+          phone?: string | null
+          timezone?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Update: {
+          client_id?: string
+          enabled?: boolean
+          hour?: number
+          language?: string
+          last_sent_at?: string | null
+          phone?: string | null
+          timezone?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_report_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },

@@ -18,7 +18,10 @@
     "expand": "توسيع القائمة",
     "agencySection": "الوكالة",
     "catalog": "الكتالوج",
-    "funding": "التمويل"
+    "funding": "التمويل",
+    "inbox": "صندوق الفريق",
+    "optimizer": "التوصيات",
+    "audiences": "الجماهير"
   },
   "theme": {
     "label": "المظهر",

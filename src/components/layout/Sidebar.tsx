@@ -14,6 +14,9 @@ import {
   FileText,
   Package,
   Wallet,
+  Inbox,
+  UsersRound,
+  Sparkles,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useAgency } from "@/hooks/useAgency";
@@ -22,7 +25,10 @@ import { cn } from "@/lib/utils";
 const mainItems = [
   { icon: LayoutDashboard, key: "nav.dashboard", path: "/" },
   { icon: MessageCircle, key: "nav.leads", path: "/leads" },
+  { icon: Inbox, key: "nav.inbox", path: "/inbox" },
   { icon: TrendingUp, key: "nav.campaigns", path: "/campaigns" },
+  { icon: Sparkles, key: "nav.optimizer", path: "/optimizer" },
+  { icon: UsersRound, key: "nav.audiences", path: "/audiences" },
   { icon: Plug, key: "nav.connections", path: "/connections" },
   { icon: Bot, key: "nav.aiAgent", path: "/ai-agent" },
   { icon: Package, key: "nav.catalog", path: "/catalog" },

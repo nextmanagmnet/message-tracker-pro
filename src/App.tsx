@@ -25,6 +25,10 @@ const TikTokCallback = lazy(() => import("./pages/TikTokCallback"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Landing = lazy(() => import("./pages/Landing"));
+const Launch = lazy(() => import("./pages/Launch"));
+const Audiences = lazy(() => import("./pages/Audiences"));
+const Optimizer = lazy(() => import("./pages/Optimizer"));
+const Inbox = lazy(() => import("./pages/Inbox"));
 
 const queryClient = new QueryClient();
 
@@ -173,6 +177,38 @@ const App = () => (
                   />
 
                   {/* Old routes from before the WOB restructure */}
+                  <Route
+                    path="/campaigns/new"
+                    element={
+                      <P>
+                        <Launch />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/audiences"
+                    element={
+                      <P>
+                        <Audiences />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/optimizer"
+                    element={
+                      <P>
+                        <Optimizer />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/inbox"
+                    element={
+                      <P>
+                        <Inbox />
+                      </P>
+                    }
+                  />
                   <Route path="/feed" element={<Navigate to="/leads" replace />} />
                   <Route path="/tiktok" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/whatsapp" element={<Navigate to="/connections" replace />} />
