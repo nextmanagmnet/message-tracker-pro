@@ -1,4 +1,43 @@
 {
   "title": "Team inbox",
-  "subtitle": "Assign chats to your team and track reply times."
+  "subtitle": "Assign chats to your team and track reply times.",
+  "selectClient": "Select a client to see their chats.",
+  "autoRefresh": "Updates every 30 seconds",
+  "loadFailed": "Couldn't load the inbox. Please try again.",
+  "loading": "Loading",
+  "tabs": { "mine": "Mine", "unassigned": "Unassigned", "all": "All" },
+  "search": "Search chats",
+  "stageFilter": "Filter by stage",
+  "allStages": "All stages",
+  "sortLabel": "Sort chats",
+  "sort": { "recent": "Latest message", "waiting": "Waiting longest" },
+  "empty": "No chats here",
+  "emptyHint": "Try another tab, filter or date range.",
+  "capped": "Showing the 500 most recent chats. Narrow the date range to see older ones.",
+  "noText": "(media message)",
+  "agent": {
+    "ai_active": "AI replying",
+    "handed_off": "Human",
+    "off": "AI off",
+    "opted_out": "Opted out"
+  },
+  "waiting": "Waiting {{time}}",
+  "unassigned": "Unassigned",
+  "teammate": "Teammate",
+  "you": "You",
+  "assign": "Assign chat",
+  "assignedTo": "Assigned to {{name}}. Change assignee",
+  "assignToMe": "Assign to me",
+  "assignTo": "Assign to",
+  "unassign": "Unassign",
+  "assigned": "Chat assigned",
+  "unassignedDone": "Chat unassigned",
+  "assignFailed": "Couldn't assign the chat.",
+  "stats": {
+    "label": "Reply times for the selected dates",
+    "median": "Median first reply",
+    "within15": "Replied within 15 min",
+    "perMember": "Chats per team member",
+    "unassigned": "Unassigned chats"
+  }
 }
