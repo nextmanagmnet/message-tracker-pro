@@ -23,3 +23,12 @@ verify_jwt = false
 # Called by whatsapp-webhook with x-internal-key, or by signed-in users (checked in code).
 [functions.ai-agent]
 verify_jwt = false
+
+[functions.weekly-report]
+verify_jwt = false
+
+[functions.ad-optimizer]
+verify_jwt = false
+
+[functions.tiktok-audiences]
+verify_jwt = false
