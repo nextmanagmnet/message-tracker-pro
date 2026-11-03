@@ -53,3 +53,69 @@ export function checkFundAmount(amount: unknown, max: number, min: number | null
   if (min !== null && amount < min) return `TikTok's minimum top-up for this account is ${min}`;
   return null;
 }
+
+// ---- Multi-Business-Center helpers (pure) ----
+
+export interface BcSummary {
+  bcId: string;
+  name: string | null;
+  userRole: string | null;
+  financeRole: string | null;
+  /** True only when the login is Finance Manager in this BC; only then can balances be read or money moved. */
+  canFinance: boolean;
+}
+
+/** Rows of /bc/get/: `{ bc_info: { bc_id, name }, user_role, ext_user_role: { finance_role } }`. */
+export function parseBcList(data: unknown): BcSummary[] {
+  const list = (data as { list?: unknown } | null | undefined)?.list;
+  if (!Array.isArray(list)) return [];
+  const out: BcSummary[] = [];
+  for (const item of list) {
+    const i = item as {
+      bc_info?: { bc_id?: string | number; name?: string | null } | null;
+      bc_id?: string | number;
+      name?: string | null;
+      user_role?: string | null;
+      ext_user_role?: { finance_role?: string | null } | null;
+    } | null;
+    const id = i?.bc_info?.bc_id ?? i?.bc_id;
+    if (!id) continue;
+    const financeRole = i?.ext_user_role?.finance_role ?? null;
+    out.push({
+      bcId: String(id),
+      name: i?.bc_info?.name ?? i?.name ?? null,
+      userRole: i?.user_role ?? null,
+      financeRole,
+      canFinance: financeRole === "MANAGER",
+    });
+  }
+  return out;
+}
+
+export interface BcAccount extends BcAdvertiser {
+  bcId: string;
+  bcName: string | null;
+}
+
+export function tagAccounts(bc: Pick<BcSummary, "bcId" | "name">, rows: BcAdvertiser[]): BcAccount[] {
+  return rows.map((r) => ({ ...r, bcId: bc.bcId, bcName: bc.name }));
+}
+
+/** Groups accounts by their BC, keeping first-seen BC order. */
+export function groupAccountsByBc<T extends { bcId: string }>(accounts: T[]): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const a of accounts) m.set(a.bcId, [...(m.get(a.bcId) ?? []), a]);
+  return m;
+}
+
+/**
+ * The BC that owns an ad account, from BCs the login can finance. Null when none lists it, or when
+ * more than one does (ambiguous: never guess which BC to move money from).
+ */
+export function resolveOwningBc<T extends { bcId: string; advertiserId: string }>(
+  accounts: T[],
+  advertiserId: string,
+): T | null {
+  const hits = accounts.filter((a) => a.advertiserId === advertiserId);
+  return hits.length === 1 ? hits[0] : null;
+}

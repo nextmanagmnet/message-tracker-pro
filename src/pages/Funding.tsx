@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Banknote, Loader2, Plug, RefreshCw, Unplug } from "lucide-react";
@@ -19,8 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { invokeFn, useFormat } from "@/components/leads/shared";
 import { BC_KEY, beginOAuth } from "@/components/connections/oauth";
+import { RequestsPanel } from "@/components/funding/RequestsPanel";
 
-type Conn = { bc_id: string | null; bc_name: string | null; max_transfer: number };
+type Conn = { max_transfer: number };
 type Account = {
   advertiserId: string;
   name: string | null;
@@ -28,30 +30,47 @@ type Account = {
   currency: string | null;
   minTransferable: number | null;
   clientId: string | null;
-};
-type Balances = {
   bcId: string;
-  maxTransfer: number;
-  bcBalance: Record<string, unknown> | null;
-  accounts: Account[];
-  sample: unknown;
+  bcName: string | null;
 };
+type Bc = {
+  bcId: string;
+  name: string | null;
+  userRole: string | null;
+  financeRole: string | null;
+  canFinance: boolean;
+  balance: number | null;
+  currency: string | null;
+  error: string | null; // "no_finance_role" or TikTok's message
+  accounts: Account[];
+};
+type Balances = { maxTransfer: number; businessCenters: Bc[]; sample: unknown };
 type Diagnosis = {
-  savedBcId: string | null;
-  businessCenters: { code: number; message: string; list: { id: string; name: string | null; role: string | null }[] };
-  authorizedAdAccounts: { code: number; message: string; count: number };
-  balanceList: { code: number; message: string; count: number; total: number | null } | null;
-  assets: {
+  businessCenters: {
     code: number;
     message: string;
-    total: number | null;
-    items: { id: string; name: string | null; permission: string | null }[];
-  } | null;
+    list: {
+      id: string;
+      name: string | null;
+      role: string | null;
+      financeRole: string | null;
+      balanceList: { code: number; message: string; count: number; total: number | null } | null;
+      assets: {
+        code: number;
+        message: string;
+        total: number | null;
+        items: { id: string; name: string | null; permission: string | null }[];
+      };
+    }[];
+  };
+  authorizedAdAccounts: { code: number; message: string; count: number };
 };
 type Transfer = {
   id: string;
   advertiser_id: string;
   advertiser_name: string | null;
+  bc_id: string | null;
+  bc_name: string | null;
   amount: number;
   status: "pending" | "sent" | "failed" | "unknown";
   response: { message?: string } | null;
@@ -69,17 +88,19 @@ const Funding = () => {
   const { t } = useTranslation("features");
   const f = useFormat();
   const { agency, canManage } = useAgency();
+  const [params, setParams] = useSearchParams();
+  const wantedAdvertiser = params.get("advertiser");
   const [conn, setConn] = useState<Conn | null | undefined>(undefined);
   const [data, setData] = useState<Balances | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bcInput, setBcInput] = useState("");
   const [search, setSearch] = useState("");
   const [target, setTarget] = useState<Account | null>(null);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [diag, setDiag] = useState<Diagnosis | null>(null);
+  const [reqKey, setReqKey] = useState(0);
 
   const agencyId = agency?.id;
 
@@ -87,7 +108,7 @@ const Funding = () => {
     if (!agencyId) return;
     const { data: row } = await supabase
       .from("bc_connections")
-      .select("bc_id, bc_name, max_transfer")
+      .select("max_transfer")
       .eq("agency_id", agencyId)
       .maybeSingle();
     setConn((row as Conn | null) ?? null);
@@ -97,11 +118,11 @@ const Funding = () => {
     if (!agencyId) return;
     const { data: rows } = await supabase
       .from("fund_transfers")
-      .select("id, advertiser_id, advertiser_name, amount, status, response, created_at")
+      .select("id, advertiser_id, advertiser_name, bc_id, bc_name, amount, status, response, created_at")
       .eq("agency_id", agencyId)
       .order("created_at", { ascending: false })
       .limit(50);
-    setTransfers((rows ?? []) as Transfer[]);
+    setTransfers((rows ?? []) as unknown as Transfer[]);
   }, [agencyId]);
 
   const loadBalances = useCallback(async () => {
@@ -123,8 +144,8 @@ const Funding = () => {
   }, [loadConn, loadTransfers]);
 
   useEffect(() => {
-    if (conn?.bc_id) loadBalances();
-  }, [conn?.bc_id, loadBalances]);
+    if (conn) loadBalances();
+  }, [conn, loadBalances]);
 
   const connect = async () => {
     if (!agencyId) return;
@@ -145,36 +166,10 @@ const Funding = () => {
     }
   };
 
-  const saveBc = async () => {
-    setBusy(true);
-    try {
-      await invokeFn("tiktok-bc", { action: "set-bc", agencyId, bcId: bcInput.trim() });
-      await loadConn();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const diagnose = async () => {
     setBusy(true);
     try {
       setDiag(await invokeFn<Diagnosis>("tiktok-bc", { action: "diagnose", agencyId }));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const pickBc = async (id: string, name: string | null) => {
-    setBusy(true);
-    try {
-      await invokeFn("tiktok-bc", { action: "set-bc", agencyId, bcId: id, bcName: name });
-      setDiag(null);
-      await loadConn();
-      await loadBalances();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -189,6 +184,27 @@ const Funding = () => {
     setConn(null);
   };
 
+  const bcs = data?.businessCenters ?? [];
+  const bcOf = (a: Account | null) => bcs.find((b) => b.bcId === a?.bcId);
+  const bcEmpty = (b?: Bc) => !!b && b.balance !== null && b.balance <= 0;
+
+  // Deep link from the Top-up button: open the dialog for that account once balances are in.
+  useEffect(() => {
+    if (!wantedAdvertiser || !data) return;
+    const hit = data.businessCenters.flatMap((b) => b.accounts).find((a) => a.advertiserId === wantedAdvertiser);
+    if (hit) setTarget(hit);
+  }, [wantedAdvertiser, data]);
+
+  const closeDialog = () => {
+    setTarget(null);
+    setAmount("");
+    if (params.has("advertiser")) {
+      const next = new URLSearchParams(params);
+      next.delete("advertiser");
+      setParams(next, { replace: true });
+    }
+  };
+
   const fund = async () => {
     if (!target) return;
     const value = Number(amount);
@@ -197,7 +213,7 @@ const Funding = () => {
       const r = await invokeFn<{ success: boolean; status: string }>("tiktok-bc", {
         action: "fund",
         agencyId,
-        advertiserId: target.advertiserId,
+        advertiserId: target.advertiserId, // the server finds the account's own Business Center
         amount: value,
       });
       if (r.status === "unknown") toast.warning(t("funding.unknown"));
@@ -212,24 +228,26 @@ const Funding = () => {
       toast.error(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setBusy(false);
-      setTarget(null);
-      setAmount("");
+      closeDialog();
       loadTransfers();
       loadBalances();
     }
   };
 
-  const accounts = (data?.accounts ?? []).filter((a) =>
-    `${a.name ?? ""} ${a.advertiserId}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  const q = search.toLowerCase();
+  const matches = (a: Account) => `${a.name ?? ""} ${a.advertiserId}`.toLowerCase().includes(q);
+  const groups = bcs
+    .map((b) => ({ bc: b, accounts: b.accounts.filter(matches) }))
+    .filter((g) => !q || g.accounts.length > 0);
+  const shown = groups.reduce((n, g) => n + g.accounts.length, 0);
   const amountNum = Number(amount);
   const amountOk = amount !== "" && Number.isFinite(amountNum) && amountNum > 0;
+  const targetBc = bcOf(target);
+  const missing =
+    !!wantedAdvertiser && !!data && !bcs.some((b) => b.accounts.some((a) => a.advertiserId === wantedAdvertiser));
 
   const diagPanel = diag && (
-    <div className="space-y-2 rounded-lg bg-secondary/50 p-3 text-foreground">
-      <p dir="ltr">
-        {t("funding.savedBc")}: {diag.savedBcId}
-      </p>
+    <div className="space-y-3 rounded-lg bg-secondary/50 p-3 text-start text-foreground">
       <p>
         {t("funding.visibleBcs")}:{" "}
         {diag.businessCenters.list.length === 0
@@ -237,41 +255,33 @@ const Funding = () => {
           : ""}
       </p>
       {diag.businessCenters.list.map((b) => (
-        <div key={b.id} className="flex items-center gap-2" dir="ltr">
-          <span className="flex-1">
-            {b.name ?? "—"} · {b.id}
-            {b.role ? ` · ${b.role}` : ""}
-          </span>
-          <Button size="sm" onClick={() => pickBc(b.id, b.name)} disabled={busy}>
-            {t("funding.useThis")}
-          </Button>
-        </div>
-      ))}
-      <p>{t("funding.authorizedAds", { count: diag.authorizedAdAccounts.count })}</p>
-      {diag.balanceList && (
-        <p dir="ltr">
-          {t("funding.balanceListLine")}:{" "}
-          {diag.balanceList.code === 0
-            ? `${diag.balanceList.total ?? diag.balanceList.count} account(s)`
-            : `${diag.balanceList.code} ${diag.balanceList.message}`}
-        </p>
-      )}
-      {diag.assets && (
-        <div dir="ltr" className="space-y-1">
-          <p>
-            {t("funding.assetsLine")}:{" "}
-            {diag.assets.code === 0
-              ? `${diag.assets.total ?? diag.assets.items.length} account(s)`
-              : `${diag.assets.code} ${diag.assets.message}`}
+        <div key={b.id} dir="ltr" className="space-y-1">
+          <p className="font-medium">
+            {b.name ?? "—"} · {b.id} · {b.role ?? "—"} · {t("funding.financeRole")}: {b.financeRole ?? "—"}
           </p>
-          {diag.assets.items.map((a) => (
+          {b.balanceList && (
+            <p className="text-xs">
+              {t("funding.balanceListLine")}:{" "}
+              {b.balanceList.code === 0
+                ? `${b.balanceList.total ?? b.balanceList.count} account(s)`
+                : `${b.balanceList.code} ${b.balanceList.message}`}
+            </p>
+          )}
+          <p className="text-xs">
+            {t("funding.assetsLine")}:{" "}
+            {b.assets.code === 0
+              ? `${b.assets.total ?? b.assets.items.length} account(s)`
+              : `${b.assets.code} ${b.assets.message}`}
+          </p>
+          {b.assets.items.map((a) => (
             <p key={a.id} className="text-xs text-muted-foreground">
               {a.name ?? "—"} · {a.id}
               {a.permission ? ` · ${a.permission}` : ""}
             </p>
           ))}
         </div>
-      )}
+      ))}
+      <p>{t("funding.authorizedAds", { count: diag.authorizedAdAccounts.count })}</p>
       <p className="text-xs text-muted-foreground">{t("funding.diagnoseHint")}</p>
     </div>
   );
@@ -293,34 +303,14 @@ const Funding = () => {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />} {t("funding.connect")}
           </Button>
         </div>
-      ) : !conn.bc_id ? (
-        <div className="glass-card mx-auto max-w-xl space-y-3 p-8">
-          <h2 className="text-lg font-semibold text-foreground">{t("funding.bcIdTitle")}</h2>
-          <p className="text-sm text-muted-foreground">{t("funding.bcIdHint")}</p>
-          <Input
-            dir="ltr"
-            inputMode="numeric"
-            value={bcInput}
-            placeholder="7012345678901234567"
-            onChange={(e) => setBcInput(e.target.value)}
-          />
-          <Button variant="glow" onClick={saveBc} disabled={busy || !bcInput.trim()}>
-            {t("common.save")}
-          </Button>
-        </div>
       ) : (
         <div className="space-y-6">
           <section className="glass-card flex flex-wrap items-center gap-4 p-5">
             <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">{t("funding.businessCenter")}</p>
-              <p className="font-semibold text-foreground" dir="ltr">
-                {conn.bc_name ?? conn.bc_id}
+              <p className="text-sm text-muted-foreground">
+                {t("funding.visibleBcs")}: {bcs.length}
               </p>
-              {data?.bcBalance && (
-                <p className="mt-1 text-sm text-muted-foreground" dir="ltr">
-                  {t("funding.bcBalance")}: {JSON.stringify(data.bcBalance)}
-                </p>
-              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {t("funding.limit", { amount: f.money(Number(conn.max_transfer), "USD") })}
@@ -328,17 +318,53 @@ const Funding = () => {
             <Button variant="outline" size="sm" onClick={loadBalances} disabled={loading}>
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} /> {t("common.refresh")}
             </Button>
+            <Button variant="outline" size="sm" onClick={connect} disabled={busy}>
+              <Plug className="h-4 w-4" /> {t("funding.reconnect")}
+            </Button>
             <Button variant="ghost" size="sm" onClick={disconnect}>
               <Unplug className="h-4 w-4" /> {t("funding.disconnect")}
             </Button>
           </section>
 
+          {agencyId && (
+            <RequestsPanel
+              agencyId={agencyId}
+              canManage={canManage}
+              reloadKey={reqKey}
+              bcNameOf={
+                data
+                  ? (id) => {
+                      const b = bcs.find((x) => x.accounts.some((a) => a.advertiserId === id));
+                      return b ? (b.name ?? b.bcId) : null;
+                    }
+                  : undefined
+              }
+              onChanged={() => {
+                loadBalances();
+                loadTransfers();
+                setReqKey((k) => k + 1);
+              }}
+            />
+          )}
+
+          {missing && (
+            <p className="rounded-lg border border-warning/40 p-4 text-sm text-foreground">
+              {t("funding.advertiserNotFound", { id: wantedAdvertiser })}
+            </p>
+          )}
+
           {error ? (
             <div className="glass-card space-y-3 border-destructive/40 p-5 text-sm">
               <p className="text-destructive">{error}</p>
-              <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.diagnose")}
-              </Button>
+              <p className="text-muted-foreground">{t("funding.reconnectHint")}</p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="glow" onClick={connect} disabled={busy}>
+                  <Plug className="h-4 w-4" /> {t("funding.reconnect")}
+                </Button>
+                <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.diagnose")}
+                </Button>
+              </div>
               {diagPanel}
             </div>
           ) : (
@@ -351,39 +377,65 @@ const Funding = () => {
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label={t("funding.search")}
                 />
-                <span className="text-xs text-muted-foreground">{t("funding.count", { count: accounts.length })}</span>
+                <span className="text-xs text-muted-foreground">{t("funding.count", { count: shown })}</span>
               </div>
               {loading && !data ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
               ) : (
-                <div className="max-h-[28rem] divide-y divide-border overflow-y-auto">
-                  {accounts.map((a) => (
-                    <div key={a.advertiserId} className="flex flex-wrap items-center gap-3 p-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-foreground" dir="auto">
-                          {a.name ?? t("funding.unnamed")}
-                        </p>
-                        <p className="text-xs text-muted-foreground" dir="ltr">
-                          {a.advertiserId}
-                        </p>
+                <div className="divide-y divide-border">
+                  {groups.map(({ bc, accounts }) => (
+                    <div key={bc.bcId}>
+                      <div className="space-y-1 bg-secondary/40 p-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="min-w-0 flex-1 truncate font-semibold text-foreground" dir="auto">
+                            {bc.name ?? bc.bcId}
+                          </p>
+                          <span className="text-xs text-muted-foreground" dir="ltr">
+                            {bc.bcId}
+                          </span>
+                          {bc.balance !== null && (
+                            <span className="text-sm font-semibold text-foreground" dir="ltr">
+                              {t("funding.available", { amount: f.money(bc.balance, bc.currency ?? "USD") })}
+                            </span>
+                          )}
+                        </div>
+                        {bc.error === "no_finance_role" ? (
+                          <p className="text-xs text-warning">{t("funding.noFinance")}</p>
+                        ) : bc.error ? (
+                          <p className="text-xs text-destructive">{t("funding.bcError", { message: bc.error })}</p>
+                        ) : bcEmpty(bc) ? (
+                          <p className="text-xs text-warning">{t("funding.bcEmpty")}</p>
+                        ) : null}
                       </div>
-                      <span className="text-sm font-semibold text-foreground" dir="ltr">
-                        {a.balance === null ? "—" : f.money(a.balance, a.currency ?? "USD")}
-                      </span>
-                      <Button size="sm" variant="outline" onClick={() => setTarget(a)}>
-                        {t("funding.fund")}
-                      </Button>
+                      {accounts.map((a) => (
+                        <div key={a.advertiserId} className="flex flex-wrap items-center gap-3 p-4">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-foreground" dir="auto">
+                              {a.name ?? t("funding.unnamed")}
+                            </p>
+                            <p className="text-xs text-muted-foreground" dir="ltr">
+                              {a.advertiserId}
+                            </p>
+                          </div>
+                          <span className="text-sm font-semibold text-foreground" dir="ltr">
+                            {a.balance === null ? "—" : f.money(a.balance, a.currency ?? "USD")}
+                          </span>
+                          <Button size="sm" variant="outline" onClick={() => setTarget(a)} disabled={bcEmpty(bc)}>
+                            {t("funding.fund")}
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   ))}
-                  {accounts.length === 0 && (
+                  {groups.length === 0 && (
                     <div className="space-y-3 p-8 text-center text-sm text-muted-foreground">
-                      <p>{t("funding.noAccounts")}</p>
+                      <p>{bcs.length === 0 ? t("funding.noBcs") : t("funding.noAccounts")}</p>
                       <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
                         {t("funding.diagnose")}
                       </Button>
-                      <div className="text-start">{diagPanel}</div>
+                      {diagPanel}
                     </div>
                   )}
                 </div>
@@ -412,7 +464,10 @@ const Funding = () => {
                       <p className="truncate text-foreground" dir="auto">
                         {x.advertiser_name ?? x.advertiser_id}
                       </p>
-                      <p className="text-xs text-muted-foreground">{f.date(x.created_at)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {f.date(x.created_at)}
+                        {(x.bc_name ?? x.bc_id) && ` · ${t("funding.fromBc", { name: x.bc_name ?? x.bc_id })}`}
+                      </p>
                     </div>
                     <span className="font-semibold text-foreground" dir="ltr">
                       {f.money(Number(x.amount), "USD")}
@@ -429,11 +484,17 @@ const Funding = () => {
         </div>
       )}
 
-      <Dialog open={!!target} onOpenChange={(o) => !o && !busy && setTarget(null)}>
+      <Dialog open={!!target} onOpenChange={(o) => !o && !busy && closeDialog()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("funding.fundTitle", { name: target?.name ?? target?.advertiserId })}</DialogTitle>
-            <DialogDescription>{t("funding.fundHint")}</DialogDescription>
+            <DialogDescription>
+              {t("funding.fromBc", { name: target?.bcName ?? target?.bcId })}
+              {targetBc?.balance != null &&
+                ` · ${t("funding.available", { amount: f.money(targetBc.balance, targetBc.currency ?? "USD") })}`}
+              <br />
+              {t("funding.fundHint")}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="fund-amount">{t("funding.amount")}</Label>
@@ -461,10 +522,10 @@ const Funding = () => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTarget(null)} disabled={busy}>
+            <Button variant="outline" onClick={closeDialog} disabled={busy}>
               {t("catalog.cancel")}
             </Button>
-            <Button variant="glow" onClick={fund} disabled={busy || !amountOk}>
+            <Button variant="glow" onClick={fund} disabled={busy || !amountOk || bcEmpty(targetBc)}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.confirm")}
             </Button>
           </DialogFooter>

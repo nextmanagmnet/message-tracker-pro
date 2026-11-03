@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { checkFundAmount, extractList, parseAdvertiserBalance } from "./bcFunding";
+import {
+  checkFundAmount,
+  extractList,
+  groupAccountsByBc,
+  parseAdvertiserBalance,
+  parseBcList,
+  resolveOwningBc,
+} from "./bcFunding";
 
 describe("checkFundAmount", () => {
   it("accepts a normal amount and rejects bad ones", () => {
@@ -58,5 +65,42 @@ describe("TikTok's real balance response shape", () => {
   it("still finds a plain list, and returns [] for nothing", () => {
     expect(extractList({ list: [1, 2] })).toEqual([1, 2]);
     expect(extractList(undefined)).toEqual([]);
+  });
+});
+
+describe("multi-BC helpers", () => {
+  it("reads BCs and decides finance eligibility from the Finance Manager role", () => {
+    const bcs = parseBcList({
+      list: [
+        { bc_info: { bc_id: "1", name: "A" }, user_role: "ADMIN", ext_user_role: { finance_role: "MANAGER" } },
+        { bc_info: { bc_id: 2, name: "B" }, user_role: "STANDARD" },
+        { bc_info: { name: "no id" } },
+      ],
+    });
+    expect(bcs.map((b) => [b.bcId, b.canFinance])).toEqual([
+      ["1", true],
+      ["2", false],
+    ]);
+    expect(parseBcList(undefined)).toEqual([]);
+  });
+  it("groups accounts by BC", () => {
+    const g = groupAccountsByBc([
+      { bcId: "1", advertiserId: "a" },
+      { bcId: "2", advertiserId: "b" },
+      { bcId: "1", advertiserId: "c" },
+    ]);
+    expect([...g.keys()]).toEqual(["1", "2"]);
+    expect(g.get("1")).toHaveLength(2);
+  });
+  it("resolves the owning BC, and refuses unknown or ambiguous accounts", () => {
+    const rows = [
+      { bcId: "1", advertiserId: "a" },
+      { bcId: "2", advertiserId: "b" },
+      { bcId: "1", advertiserId: "dup" },
+      { bcId: "2", advertiserId: "dup" },
+    ];
+    expect(resolveOwningBc(rows, "b")?.bcId).toBe("2");
+    expect(resolveOwningBc(rows, "zzz")).toBeNull();
+    expect(resolveOwningBc(rows, "dup")).toBeNull();
   });
 });
