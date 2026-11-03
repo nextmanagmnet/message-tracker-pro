@@ -1,4 +1,136 @@
 {
   "title": "New TikTok campaign",
-  "subtitle": "AI prepares the campaign; you review and launch."
+  "subtitle": "AI prepares the campaign; you review and launch.",
+  "newCampaign": "New campaign",
+  "error": "Something went wrong. Please try again.",
+  "selectClient": "Select a client to create a campaign.",
+  "adminsOnly": "Only agency owners and admins can launch campaigns.",
+  "reconnect": {
+    "action": "Go to Connections",
+    "upload": "TikTok needs a fresh permission to receive new videos. Reconnect TikTok, or pick a video already in your TikTok ad library below.",
+    "identity": "TikTok did not return the account the ads run from. Reconnect TikTok to allow it.",
+    "ads": "TikTok needs the Ads Management permission to create campaigns. Reconnect TikTok and allow it, then come back to launch."
+  },
+  "steps": {
+    "label": "Campaign steps",
+    "target": "Target",
+    "contact": "Contact",
+    "cta": "Call to action",
+    "media": "Media",
+    "text": "Ad text",
+    "review": "Review & launch",
+    "back": "Back",
+    "next": "Next"
+  },
+  "target": {
+    "country": "Country",
+    "chooseCountry": "Choose a country",
+    "gender": "Gender",
+    "genders": {
+      "GENDER_UNLIMITED": "Everyone",
+      "GENDER_FEMALE": "Women",
+      "GENDER_MALE": "Men"
+    },
+    "cities": "Cities or regions (optional)",
+    "searchCities": "Search cities",
+    "citiesHint": "Leave all unchecked to target the whole country.",
+    "age": "Age",
+    "ageMin": "Minimum age",
+    "ageMax": "Maximum age",
+    "budget": "Daily budget",
+    "budgetHint": "Between {{min}} and {{max}} per day.",
+    "start": "Start",
+    "startHint": "Leave empty to start as soon as TikTok approves the ads."
+  },
+  "contact": {
+    "noNumber": "Connect a WhatsApp number first.",
+    "number": "WhatsApp number",
+    "message": "First WhatsApp message",
+    "messageHint": "Prefilled for the customer when they tap the ad. They can edit it before sending.",
+    "link": "Customers land on:"
+  },
+  "ai": {
+    "intro": "Tell the AI what to promote and it writes the ad texts, the WhatsApp message and suggests who to target.",
+    "goal": "What do you want to promote?",
+    "product": "Product (optional)",
+    "suggest": "Suggest with AI",
+    "done": "AI suggestion applied. Review and edit it."
+  },
+  "cta": {
+    "CONTACT_US": "Contact us",
+    "LEARN_MORE": "Learn more",
+    "SHOP_NOW": "Shop now",
+    "ORDER_NOW": "Order now",
+    "BOOK_NOW": "Book now",
+    "GET_QUOTE": "Get quote",
+    "SIGN_UP": "Sign up",
+    "APPLY_NOW": "Apply now"
+  },
+  "media": {
+    "upload": "Upload a video",
+    "hint": "MP4 or MOV, vertical 9:16 works best, up to {{mb}} MB.",
+    "uploaded": "Video sent to TikTok.",
+    "videoOnly": "TikTok ads need a video.",
+    "tooBig": "The video is larger than {{mb}} MB.",
+    "uploadFailed": "The upload failed. Please try again.",
+    "uploadedVideo": "Uploaded video",
+    "fromCatalog": "Use a product video from your catalog",
+    "empty": "No videos yet. Upload one or add a video to a product in the catalog.",
+    "choose": "Choose the videos for this campaign"
+  },
+  "text": {
+    "count": "{{ads}} ads (each video × each text), at most {{max}}.",
+    "label": "Ad text {{n}}",
+    "remove": "Remove this text",
+    "add": "Add a text"
+  },
+  "review": {
+    "name": "Campaign name",
+    "identity": "TikTok account the ads run from",
+    "cities": "{{n}} areas",
+    "now": "Now",
+    "ads": "Ads",
+    "balance": "Ad account balance: {{amount}}.",
+    "lowBalance": "That is less than one day of budget.",
+    "addFunds": "Add funds",
+    "confirm": "I confirm launching this campaign on TikTok, spending up to {{amount}} per day once approved.",
+    "launch": "Launch campaign",
+    "launched": "Campaign sent to TikTok."
+  },
+  "result": {
+    "launched": "Your campaign is on TikTok",
+    "failed": "The launch did not finish",
+    "reviewHint": "TikTok reviews new ads, usually within a few hours. Delivery starts once they are approved.",
+    "back": "Back to campaigns",
+    "another": "Launch another"
+  },
+  "status": {
+    "campaign": "Campaign",
+    "launching": "Launching…",
+    "deleted": "Deleted",
+    "refresh": "Refresh status",
+    "pause": "Pause",
+    "resume": "Resume",
+    "delete": "Delete",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "inReview": "In review",
+    "confirmResume": "Resume this campaign? It will start spending its daily budget again.",
+    "confirmDelete": "Delete this campaign on TikTok? This cannot be undone.",
+    "done": {
+      "pause": "Campaign paused.",
+      "resume": "Campaign resumed.",
+      "delete": "Campaign deleted."
+    }
+  },
+  "recent": {
+    "title": "Recent launches",
+    "perDay": "{{amount}}/day",
+    "status": {
+      "draft": "Draft",
+      "launching": "Launching",
+      "launched": "Launched",
+      "failed": "Failed"
+    }
+  }
 }

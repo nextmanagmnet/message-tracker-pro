@@ -8,9 +8,11 @@ import { getDefaultDateRange, type DateRange } from "@/components/dashboard/date
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Info, Loader2, RefreshCw } from "lucide-react";
+import { Copy, Info, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
+import { goLink } from "@/lib/goLink";
+import { RecentLaunches } from "@/components/launch/RecentLaunches";
 import { ratio, useFunnel } from "@/components/campaigns/useFunnel";
 import { invokeFn, useFormat } from "@/components/leads/shared";
 import { PlatformChip } from "@/components/leads/badges";
@@ -21,7 +23,8 @@ const Campaigns = () => {
   const { t } = useTranslation("features");
   const f = useFormat();
   const navigate = useNavigate();
-  const { selectedClient } = useAgency();
+  const { selectedClient, canManage } = useAgency();
+  const { t: tl } = useTranslation("launch");
   const [range, setRange] = useState<DateRange>(getDefaultDateRange());
   const [platform, setPlatform] = useState<PlatformFilter>("all");
   const [syncing, setSyncing] = useState(false);
@@ -68,7 +71,14 @@ const Campaigns = () => {
           <RefreshCw className={syncing ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
           {t("campaigns.syncNow")}
         </Button>
+        {canManage && selectedClient && (
+          <Button variant="glow" onClick={() => navigate("/campaigns/new")}>
+            <Plus className="w-4 h-4" /> {tl("newCampaign")}
+          </Button>
+        )}
       </div>
+
+      {selectedClient && <RecentLaunches clientId={selectedClient.id} />}
 
       {!selectedClient ? (
         <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">
@@ -201,12 +211,7 @@ function AttributionHelp({ clientId }: { clientId: string }) {
       .then(({ data }) => setPixel(data?.pixel_code ?? ""));
   }, [clientId]);
 
-  const digits = numbers.find((n) => n.id === numberId)?.phone_number.replace(/\D/g, "") ?? "";
-  // A real web page (TikTok rejects wa.me once a pixel is on). TikTok appends ttclid and fills __CAMPAIGN_ID__;
-  // api/go.js renders the client's pixel base code and folds both ids into the WhatsApp message for the webhook.
-  const link = digits
-    ? `${window.location.origin}/go?${new URLSearchParams({ to: digits, text, ...(pixel ? { px: pixel } : {}) })}&cid=__CAMPAIGN_ID__`
-    : "";
+  const link = goLink(window.location.origin, numbers.find((n) => n.id === numberId)?.phone_number ?? "", text, pixel);
 
   return (
     <div className="glass-card mt-6 p-6">
