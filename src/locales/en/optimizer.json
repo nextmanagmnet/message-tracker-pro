@@ -1,4 +1,81 @@
 {
   "title": "Recommendations",
-  "subtitle": "AI suggestions for your campaigns. Nothing changes without your approval."
+  "subtitle": "AI suggestions for your campaigns. Nothing changes without your approval.",
+  "selectClient": "Select a client to get started.",
+  "error": "Something went wrong. Please try again.",
+  "analyze": "Analyze now",
+  "analyzing": "Analyzing…",
+  "created_one": "{{count}} new recommendation",
+  "created_other": "{{count}} new recommendations",
+  "noneNew": "No new recommendations. Your campaigns look fine for now.",
+  "pending": "To review",
+  "history": "History",
+  "empty": "No recommendations to review",
+  "emptyHint": "We check your campaigns every week. Press “Analyze now” to check right away. Small budgets are not judged until they have spent at least $20 in 7 days.",
+  "reconnect": "Reconnect TikTok",
+  "reconnectHint": "TikTok no longer lets WOB read or manage your ads. Reconnect TikTok and allow ads management.",
+  "noAccount": "TikTok is not connected",
+  "noAccountHint": "Connect your TikTok ad account to get recommendations.",
+  "goToConnections": "Go to Connections",
+  "apply": "Apply",
+  "dismiss": "Dismiss",
+  "done": "Done",
+  "cancel": "Cancel",
+  "openLauncher": "Create a new ad",
+  "viewOnly": "Only the agency owner or an admin can apply this.",
+  "appliedToast": "Applied on TikTok",
+  "dismissedToast": "Recommendation dismissed",
+  "expectedLabel": "Expected effect:",
+  "appliedBudget": "Daily budget changed from {{from}} to {{to}}.",
+  "campaignFunnel": "Campaign “{{name}}”, last 7 days in WOB: {{chats}} chats, {{qualified}} qualified, {{clients}} clients, {{revenue}} revenue.",
+  "confirmDismiss": "This recommendation will move to history. Nothing changes on TikTok.",
+  "confirmApply": {
+    "pause": "WOB will pause “{{name}}” on TikTok now. You can turn it back on in TikTok Ads Manager at any time.",
+    "increase_budget": "WOB will raise the daily budget of “{{name}}” by 20% (about ${{from}} → ${{to}}, worked out again from the live budget).",
+    "decrease_budget": "WOB will lower the daily budget of “{{name}}” by 20% (about ${{from}} → ${{to}}, never under $20)."
+  },
+  "kind": {
+    "pause": "Pause",
+    "increase_budget": "Raise budget",
+    "decrease_budget": "Lower budget",
+    "switch_event": "Optimize for purchases",
+    "switch_event_not_yet": "Purchases: not yet",
+    "refresh_creative": "New video",
+    "other": "Tip"
+  },
+  "level": {
+    "campaign": "Campaign",
+    "adgroup": "Ad group",
+    "ad": "Ad"
+  },
+  "status": {
+    "pending": "To review",
+    "applied": "Applied",
+    "dismissed": "Dismissed",
+    "failed": "Failed"
+  },
+  "numbers": {
+    "spend": "Spend (7 days)",
+    "qualified": "Qualified leads",
+    "siblingQualified": "Qualified from other ads",
+    "siblingCpq": "Other ads: cost per qualified",
+    "cpq": "Cost per qualified",
+    "accountCpq": "Account average",
+    "budget": "Daily budget",
+    "purchases": "Purchases (7 days)",
+    "needed": "Needed",
+    "currentEvent": "Optimizing for",
+    "ctr": "Click rate now",
+    "previousCtr": "Click rate last week",
+    "impressions": "Views (7 days)"
+  },
+  "expected": {
+    "pause": "the money this ad spends moves to the ads in the same ad group that bring qualified leads.",
+    "increase_budget": "more qualified leads from your cheapest ad group (daily budget about {{from}} → {{to}}).",
+    "decrease_budget": "less money spent where qualified leads cost the most (daily budget about {{from}} → {{to}}).",
+    "switch_event": "TikTok shows your ads to people likely to buy. This needs a new ad group optimized for Purchase, because TikTok does not allow changing it on a running one.",
+    "switch_event_not_yet": "none yet. Keep optimizing for qualified leads until this ad group gets about 50 purchases a week.",
+    "refresh_creative": "a fresh video usually brings the click rate back up. Create one, then pause the tired ad.",
+    "other": "information only."
+  }
 }
