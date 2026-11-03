@@ -126,7 +126,10 @@ export function TikTokSection({
   };
 
   const connected = accounts === null ? null : accounts.length > 0;
-  const canConnect = canManage && !(isIndividual && (accounts?.length ?? 0) >= 1);
+  // Individuals keep one ad account: once connected, the button re-authorizes it (new TikTok permissions,
+  // expired login) instead of adding another.
+  const atLimit = isIndividual && (accounts?.length ?? 0) >= 1;
+  const canConnect = canManage;
 
   return (
     <ConnectionCard
@@ -145,7 +148,9 @@ export function TikTokSection({
           {canConnect && (
             <Button variant={connected ? "outline" : "glow"} size="sm" onClick={connect} disabled={connecting}>
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-              {connected ? t("connections.tiktok.addAccount") : t("connections.connect")}
+              {connected
+                ? t(atLimit ? "connections.tiktok.reconnect" : "connections.tiktok.addAccount")
+                : t("connections.connect")}
             </Button>
           )}
         </>
