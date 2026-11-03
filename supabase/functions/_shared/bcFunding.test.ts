@@ -20,17 +20,40 @@ describe("checkFundAmount", () => {
 
 describe("parseAdvertiserBalance", () => {
   it("reads the common field names and ignores rows without an id", () => {
-    expect(parseAdvertiserBalance({ advertiser_id: 1, advertiser_name: "A", balance: "12.5", currency: "USD", min_transferable_amount: "1" }))
-      .toEqual({ advertiserId: "1", name: "A", balance: 12.5, currency: "USD", minTransferable: 1 });
+    expect(
+      parseAdvertiserBalance({
+        advertiser_id: 1,
+        advertiser_name: "A",
+        balance: "12.5",
+        currency: "USD",
+        min_transferable_amount: "1",
+      }),
+    ).toEqual({ advertiserId: "1", name: "A", balance: 12.5, currency: "USD", minTransferable: 1 });
     expect(parseAdvertiserBalance({ name: "no id" })).toBeNull();
   });
 });
 
 describe("TikTok's real balance response shape", () => {
   it("finds advertiser_account_list and reads account_balance", () => {
-    const data = { advertiser_account_list: [{ advertiser_id: "7701420549729419285", advertiser_name: "Hamdan 003", account_balance: 0, cash_balance: 0, currency: "USD" }], page_info: { total_page: 10 } };
+    const data = {
+      advertiser_account_list: [
+        {
+          advertiser_id: "7701420549729419285",
+          advertiser_name: "Hamdan 003",
+          account_balance: 0,
+          cash_balance: 0,
+          currency: "USD",
+        },
+      ],
+      page_info: { total_page: 10 },
+    };
     expect(extractList(data)).toHaveLength(1);
-    expect(parseAdvertiserBalance(extractList(data)[0])).toMatchObject({ advertiserId: "7701420549729419285", name: "Hamdan 003", balance: 0, currency: "USD" });
+    expect(parseAdvertiserBalance(extractList(data)[0])).toMatchObject({
+      advertiserId: "7701420549729419285",
+      name: "Hamdan 003",
+      balance: 0,
+      currency: "USD",
+    });
   });
   it("still finds a plain list, and returns [] for nothing", () => {
     expect(extractList({ list: [1, 2] })).toEqual([1, 2]);

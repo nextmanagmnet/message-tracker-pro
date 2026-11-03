@@ -8,17 +8,11 @@ export { corsHeaders };
  * database scheduler token (stored in a service-role-only table).
  */
 export async function isAuthorizedCron(req: Request, supabase: SupabaseClient): Promise<boolean> {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    new URL(req.url).searchParams.get("cron_secret");
+  const provided = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("cron_secret");
   if (!provided) return false;
   const envSecret = Deno.env.get("CRON_SECRET");
   if (envSecret && provided === envSecret) return true;
-  const { data } = await supabase
-    .from("scheduler_config")
-    .select("cron_token")
-    .eq("id", 1)
-    .maybeSingle();
+  const { data } = await supabase.from("scheduler_config").select("cron_token").eq("id", 1).maybeSingle();
   return Boolean(data?.cron_token) && provided === data?.cron_token;
 }
 
@@ -37,7 +31,7 @@ export async function logJob(
     status: string;
     details?: Record<string, unknown>;
     error?: string | null;
-  }
+  },
 ) {
   await supabase.from("integration_jobs").insert({
     job_name: jobName,

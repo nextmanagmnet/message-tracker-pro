@@ -4,7 +4,9 @@ import { missingEvents, pickPixel, pixelName, WOB_PIXEL_EVENTS } from "./tiktokP
 describe("tiktok pixel setup helpers", () => {
   it("only asks for events the pixel does not have yet", () => {
     expect(missingEvents([])).toHaveLength(WOB_PIXEL_EVENTS.length);
-    expect(missingEvents([{ event_type: "CONSULT" }, { event_type: "FORM" }]).map((e) => e.event_name)).toEqual(["Purchase"]);
+    expect(missingEvents([{ event_type: "CONSULT" }, { event_type: "FORM" }]).map((e) => e.event_name)).toEqual([
+      "Purchase",
+    ]);
     expect(missingEvents([{ event_type: "CONSULT" }, { event_type: "FORM" }, { event_type: "SHOPPING" }])).toEqual([]);
   });
   it("keeps the saved pixel, else takes the first, else none", () => {

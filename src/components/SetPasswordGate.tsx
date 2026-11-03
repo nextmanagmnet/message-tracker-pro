@@ -50,11 +50,24 @@ export function SetPasswordGate({ children }: { children: ReactNode }) {
         <p className="text-sm text-muted-foreground">{t("invite.hint", { email: user?.email })}</p>
         <div className="space-y-1.5">
           <Label htmlFor="pw">{t("invite.password")}</Label>
-          <Input id="pw" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input
+            id="pw"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="pw2">{t("invite.confirm")}</Label>
-          <Input id="pw2" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && save()} />
+          <Input
+            id="pw2"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !busy && save()}
+          />
         </div>
         <Button variant="glow" className="w-full" onClick={save} disabled={busy}>
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("invite.save")}

@@ -44,7 +44,8 @@ export async function authorizeAgencyAdmin(
   const userId = data.claims.sub as string;
   const [owner, admin] = await Promise.all(
     ["owner", "admin"].map((role) =>
-      supabase.rpc("has_agency_role", { _user_id: userId, _agency_id: agencyId, _role: role })),
+      supabase.rpc("has_agency_role", { _user_id: userId, _agency_id: agencyId, _role: role }),
+    ),
   );
   if (!owner.data && !admin.data) return json({ error: "Only agency owners and admins can do this" }, 403);
   return { userId, supabase };

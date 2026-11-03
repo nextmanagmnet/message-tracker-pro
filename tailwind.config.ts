@@ -15,9 +15,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Montserrat', 'Readex Pro', 'system-ui', 'sans-serif'],
-        display: ['Unbounded', 'Readex Pro', 'system-ui', 'sans-serif'],
-        arabic: ['Readex Pro', 'system-ui', 'sans-serif'],
+        sans: ["Montserrat", "Readex Pro", "system-ui", "sans-serif"],
+        display: ["Unbounded", "Readex Pro", "system-ui", "sans-serif"],
+        arabic: ["Readex Pro", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

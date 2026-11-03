@@ -43,7 +43,17 @@ function Eyebrow({ children }: { children: ReactNode }) {
   );
 }
 
-function SectionHead({ eyebrow, title, body, center }: { eyebrow: string; title: string; body?: string; center?: boolean }) {
+function SectionHead({
+  eyebrow,
+  title,
+  body,
+  center,
+}: {
+  eyebrow: string;
+  title: string;
+  body?: string;
+  center?: boolean;
+}) {
   return (
     <Reveal className={cn("max-w-2xl", center && "mx-auto text-center")}>
       <Eyebrow>{eyebrow}</Eyebrow>
@@ -55,7 +65,11 @@ function SectionHead({ eyebrow, title, body, center }: { eyebrow: string; title:
 
 function GetStarted({ label, className }: { label: string; className?: string }) {
   return (
-    <Button asChild size="lg" className={cn("rounded-full text-white font-semibold shadow-glow hover:opacity-90", GRADIENT, className)}>
+    <Button
+      asChild
+      size="lg"
+      className={cn("rounded-full text-white font-semibold shadow-glow hover:opacity-90", GRADIENT, className)}
+    >
       <Link to="/auth">
         {label}
         <ArrowRight className="h-4 w-4 rtl:rotate-180" />
@@ -125,7 +139,12 @@ export default function Landing() {
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">{t("hero.subtitle")}</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <GetStarted label={t("hero.ctaPrimary")} />
-              <Button asChild size="lg" variant="ghost" className="rounded-full border border-white/15 text-white hover:bg-white/10">
+              <Button
+                asChild
+                size="lg"
+                variant="ghost"
+                className="rounded-full border border-white/15 text-white hover:bg-white/10"
+              >
                 <a href="#how">{t("hero.ctaSecondary")}</a>
               </Button>
             </div>
@@ -183,7 +202,13 @@ export default function Landing() {
                     i === 2 && cn("text-white font-semibold", GRADIENT),
                   )}
                 >
-                  {i === 2 ? <ShoppingBag className="h-4 w-4" /> : i === 1 ? <BadgeCheck className="h-4 w-4" /> : <span className="h-4 w-4" />}
+                  {i === 2 ? (
+                    <ShoppingBag className="h-4 w-4" />
+                  ) : i === 1 ? (
+                    <BadgeCheck className="h-4 w-4" />
+                  ) : (
+                    <span className="h-4 w-4" />
+                  )}
                   {s}
                 </li>
               ))}
@@ -191,7 +216,9 @@ export default function Landing() {
           </Reveal>
         </div>
         <Reveal className="mt-12 text-center">
-          <p className="font-display text-xl font-bold uppercase tracking-wide text-white/90 sm:text-3xl">{t("problem.punch")}</p>
+          <p className="font-display text-xl font-bold uppercase tracking-wide text-white/90 sm:text-3xl">
+            {t("problem.punch")}
+          </p>
         </Reveal>
       </section>
 
@@ -200,16 +227,26 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead eyebrow={t("how.eyebrow")} title={t("how.title")} center />
           <div className="relative mt-14 grid gap-6 md:grid-cols-3">
-            <div aria-hidden className={cn("absolute top-10 hidden h-px md:block start-[16%] end-[16%] opacity-40", GRADIENT)} />
+            <div
+              aria-hidden
+              className={cn("absolute top-10 hidden h-px md:block start-[16%] end-[16%] opacity-40", GRADIENT)}
+            />
             {steps.map((s, i) => {
               const Icon = stepIcons[i];
               return (
                 <Reveal key={s.title} delay={i * 140} className="relative">
                   <div className="glass-card h-full p-6 text-center">
-                    <div className={cn("mx-auto flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-glow", GRADIENT)}>
+                    <div
+                      className={cn(
+                        "mx-auto flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-glow",
+                        GRADIENT,
+                      )}
+                    >
                       <Icon className="h-7 w-7" />
                     </div>
-                    <p className="mt-5 font-display text-xs font-semibold tracking-[0.25em] text-brand-coral">0{i + 1}</p>
+                    <p className="mt-5 font-display text-xs font-semibold tracking-[0.25em] text-brand-coral">
+                      0{i + 1}
+                    </p>
                     <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
                   </div>
@@ -229,13 +266,21 @@ export default function Landing() {
               <span className="pulse-dot" />
               WOB
             </span>
-            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] text-muted-foreground">{t("demo.illustrative")}</span>
+            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] text-muted-foreground">
+              {t("demo.illustrative")}
+            </span>
           </div>
           <div className="relative mt-5 grid gap-4 sm:grid-cols-2">
             {(["a", "b"] as const).map((k, ci) => {
               const winner = k === "b";
               return (
-                <div key={k} className={cn("rounded-xl border p-4", winner ? "border-brand-coral/50 bg-brand-coral/[0.06]" : "border-white/10 bg-white/[0.02]")}>
+                <div
+                  key={k}
+                  className={cn(
+                    "rounded-xl border p-4",
+                    winner ? "border-brand-coral/50 bg-brand-coral/[0.06]" : "border-white/10 bg-white/[0.02]",
+                  )}
+                >
                   <p className="font-semibold">{t(k === "a" ? "demo.campaignA" : "demo.campaignB")}</p>
                   <div className="mt-4 space-y-3">
                     {(["clicks", "chats", "qualified", "sales"] as const).map((m, mi) => (
@@ -245,9 +290,17 @@ export default function Landing() {
                           <div
                             className={cn(
                               "lp-bar h-2 rounded-full",
-                              m === "clicks" ? "bg-white/30" : m === "chats" ? "bg-brand-blue" : m === "qualified" ? "bg-brand-aqua" : GRADIENT,
+                              m === "clicks"
+                                ? "bg-white/30"
+                                : m === "chats"
+                                  ? "bg-brand-blue"
+                                  : m === "qualified"
+                                    ? "bg-brand-aqua"
+                                    : GRADIENT,
                             )}
-                            style={{ width: `${DEMO[k][m]}%`, "--delay": `${300 + ci * 200 + mi * 120}ms` } as CSSProperties}
+                            style={
+                              { width: `${DEMO[k][m]}%`, "--delay": `${300 + ci * 200 + mi * 120}ms` } as CSSProperties
+                            }
                           />
                         </div>
                       </div>
@@ -257,7 +310,12 @@ export default function Landing() {
                     {(["cpql", "cpc"] as const).map((c) => (
                       <div key={c} className="flex items-center justify-between gap-2">
                         <dt className="text-muted-foreground">{t(`demo.${c}`)}</dt>
-                        <dd className={cn("rounded-full px-2 py-0.5 font-semibold", winner ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
+                        <dd
+                          className={cn(
+                            "rounded-full px-2 py-0.5 font-semibold",
+                            winner ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+                          )}
+                        >
                           {t(winner ? "demo.lower" : "demo.higher")}
                         </dd>
                       </div>
@@ -282,7 +340,13 @@ export default function Landing() {
             return (
               <Reveal key={f.title} delay={(i % 3) * 100}>
                 <div className="group glass-card relative h-full overflow-hidden p-6 transition-colors hover:border-brand-coral/40">
-                  <div aria-hidden className={cn("absolute -top-16 end-[-4rem] h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-40", GRADIENT)} />
+                  <div
+                    aria-hidden
+                    className={cn(
+                      "absolute -top-16 end-[-4rem] h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-40",
+                      GRADIENT,
+                    )}
+                  />
                   <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-brand-coral">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -312,7 +376,12 @@ export default function Landing() {
                     )}
                   >
                     {agency && (
-                      <span className={cn("absolute -top-3 end-6 rounded-full px-3 py-1 text-xs font-semibold text-white", GRADIENT)}>
+                      <span
+                        className={cn(
+                          "absolute -top-3 end-6 rounded-full px-3 py-1 text-xs font-semibold text-white",
+                          GRADIENT,
+                        )}
+                      >
                         {t("plans.agency.badge")}
                       </span>
                     )}
@@ -369,12 +438,18 @@ export default function Landing() {
               <div className="h-2 w-24 rounded-full bg-white/15" />
             </div>
             <div dir="rtl" className="space-y-3 px-1 py-4 font-arabic text-sm">
-              <div className="me-auto max-w-[85%] rounded-2xl rounded-ss-sm bg-white/10 px-4 py-2.5">{t("ai.chat.customer")}</div>
-              <div className="ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-brand-blue/30 px-4 py-2.5">{t("ai.chat.bot")}</div>
+              <div className="me-auto max-w-[85%] rounded-2xl rounded-ss-sm bg-white/10 px-4 py-2.5">
+                {t("ai.chat.customer")}
+              </div>
+              <div className="ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-brand-blue/30 px-4 py-2.5">
+                {t("ai.chat.bot")}
+              </div>
               <div className="ms-auto grid w-[70%] grid-cols-2 gap-2 rounded-2xl rounded-se-sm bg-brand-blue/20 p-2">
                 <div className="aspect-square rounded-xl wob-mesh-hero" />
                 <div className="aspect-square rounded-xl wob-mesh-cool" />
-                <p dir="auto" className="col-span-2 px-1 pb-1 text-xs text-white/70 font-sans">{t("ai.chat.card")}</p>
+                <p dir="auto" className="col-span-2 px-1 pb-1 text-xs text-white/70 font-sans">
+                  {t("ai.chat.card")}
+                </p>
               </div>
               <div className="lp-typing me-auto flex w-14 items-center justify-center gap-1 rounded-2xl bg-white/10 py-3">
                 <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
@@ -382,7 +457,10 @@ export default function Landing() {
                 <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
               </div>
             </div>
-            <div dir="auto" className="flex items-center justify-center gap-2 rounded-full border border-success/30 bg-success/10 py-1.5 text-xs font-medium text-success">
+            <div
+              dir="auto"
+              className="flex items-center justify-center gap-2 rounded-full border border-success/30 bg-success/10 py-1.5 text-xs font-medium text-success"
+            >
               <User className="h-3.5 w-3.5" />
               {t("ai.chat.handoff")}
             </div>
@@ -413,7 +491,9 @@ export default function Landing() {
       {/* Final CTA */}
       <section className="px-4 pb-20 sm:px-6">
         <Reveal className="wob-mesh-hero relative mx-auto max-w-6xl overflow-hidden rounded-3xl border border-white/10 px-6 py-16 text-center sm:py-20">
-          <h2 className="mx-auto max-w-3xl text-2xl font-extrabold leading-tight text-white sm:text-4xl break-words">{t("cta.title")}</h2>
+          <h2 className="mx-auto max-w-3xl text-2xl font-extrabold leading-tight text-white sm:text-4xl break-words">
+            {t("cta.title")}
+          </h2>
           <p className="mt-4 text-white/75">{t("cta.body")}</p>
           <GetStarted label={t("cta.button")} className="mt-8" />
         </Reveal>
@@ -423,7 +503,9 @@ export default function Landing() {
       <footer className="border-t border-white/5">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <Logo variant="mark" onDark className="h-8" />
-          <span className="sm:me-auto">{t("footer.tagline")} · © {new Date().getFullYear()}</span>
+          <span className="sm:me-auto">
+            {t("footer.tagline")} · © {new Date().getFullYear()}
+          </span>
           <LanguageSwitcher className="px-2" />
           <Link to="/auth" className="hover:text-foreground">
             {t("footer.signIn")}

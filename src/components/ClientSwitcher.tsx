@@ -60,7 +60,9 @@ export function ClientSwitcher() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isFirst ? t("clientSwitcher.createFirstTitle") : t("clientSwitcher.createTitle")}</DialogTitle>
-          <DialogDescription>{isFirst ? t("clientSwitcher.firstDesc") : t("clientSwitcher.createDesc")}</DialogDescription>
+          <DialogDescription>
+            {isFirst ? t("clientSwitcher.firstDesc") : t("clientSwitcher.createDesc")}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">

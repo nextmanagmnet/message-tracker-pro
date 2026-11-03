@@ -48,8 +48,7 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
   const rtl = i18n.dir() === "rtl";
 
   const renderItem = (item: (typeof mainItems)[number]) => {
-    const isActive =
-      item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+    const isActive = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
     const label = t(item.key);
     return (
       <Link
@@ -71,11 +70,16 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
     <aside
       className={cn(
         "fixed start-0 top-0 h-screen bg-sidebar border-e border-sidebar-border transition-all duration-300 z-50",
-        collapsed ? "w-20" : "w-64"
+        collapsed ? "w-20" : "w-64",
       )}
     >
       <div className="flex flex-col h-full">
-        <div className={cn("flex items-center border-b border-sidebar-border h-20", collapsed ? "justify-center px-3" : "px-5")}>
+        <div
+          className={cn(
+            "flex items-center border-b border-sidebar-border h-20",
+            collapsed ? "justify-center px-3" : "px-5",
+          )}
+        >
           <Link to="/" aria-label="WOB">
             {collapsed ? <Logo variant="mark" className="h-9" /> : <Logo variant="horizontal" className="h-11" />}
           </Link>

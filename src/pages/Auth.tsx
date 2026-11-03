@@ -14,9 +14,7 @@ import { cn } from "@/lib/utils";
 
 // First-time users (no WhatsApp number connected yet) go through onboarding.
 async function landingPath(): Promise<string> {
-  const { count, error } = await supabase
-    .from("whatsapp_numbers")
-    .select("id", { count: "exact", head: true });
+  const { count, error } = await supabase.from("whatsapp_numbers").select("id", { count: "exact", head: true });
   return !error && (count ?? 0) === 0 ? "/onboarding" : "/";
 }
 
@@ -85,7 +83,9 @@ const Auth = () => {
 
   const forgotPassword = async () => {
     if (!formData.email.trim()) return toast.error(t("auth.enterEmailFirst"));
-    const { error } = await supabase.auth.resetPasswordForEmail(formData.email.trim(), { redirectTo: `${window.location.origin}/` });
+    const { error } = await supabase.auth.resetPasswordForEmail(formData.email.trim(), {
+      redirectTo: `${window.location.origin}/`,
+    });
     if (error) toast.error(error.message);
     else toast.success(t("auth.resetSent"));
   };
@@ -161,12 +161,12 @@ const Auth = () => {
                               aria-pressed={selected}
                               className={cn(
                                 "text-start rounded-xl border p-3 transition-colors",
-                                selected
-                                  ? "border-primary bg-primary/10"
-                                  : "border-border hover:border-primary/40"
+                                selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/40",
                               )}
                             >
-                              <opt.icon className={cn("h-5 w-5 mb-2", selected ? "text-primary" : "text-muted-foreground")} />
+                              <opt.icon
+                                className={cn("h-5 w-5 mb-2", selected ? "text-primary" : "text-muted-foreground")}
+                              />
                               <p className="font-semibold text-sm">{opt.title}</p>
                               <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
                             </button>
@@ -252,9 +252,13 @@ const Auth = () => {
 
               {isLogin && (
                 <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
-                  <button type="button" className="text-primary hover:underline" onClick={forgotPassword}>{t("auth.forgot")}</button>
+                  <button type="button" className="text-primary hover:underline" onClick={forgotPassword}>
+                    {t("auth.forgot")}
+                  </button>
                   {needsConfirm && (
-                    <button type="button" className="text-primary hover:underline" onClick={resendConfirmation}>{t("auth.resend")}</button>
+                    <button type="button" className="text-primary hover:underline" onClick={resendConfirmation}>
+                      {t("auth.resend")}
+                    </button>
                   )}
                 </div>
               )}

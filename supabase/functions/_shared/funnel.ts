@@ -24,7 +24,12 @@ export function stagesPassed(current: Stage | null | undefined, next: Stage): St
 
 // How sure the analyzer must be before WOB reports a stage on its own. A wrong Contact costs little;
 // a wrong Purchase teaches the ad platform the wrong buyer, so that bar stays high.
-export const AUTO_REPORT_CONFIDENCE: Partial<Record<Stage, number>> = { real: 0.6, qualified: 0.7, client: 0.8, not_lead: 0.8 };
+export const AUTO_REPORT_CONFIDENCE: Partial<Record<Stage, number>> = {
+  real: 0.6,
+  qualified: 0.7,
+  client: 0.8,
+  not_lead: 0.8,
+};
 
 const EVENTS: Record<Platform, Partial<Record<Stage, string>>> = {
   tiktok: { real: "Contact", qualified: "SubmitForm", client: "Purchase" },
@@ -59,14 +64,16 @@ export function buildTikTokPayload(pixelCode: string, e: EventInput) {
   return {
     event_source: "web",
     event_source_id: pixelCode,
-    data: [{
-      event: e.eventName,
-      event_time: e.eventTime,
-      event_id: e.eventId,
-      user: { ttclid: e.clickId, phone: e.phoneHash },
-      properties,
-      page: { url: e.pageUrl ?? "https://wa.me/" },
-    }],
+    data: [
+      {
+        event: e.eventName,
+        event_time: e.eventTime,
+        event_id: e.eventId,
+        user: { ttclid: e.clickId, phone: e.phoneHash },
+        properties,
+        page: { url: e.pageUrl ?? "https://wa.me/" },
+      },
+    ],
   };
 }
 

@@ -56,20 +56,26 @@ const AgencyOverview = () => {
       client: c,
       stats: computeStats(
         leads.filter((l) => l.client_id === c.id),
-        spendByClient.get(c.id) ?? 0
+        spendByClient.get(c.id) ?? 0,
       ),
     }));
     const val = (r: (typeof list)[number]) => {
       switch (sort.key) {
-        case "name": return r.client.name.toLowerCase();
-        case "spend": return r.stats.spend;
-        case "real": return r.stats.real;
-        case "cost": return r.stats.costPerReal ?? Number.POSITIVE_INFINITY;
-        case "trash": return r.stats.trashRatio;
+        case "name":
+          return r.client.name.toLowerCase();
+        case "spend":
+          return r.stats.spend;
+        case "real":
+          return r.stats.real;
+        case "cost":
+          return r.stats.costPerReal ?? Number.POSITIVE_INFINITY;
+        case "trash":
+          return r.stats.trashRatio;
       }
     };
     return list.sort((a, b) => {
-      const x = val(a), y = val(b);
+      const x = val(a),
+        y = val(b);
       const cmp = x < y ? -1 : x > y ? 1 : 0;
       return sort.desc ? -cmp : cmp;
     });
@@ -80,8 +86,7 @@ const AgencyOverview = () => {
     return computeStats(leads, spend);
   }, [leads, spendByClient]);
 
-  const toggleSort = (key: SortKey) =>
-    setSort((s) => ({ key, desc: s.key === key ? !s.desc : true }));
+  const toggleSort = (key: SortKey) => setSort((s) => ({ key, desc: s.key === key ? !s.desc : true }));
 
   const exportCsv = () =>
     downloadCsv(`agency-overview-${range.from.toISOString().slice(0, 10)}.csv`, [
@@ -135,14 +140,28 @@ const AgencyOverview = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard title={t("agency.activeClients")} value={clients.length} icon={<Building2 className="w-5 h-5" />} />
-        <MetricCard title={t("agency.totalSpend")} value={`$${totals.spend.toFixed(2)}`} icon={<DollarSign className="w-5 h-5" />} />
-        <MetricCard title={t("agency.realConversations")} value={totals.real} icon={<MessageCircle className="w-5 h-5" />} />
-        <MetricCard title={t("agency.trashRatio")} value={`${totals.trashRatio.toFixed(1)}%`} icon={<AlertTriangle className="w-5 h-5" />} />
+        <MetricCard
+          title={t("agency.totalSpend")}
+          value={`$${totals.spend.toFixed(2)}`}
+          icon={<DollarSign className="w-5 h-5" />}
+        />
+        <MetricCard
+          title={t("agency.realConversations")}
+          value={totals.real}
+          icon={<MessageCircle className="w-5 h-5" />}
+        />
+        <MetricCard
+          title={t("agency.trashRatio")}
+          value={`${totals.trashRatio.toFixed(1)}%`}
+          icon={<AlertTriangle className="w-5 h-5" />}
+        />
       </div>
 
       <div className="glass-card overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
         ) : !clients.length ? (
           <div className="p-12 text-center">
             <p className="text-muted-foreground mb-4">{t("agency.noClients")}</p>
@@ -167,7 +186,9 @@ const AgencyOverview = () => {
                     <td className="px-6 py-4 font-medium text-foreground">{client.name}</td>
                     <td className="px-6 py-4 text-foreground">${stats.spend.toFixed(2)}</td>
                     <td className="px-6 py-4 text-success font-semibold">{stats.real}</td>
-                    <td className="px-6 py-4 text-foreground">{stats.costPerReal !== null ? `$${stats.costPerReal.toFixed(2)}` : "—"}</td>
+                    <td className="px-6 py-4 text-foreground">
+                      {stats.costPerReal !== null ? `$${stats.costPerReal.toFixed(2)}` : "—"}
+                    </td>
                     <td className={`px-6 py-4 ${stats.trashRatio > 50 ? "text-destructive" : "text-muted-foreground"}`}>
                       {stats.trashRatio.toFixed(1)}%
                     </td>

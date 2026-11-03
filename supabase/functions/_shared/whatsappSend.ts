@@ -12,10 +12,17 @@ export async function sendWhatsAppText(
   opts: { humanDelay?: boolean; author?: "ai" | "owner" } = {},
 ): Promise<boolean> {
   const { data: conv } = await supabase
-    .from("conversations").select("id, client_id, whatsapp_number_id").eq("id", conversationId).maybeSingle();
+    .from("conversations")
+    .select("id, client_id, whatsapp_number_id")
+    .eq("id", conversationId)
+    .maybeSingle();
   if (!conv) return false;
   const [{ data: line }, { data: contact }] = await Promise.all([
-    supabase.from("whatsapp_numbers").select("phone_number_id, waba_id").eq("id", conv.whatsapp_number_id).maybeSingle(),
+    supabase
+      .from("whatsapp_numbers")
+      .select("phone_number_id, waba_id")
+      .eq("id", conv.whatsapp_number_id)
+      .maybeSingle(),
     supabase.from("conversation_contacts").select("contact_jid").eq("conversation_id", conversationId).maybeSingle(),
   ]);
   if (!line || !contact?.contact_jid) return false;
@@ -30,14 +37,18 @@ export async function sendWhatsAppText(
 
   // Placeholder first so the webhook's echo of our own message isn't mistaken for the owner typing.
   const pendingId = `pending:${crypto.randomUUID()}`;
-  const { data: row } = await supabase.from("messages").insert({
-    conversation_id: conversationId,
-    client_id: conv.client_id,
-    direction: "out",
-    author: opts.author ?? "ai",
-    text,
-    external_id: pendingId,
-  }).select("id").single();
+  const { data: row } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      client_id: conv.client_id,
+      direction: "out",
+      author: opts.author ?? "ai",
+      text,
+      external_id: pendingId,
+    })
+    .select("id")
+    .single();
 
   if (opts.humanDelay) await sleep(2000 + Math.random() * 4000);
 
@@ -71,10 +82,17 @@ export async function sendWhatsAppMedia(
   caption: string,
 ): Promise<boolean> {
   const { data: conv } = await supabase
-    .from("conversations").select("id, client_id, whatsapp_number_id").eq("id", conversationId).maybeSingle();
+    .from("conversations")
+    .select("id, client_id, whatsapp_number_id")
+    .eq("id", conversationId)
+    .maybeSingle();
   if (!conv) return false;
   const [{ data: line }, { data: contact }] = await Promise.all([
-    supabase.from("whatsapp_numbers").select("phone_number_id, waba_id").eq("id", conv.whatsapp_number_id).maybeSingle(),
+    supabase
+      .from("whatsapp_numbers")
+      .select("phone_number_id, waba_id")
+      .eq("id", conv.whatsapp_number_id)
+      .maybeSingle(),
     supabase.from("conversation_contacts").select("contact_jid").eq("conversation_id", conversationId).maybeSingle(),
   ]);
   const base = (Deno.env.get("EVOLUTION_API_URL") || "").replace(/\/+$/, "");
@@ -83,9 +101,18 @@ export async function sendWhatsAppMedia(
 
   const pendingId = `pending:${crypto.randomUUID()}`;
   const text = `[${mediatype}] ${caption}`;
-  const { data: row } = await supabase.from("messages").insert({
-    conversation_id: conversationId, client_id: conv.client_id, direction: "out", author: "ai", text, external_id: pendingId,
-  }).select("id").single();
+  const { data: row } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      client_id: conv.client_id,
+      direction: "out",
+      author: "ai",
+      text,
+      external_id: pendingId,
+    })
+    .select("id")
+    .single();
   const res = await fetch(`${base}/message/sendMedia/${line.phone_number_id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: key },

@@ -1,7 +1,8 @@
 // Parsing and checks for TikTok Business Center funding. TikTok's response field names for balances
 // aren't fully documented, so read the likely names and keep the raw row for the UI to show.
 
-const num = (v: unknown) => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
+const num = (v: unknown) =>
+  v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
 const firstNum = (row: BalanceRow, keys: string[]) => keys.map((k) => num(row?.[k])).find((n) => n !== null) ?? null;
 
 // One row of TikTok's balance list; any field may be missing.

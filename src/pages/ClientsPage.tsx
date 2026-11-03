@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Building2, Plus, MoreVertical, Pencil, Trash2, MessageCircle, DollarSign, TrendingUp, UserPlus } from "lucide-react";
+import {
+  Building2,
+  Plus,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  MessageCircle,
+  DollarSign,
+  TrendingUp,
+  UserPlus,
+} from "lucide-react";
 import { InviteClientDialog } from "@/components/clients/InviteClientDialog";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";

@@ -23,11 +23,27 @@ export type Totals = Omit<CampaignRow, "key" | "platform" | "campaignId" | "name
   currency: string; // currency most orders were reported in (sums assume one currency)
 };
 
-type DbCampaign = { campaign_id: string; campaign_name: string; spend: number | null; clicks: number | null; impressions: number | null };
+type DbCampaign = {
+  campaign_id: string;
+  campaign_name: string;
+  spend: number | null;
+  clicks: number | null;
+  impressions: number | null;
+};
 
 const emptyRow = (platform: Platform, campaignId: string, name: string): CampaignRow => ({
-  key: `${platform}:${campaignId}`, platform, campaignId, name,
-  spend: 0, clicks: 0, impressions: 0, real: 0, qualified: 0, clients: 0, trash: 0, revenue: 0,
+  key: `${platform}:${campaignId}`,
+  platform,
+  campaignId,
+  name,
+  spend: 0,
+  clicks: 0,
+  impressions: 0,
+  real: 0,
+  qualified: 0,
+  clients: 0,
+  trash: 0,
+  revenue: 0,
 });
 
 function tally(row: Pick<CampaignRow, "real" | "qualified" | "clients" | "trash" | "revenue">, l: Lead) {
@@ -51,32 +67,44 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
   const [conversionsSent, setConversionsSent] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (silent = false) => {
-    if (!clientId) {
-      setLeads([]);
-      setCampaigns({ tiktok: [], meta: [] });
+  const load = useCallback(
+    async (silent = false) => {
+      if (!clientId) {
+        setLeads([]);
+        setCampaigns({ tiktok: [], meta: [] });
+        setLoading(false);
+        return;
+      }
+      if (!silent) setLoading(true);
+      const cols = "campaign_id, campaign_name, spend, clicks, impressions";
+      const [l, tt, mt, ev] = await Promise.all([
+        db
+          .from("leads")
+          .select(LEAD_COLUMNS)
+          .eq("client_id", clientId)
+          .gte("created_at", range.from.toISOString())
+          .lte("created_at", range.to.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(5000),
+        db.from("tiktok_campaigns").select(cols).eq("client_id", clientId),
+        db.from("meta_campaigns").select(cols).eq("client_id", clientId),
+        db
+          .from("conversion_events")
+          .select("id, leads!inner(client_id)", { count: "exact", head: true })
+          .eq("leads.client_id", clientId)
+          .eq("status", "sent")
+          .gte("sent_at", range.from.toISOString())
+          .lte("sent_at", range.to.toISOString()),
+      ]);
+      if (l.error) console.error("leads load failed", l.error);
+      setLeads((l.data ?? []) as Lead[]);
+      // meta_campaigns may not exist until the Meta migration lands; treat as empty.
+      setCampaigns({ tiktok: (tt.data ?? []) as DbCampaign[], meta: (mt.data ?? []) as DbCampaign[] });
+      setConversionsSent(ev.count ?? 0);
       setLoading(false);
-      return;
-    }
-    if (!silent) setLoading(true);
-    const cols = "campaign_id, campaign_name, spend, clicks, impressions";
-    const [l, tt, mt, ev] = await Promise.all([
-      db.from("leads").select(LEAD_COLUMNS).eq("client_id", clientId)
-        .gte("created_at", range.from.toISOString()).lte("created_at", range.to.toISOString())
-        .order("created_at", { ascending: false }).limit(5000),
-      db.from("tiktok_campaigns").select(cols).eq("client_id", clientId),
-      db.from("meta_campaigns").select(cols).eq("client_id", clientId),
-      db.from("conversion_events").select("id, leads!inner(client_id)", { count: "exact", head: true })
-        .eq("leads.client_id", clientId).eq("status", "sent")
-        .gte("sent_at", range.from.toISOString()).lte("sent_at", range.to.toISOString()),
-    ]);
-    if (l.error) console.error("leads load failed", l.error);
-    setLeads((l.data ?? []) as Lead[]);
-    // meta_campaigns may not exist until the Meta migration lands; treat as empty.
-    setCampaigns({ tiktok: (tt.data ?? []) as DbCampaign[], meta: (mt.data ?? []) as DbCampaign[] });
-    setConversionsSent(ev.count ?? 0);
-    setLoading(false);
-  }, [clientId, range]);
+    },
+    [clientId, range],
+  );
 
   useEffect(() => {
     load();
@@ -87,7 +115,10 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
 
   const rows = useMemo(() => {
     const map = new Map<string, CampaignRow>();
-    for (const [platform, list] of [["tiktok", campaigns.tiktok], ["meta", campaigns.meta]] as const) {
+    for (const [platform, list] of [
+      ["tiktok", campaigns.tiktok],
+      ["meta", campaigns.meta],
+    ] as const) {
       for (const c of list) {
         const r = emptyRow(platform, c.campaign_id, c.campaign_name);
         r.spend = Number(c.spend) || 0;
@@ -106,7 +137,19 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
   }, [leads, campaigns]);
 
   const totals = useMemo<Totals>(() => {
-    const t: Totals = { spend: 0, clicks: 0, impressions: 0, real: 0, qualified: 0, clients: 0, trash: 0, revenue: 0, leads: leads.length, conversionsSent, currency: "USD" };
+    const t: Totals = {
+      spend: 0,
+      clicks: 0,
+      impressions: 0,
+      real: 0,
+      qualified: 0,
+      clients: 0,
+      trash: 0,
+      revenue: 0,
+      leads: leads.length,
+      conversionsSent,
+      currency: "USD",
+    };
     for (const r of rows) {
       t.spend += r.spend;
       t.clicks += r.clicks;
@@ -114,7 +157,8 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
     }
     for (const l of leads) tally(t, l); // all leads, attributed or not
     const seen: Record<string, number> = {};
-    for (const l of leads) if (stageOf(l) === "client" && l.order_currency) seen[l.order_currency] = (seen[l.order_currency] ?? 0) + 1;
+    for (const l of leads)
+      if (stageOf(l) === "client" && l.order_currency) seen[l.order_currency] = (seen[l.order_currency] ?? 0) + 1;
     t.currency = Object.entries(seen).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "USD";
     return t;
   }, [rows, leads, conversionsSent]);

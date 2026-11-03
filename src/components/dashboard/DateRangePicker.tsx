@@ -6,18 +6,8 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import type { DateRange } from "./dateRange";
 
@@ -40,7 +30,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
   const handlePresetChange = (newPreset: PresetValue) => {
     setPreset(newPreset);
-    
+
     if (newPreset !== "custom") {
       const days = parseInt(newPreset.replace("d", ""));
       onChange({
@@ -85,10 +75,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn(
-              "justify-start text-start font-normal",
-              !value && "text-muted-foreground"
-            )}
+            className={cn("justify-start text-start font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="w-4 h-4 me-2" />
             {value.from ? (

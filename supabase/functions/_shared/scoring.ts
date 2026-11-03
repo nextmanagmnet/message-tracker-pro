@@ -23,8 +23,7 @@ export interface ScoringResult {
   signals: Record<string, unknown>;
 }
 
-const EMOJI_ONLY =
-  /^[\p{Extended_Pictographic}\p{Emoji_Component}\s\u{2600}-\u{27BF}]+$/u;
+const EMOJI_ONLY = /^[\p{Extended_Pictographic}\p{Emoji_Component}\s\u{2600}-\u{27BF}]+$/u;
 
 const LOW_INTENT = [
   /^(hi|hello|hey|ola|hola|ok|okay|yes|no|sure|thanks|thank you|salam|مرحبا|السلام عليكم)[!.?\s]*$/i,
@@ -33,10 +32,35 @@ const LOW_INTENT = [
 ];
 
 const INTENT_WORDS = [
-  "price", "cost", "how much", "available", "book", "booking", "appointment",
-  "order", "buy", "delivery", "interested", "quote", "need", "want", "when",
-  "where", "size", "color", "stock", "info", "details", "سعر", "كم", "حجز",
-  "متوفر", "توصيل", "اريد", "أريد", "معلومات",
+  "price",
+  "cost",
+  "how much",
+  "available",
+  "book",
+  "booking",
+  "appointment",
+  "order",
+  "buy",
+  "delivery",
+  "interested",
+  "quote",
+  "need",
+  "want",
+  "when",
+  "where",
+  "size",
+  "color",
+  "stock",
+  "info",
+  "details",
+  "سعر",
+  "كم",
+  "حجز",
+  "متوفر",
+  "توصيل",
+  "اريد",
+  "أريد",
+  "معلومات",
 ];
 
 export function scoreLead(input: ScoringInput): ScoringResult {
@@ -85,9 +109,11 @@ export function scoreLead(input: ScoringInput): ScoringResult {
   // --- Timing signals ---------------------------------------------------
   const gap = input.clickToMessageSeconds;
   if (gap !== null) {
-    if (gap < 2) score -= 30; // impossibly fast: automation
+    if (gap < 2)
+      score -= 30; // impossibly fast: automation
     else if (gap < 5) score -= 10;
-    else if (gap <= 900) score += 10; // human-plausible window
+    else if (gap <= 900)
+      score += 10; // human-plausible window
     else if (gap > 86400) score -= 5; // very stale click
   }
   signals.timing = { click_to_message_seconds: gap };
@@ -117,7 +143,10 @@ export function scoreLead(input: ScoringInput): ScoringResult {
   // Trash only on hard junk signals. A plain "Hello" from a new phone is a new lead, not spam:
   // the AI analyzer decides later whether the chat becomes real, qualified or not a lead.
   const hardJunk =
-    emojiOnly || input.clientVelocity10m > 15 || input.senderLeadCount >= 5 || input.duplicateMessageText ||
+    emojiOnly ||
+    input.clientVelocity10m > 15 ||
+    input.senderLeadCount >= 5 ||
+    input.duplicateMessageText ||
     (gap !== null && gap < 2);
   const status: ScoringResult["status"] = isReal ? "verified" : score < 35 && hardJunk ? "trash" : "pending";
 

@@ -39,7 +39,11 @@ const TikTokCallback = () => {
       if (!code || !state || !pending) return done(false, t("callback.noPending"));
       if (pending.state !== state) return done(false, t("callback.stateMismatch"));
       try {
-        const d = await invokeFn<{ advertiserCount?: number }>("tiktok-oauth", { action: "callback", code, clientId: pending.clientId });
+        const d = await invokeFn<{ advertiserCount?: number }>("tiktok-oauth", {
+          action: "callback",
+          code,
+          clientId: pending.clientId,
+        });
         sessionStorage.removeItem(TIKTOK_KEY);
         if (!d.advertiserCount) return done(false, t("callback.noAdAccounts"));
         done(true, t("callback.tiktokConnected", { count: d.advertiserCount }));

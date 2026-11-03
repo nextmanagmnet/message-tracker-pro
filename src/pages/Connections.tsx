@@ -24,7 +24,9 @@ const Connections = () => {
   return (
     <DashboardLayout title={t("connections.title")} subtitle={t("connections.subtitle")}>
       {!selectedClient ? (
-        <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">{t("common.selectClient")}</div>
+        <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">
+          {t("common.selectClient")}
+        </div>
       ) : (
         <div className="space-y-6" key={selectedClient.id}>
           <WhatsAppSection clientId={selectedClient.id} isIndividual={isIndividual} canManage={canManage} />

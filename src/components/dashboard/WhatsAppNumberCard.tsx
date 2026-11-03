@@ -1,4 +1,14 @@
-import { Phone, CheckCircle, XCircle, MessageCircle, TrendingUp, MoreVertical, Unplug, Trash2, PlugZap } from "lucide-react";
+import {
+  Phone,
+  CheckCircle,
+  XCircle,
+  MessageCircle,
+  TrendingUp,
+  MoreVertical,
+  Unplug,
+  Trash2,
+  PlugZap,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,7 +84,9 @@ export const WhatsAppNumberCard = ({
             <Phone className={`w-5 h-5 ${isConnected ? "text-success" : "text-destructive"}`} />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground" dir="ltr">{phoneNumber}</h3>
+            <h3 className="font-semibold text-foreground" dir="ltr">
+              {phoneNumber}
+            </h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               {isConnected ? (
                 <>
@@ -93,7 +105,7 @@ export const WhatsAppNumberCard = ({
 
         <div className="flex items-center gap-2">
           {isConnected && <div className="pulse-dot" />}
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLoading}>
@@ -112,8 +124,8 @@ export const WhatsAppNumberCard = ({
                   {t("whatsapp.reconnect")}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem 
-                onClick={handleRemove} 
+              <DropdownMenuItem
+                onClick={handleRemove}
                 disabled={isLoading}
                 className="text-destructive focus:text-destructive"
               >

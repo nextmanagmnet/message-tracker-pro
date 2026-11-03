@@ -51,7 +51,10 @@ export function TikTokSection({
     setSettingUp(true);
     setSetupError(null);
     try {
-      const d = await invokeFn<{ pixelCode?: string; error?: string }>("tiktok-oauth", { action: "ensure-pixel", clientId });
+      const d = await invokeFn<{ pixelCode?: string; error?: string }>("tiktok-oauth", {
+        action: "ensure-pixel",
+        clientId,
+      });
       if (d.error) setSetupError(d.error);
       else await load();
     } catch (e) {
@@ -110,7 +113,11 @@ export function TikTokSection({
     const code = window.prompt(t("connections.tiktok.testPrompt"));
     if (code === null) return;
     try {
-      const d = await invokeFn<{ accepted?: boolean; message?: string }>("tiktok-oauth", { action: "test-event", clientId, testEventCode: code });
+      const d = await invokeFn<{ accepted?: boolean; message?: string }>("tiktok-oauth", {
+        action: "test-event",
+        clientId,
+        testEventCode: code,
+      });
       if (d.accepted) toast.success(t("connections.tiktok.testAccepted"));
       else toast.error(t("connections.tiktok.testRejected", { message: d.message ?? "" }));
     } catch (e) {
@@ -149,7 +156,9 @@ export function TikTokSection({
           {accounts.map((a) => (
             <li key={a.id} className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2">
               <span className="text-foreground">{a.advertiser_name ?? t("connections.tiktok.unnamed")}</span>
-              <span className="text-xs text-muted-foreground" dir="ltr">{a.advertiser_id}</span>
+              <span className="text-xs text-muted-foreground" dir="ltr">
+                {a.advertiser_id}
+              </span>
             </li>
           ))}
         </ul>
@@ -157,13 +166,24 @@ export function TikTokSection({
       {connected && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm">
           {settingUp ? (
-            <><Loader2 className="h-4 w-4 animate-spin text-primary" /> {t("connections.tiktok.settingUp")}</>
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-primary" /> {t("connections.tiktok.settingUp")}
+            </>
           ) : pixelId ? (
-            <><CheckCircle2 className="h-4 w-4 text-success" /> {t("connections.tiktok.trackingReady")} <span className="text-xs text-muted-foreground" dir="ltr">{pixelCode}</span></>
+            <>
+              <CheckCircle2 className="h-4 w-4 text-success" /> {t("connections.tiktok.trackingReady")}{" "}
+              <span className="text-xs text-muted-foreground" dir="ltr">
+                {pixelCode}
+              </span>
+            </>
           ) : (
             <>
               <span className="text-muted-foreground">{setupError ?? t("connections.tiktok.noTracking")}</span>
-              {canManage && <Button size="sm" variant="outline" onClick={setupTracking}>{t("connections.tiktok.setupTracking")}</Button>}
+              {canManage && (
+                <Button size="sm" variant="outline" onClick={setupTracking}>
+                  {t("connections.tiktok.setupTracking")}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -187,7 +207,9 @@ export function TikTokSection({
         </div>
         <p className="text-xs text-muted-foreground">{t("connections.tiktok.pixelHint")}</p>
       </details>
-      {isIndividual && (accounts?.length ?? 0) >= 1 && <p className="mt-3 text-xs text-muted-foreground">{t("limits.tiktok")}</p>}
+      {isIndividual && (accounts?.length ?? 0) >= 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">{t("limits.tiktok")}</p>
+      )}
     </ConnectionCard>
   );
 }

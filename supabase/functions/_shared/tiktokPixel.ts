@@ -29,7 +29,10 @@ export const pickPixel = (list: TikTokPixel[], saved: string | null) =>
 
 // TikTok: at most 40 characters, no emojis, unique per advertiser.
 export const pixelName = (clientName: string) =>
-  `WOB ${clientName}`.replace(/[^\p{L}\p{N} _-]/gu, "").trim().slice(0, 40) || "WOB pixel";
+  `WOB ${clientName}`
+    .replace(/[^\p{L}\p{N} _-]/gu, "")
+    .trim()
+    .slice(0, 40) || "WOB pixel";
 
 async function tt(path: string, token: string, body?: unknown, params?: Record<string, string>) {
   const url = `${TT}/${path}${params ? `?${new URLSearchParams(params)}` : ""}`;
@@ -54,13 +57,19 @@ export interface PixelSetup {
 /** Idempotent: safe to run on every connect and on demand. Throws with TikTok's message on failure. */
 export async function ensurePixel(supabase: SupabaseClient, clientId: string): Promise<PixelSetup> {
   const [{ data: account }, { data: saved }, { data: client }] = await Promise.all([
-    supabase.from("tiktok_accounts").select("advertiser_id, access_token").eq("client_id", clientId).limit(1).maybeSingle(),
+    supabase
+      .from("tiktok_accounts")
+      .select("advertiser_id, access_token")
+      .eq("client_id", clientId)
+      .limit(1)
+      .maybeSingle(),
     supabase.from("tiktok_pixels").select("id, pixel_code").eq("client_id", clientId).limit(1).maybeSingle(),
     supabase.from("clients").select("name").eq("id", clientId).maybeSingle(),
   ]);
   if (!account?.access_token) throw new Error("Connect a TikTok ad account first");
   const base = { advertiser_id: account.advertiser_id };
-  const listPixels = async (): Promise<TikTokPixel[]> => (await tt("pixel/list/", account.access_token, undefined, { ...base, page_size: "20" })).pixels ?? [];
+  const listPixels = async (): Promise<TikTokPixel[]> =>
+    (await tt("pixel/list/", account.access_token, undefined, { ...base, page_size: "20" })).pixels ?? [];
 
   let pixel = pickPixel(await listPixels(), saved?.pixel_code ?? null);
   let created = false;
@@ -77,9 +86,15 @@ export async function ensurePixel(supabase: SupabaseClient, clientId: string): P
   }
 
   if (saved?.id) {
-    if (saved.pixel_code !== pixel.pixel_code) await supabase.from("tiktok_pixels").update({ pixel_code: pixel.pixel_code }).eq("id", saved.id);
+    if (saved.pixel_code !== pixel.pixel_code)
+      await supabase.from("tiktok_pixels").update({ pixel_code: pixel.pixel_code }).eq("id", saved.id);
   } else {
     await supabase.from("tiktok_pixels").insert({ client_id: clientId, pixel_code: pixel.pixel_code });
   }
-  return { pixelCode: pixel.pixel_code, pixelName: pixel.pixel_name ?? null, created, eventsAdded: toAdd.map((e) => e.event_name) };
+  return {
+    pixelCode: pixel.pixel_code,
+    pixelName: pixel.pixel_name ?? null,
+    created,
+    eventsAdded: toAdd.map((e) => e.event_name),
+  };
 }

@@ -34,9 +34,14 @@ const Leads = () => {
       return;
     }
     setLoading(true);
-    const { data, error } = await db.from("leads").select(LEAD_COLUMNS).eq("client_id", selectedClient.id)
-      .gte("created_at", range.from.toISOString()).lte("created_at", range.to.toISOString())
-      .order("created_at", { ascending: false }).limit(500);
+    const { data, error } = await db
+      .from("leads")
+      .select(LEAD_COLUMNS)
+      .eq("client_id", selectedClient.id)
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(500);
     if (error) toast.error(t("leads.loadFailed"));
     setLeads((data ?? []) as Lead[]);
     setLoading(false);
@@ -71,7 +76,7 @@ const Leads = () => {
         if (platformFilter === "none") return !l.ad_platform;
         return platformFilter === "all" || l.ad_platform === platformFilter;
       }),
-    [leads, stageFilter, platformFilter]
+    [leads, stageFilter, platformFilter],
   );
 
   const counts = useMemo(() => {
@@ -97,16 +102,22 @@ const Leads = () => {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <DateRangePicker value={range} onChange={setRange} />
         <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as StageFilter)}>
-          <SelectTrigger className="w-[170px] bg-secondary border-border"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[170px] bg-secondary border-border">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("leads.filter.allStages")}</SelectItem>
             {(["real", "qualified", "client", "new", "not_lead"] as const).map((s) => (
-              <SelectItem key={s} value={s}>{t(`stage.${s}`)} ({counts[s] ?? 0})</SelectItem>
+              <SelectItem key={s} value={s}>
+                {t(`stage.${s}`)} ({counts[s] ?? 0})
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as PlatformFilter)}>
-          <SelectTrigger className="w-[150px] bg-secondary border-border"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[150px] bg-secondary border-border">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("leads.filter.allSources")}</SelectItem>
             <SelectItem value="tiktok">{t("platform.tiktok")}</SelectItem>
@@ -120,9 +131,13 @@ const Leads = () => {
       </div>
 
       {!selectedClient ? (
-        <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">{t("common.selectClient")}</div>
+        <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">
+          {t("common.selectClient")}
+        </div>
       ) : loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
       ) : visible.length === 0 ? (
         <div className="glass-card wob-mesh-card p-12 text-center">
           <MessageCircle className="mx-auto mb-3 w-8 h-8 text-primary" />
@@ -145,12 +160,18 @@ const Leads = () => {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground" dir="ltr">{maskHash(l.sender_phone_hash)}</span>
+                    <span className="font-medium text-foreground" dir="ltr">
+                      {maskHash(l.sender_phone_hash)}
+                    </span>
                     <StageBadge stage={stage} />
                     <PlatformChip platform={l.ad_platform} />
-                    {l.referral_headline && <span className="truncate text-xs text-primary">{l.referral_headline}</span>}
+                    {l.referral_headline && (
+                      <span className="truncate text-xs text-primary">{l.referral_headline}</span>
+                    )}
                     {stage === "client" && l.order_value ? (
-                      <span className="text-xs font-semibold text-success">{f.money(l.order_value, l.order_currency ?? "USD")}</span>
+                      <span className="text-xs font-semibold text-success">
+                        {f.money(l.order_value, l.order_currency ?? "USD")}
+                      </span>
                     ) : null}
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">{l.first_message}</p>
@@ -167,7 +188,10 @@ const Leads = () => {
                     <Sparkles className="w-3 h-3" />
                     {t("leads.suggestionChip", {
                       stage: t(`stage.${suggest}`),
-                      value: suggest === "client" && l.order_value ? ` — ${f.money(l.order_value, l.order_currency ?? "USD")}` : "",
+                      value:
+                        suggest === "client" && l.order_value
+                          ? ` — ${f.money(l.order_value, l.order_currency ?? "USD")}`
+                          : "",
                     })}
                     <span className="font-semibold">· {t("leads.accept")}</span>
                   </button>
@@ -179,14 +203,14 @@ const Leads = () => {
         </div>
       )}
 
-      {leads.length >= 500 && (
-        <p className="mt-3 text-xs text-muted-foreground">{t("leads.capped")}</p>
-      )}
+      {leads.length >= 500 && <p className="mt-3 text-xs text-muted-foreground">{t("leads.capped")}</p>}
 
       <LeadDrawer lead={open} onClose={() => setOpenId(null)} onChanged={load} />
       {selectedClient && !loading && leads.length > 0 && (
         <div className="mt-4 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={load}>{t("common.refresh")}</Button>
+          <Button variant="ghost" size="sm" onClick={load}>
+            {t("common.refresh")}
+          </Button>
         </div>
       )}
     </DashboardLayout>

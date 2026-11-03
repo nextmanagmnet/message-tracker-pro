@@ -30,7 +30,10 @@ const Index = () => {
     for (let d = new Date(start); d <= range.to; d.setDate(d.getDate() + 1)) {
       map.set(dayKey(d), {
         date: d.toLocaleDateString(i18n.language === "ar" ? "ar-SA" : "en-US", { month: "short", day: "numeric" }),
-        real: 0, qualified: 0, clients: 0, trash: 0,
+        real: 0,
+        qualified: 0,
+        clients: 0,
+        trash: 0,
       });
     }
     for (const l of leads) {
@@ -61,7 +64,9 @@ const Index = () => {
     >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <DateRangePicker value={range} onChange={setRange} />
-        <Button variant="outline" onClick={() => navigate("/connections")}>{t("dashboard.manageConnections")}</Button>
+        <Button variant="outline" onClick={() => navigate("/connections")}>
+          {t("dashboard.manageConnections")}
+        </Button>
       </div>
 
       {!selectedClient ? (
@@ -70,11 +75,15 @@ const Index = () => {
           <Button onClick={() => navigate("/connections")}>{t("dashboard.getStarted")}</Button>
         </div>
       ) : loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
       ) : (
         <>
           <section className="glass-card wob-mesh-hero p-6 mb-6" aria-label={t("dashboard.funnel")}>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/80 mb-4">{t("dashboard.funnel")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/80 mb-4">
+              {t("dashboard.funnel")}
+            </h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
               {steps.map((s, i) => {
                 const prev = i > 0 ? steps[i - 1].value : 0;
@@ -83,7 +92,9 @@ const Index = () => {
                     <p className="text-xs text-muted-foreground">{t(`dashboard.step.${s.key}`)}</p>
                     <p className="font-display text-3xl font-bold text-foreground">{f.num(s.value)}</p>
                     {i > 0 && prev > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">{t("dashboard.ofPrevious", { pct: f.pct(s.value / prev) })}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("dashboard.ofPrevious", { pct: f.pct(s.value / prev) })}
+                      </p>
                     )}
                     {i < steps.length - 1 && (
                       <ChevronRight className="absolute top-1/2 -end-3 hidden h-5 w-5 -translate-y-1/2 text-primary md:block rtl:rotate-180" />
@@ -96,19 +107,44 @@ const Index = () => {
           </section>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <MetricCard title={t("dashboard.costPerQualified")} value={money(ratio(totals.spend, totals.qualified))} icon={<Target className="w-5 h-5" />} />
-            <MetricCard title={t("dashboard.costPerClient")} value={money(ratio(totals.spend, totals.clients))} icon={<BadgeCheck className="w-5 h-5" />} />
-            <MetricCard title={t("dashboard.revenue")} value={f.money(totals.revenue, totals.currency)} icon={<Coins className="w-5 h-5" />} />
-            <MetricCard title={t("dashboard.trashRate")} value={f.pct(trashRate)} icon={<AlertTriangle className="w-5 h-5" />} />
-            <MetricCard title={t("dashboard.conversionsSent")} value={f.num(totals.conversionsSent)} hint={t("dashboard.conversionsSentHint")} icon={<Send className="w-5 h-5" />} />
+            <MetricCard
+              title={t("dashboard.costPerQualified")}
+              value={money(ratio(totals.spend, totals.qualified))}
+              icon={<Target className="w-5 h-5" />}
+            />
+            <MetricCard
+              title={t("dashboard.costPerClient")}
+              value={money(ratio(totals.spend, totals.clients))}
+              icon={<BadgeCheck className="w-5 h-5" />}
+            />
+            <MetricCard
+              title={t("dashboard.revenue")}
+              value={f.money(totals.revenue, totals.currency)}
+              icon={<Coins className="w-5 h-5" />}
+            />
+            <MetricCard
+              title={t("dashboard.trashRate")}
+              value={f.pct(trashRate)}
+              icon={<AlertTriangle className="w-5 h-5" />}
+            />
+            <MetricCard
+              title={t("dashboard.conversionsSent")}
+              value={f.num(totals.conversionsSent)}
+              hint={t("dashboard.conversionsSentHint")}
+              icon={<Send className="w-5 h-5" />}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2"><ConversionChart data={chart} /></div>
+            <div className="lg:col-span-2">
+              <ConversionChart data={chart} />
+            </div>
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">{t("dashboard.recentLeads")}</h3>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/leads")}>{t("common.viewAll")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/leads")}>
+                  {t("common.viewAll")}
+                </Button>
               </div>
               {leads.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">{t("leads.empty")}</p>
@@ -122,7 +158,9 @@ const Index = () => {
                         className="w-full rounded-xl bg-secondary/50 p-3 text-start hover:bg-secondary transition-colors"
                       >
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium text-foreground" dir="ltr">{maskHash(l.sender_phone_hash)}</span>
+                          <span className="text-sm font-medium text-foreground" dir="ltr">
+                            {maskHash(l.sender_phone_hash)}
+                          </span>
                           <StageBadge stage={stageOf(l)} />
                           <PlatformChip platform={l.ad_platform} />
                           <span className="ms-auto text-xs text-muted-foreground">{f.ago(l.created_at)}</span>

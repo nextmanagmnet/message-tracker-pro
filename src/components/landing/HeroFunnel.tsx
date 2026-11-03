@@ -41,9 +41,30 @@ const BUBBLE_STYLE: Record<Kind, string> = {
 };
 
 const BINS: { kind: Kind; x: number; icon: typeof Trash2; className: string; pulse: string; delay: number }[] = [
-  { kind: "trash", x: TRASH, icon: Trash2, className: "bg-white/[0.04] border-white/10 text-white/60", pulse: "hsl(0 0% 100% / 0.2)", delay: 0 },
-  { kind: "qualified", x: QUALIFIED, icon: BadgeCheck, className: "bg-brand-aqua/10 border-brand-aqua/40 text-brand-aqua", pulse: "hsl(var(--brand-aqua) / 0.45)", delay: 1.2 },
-  { kind: "sale", x: SALE, icon: ShoppingBag, className: "border-transparent text-white [background:var(--gradient-primary)]", pulse: "hsl(var(--brand-pink) / 0.55)", delay: 0.6 },
+  {
+    kind: "trash",
+    x: TRASH,
+    icon: Trash2,
+    className: "bg-white/[0.04] border-white/10 text-white/60",
+    pulse: "hsl(0 0% 100% / 0.2)",
+    delay: 0,
+  },
+  {
+    kind: "qualified",
+    x: QUALIFIED,
+    icon: BadgeCheck,
+    className: "bg-brand-aqua/10 border-brand-aqua/40 text-brand-aqua",
+    pulse: "hsl(var(--brand-aqua) / 0.45)",
+    delay: 1.2,
+  },
+  {
+    kind: "sale",
+    x: SALE,
+    icon: ShoppingBag,
+    className: "border-transparent text-white [background:var(--gradient-primary)]",
+    pulse: "hsl(var(--brand-pink) / 0.55)",
+    delay: 0.6,
+  },
 ];
 
 const BEAM_TO_META = "M330 398 C 398 360 404 140 290 52";
@@ -54,7 +75,12 @@ export function HeroFunnel() {
 
   return (
     // Fixed LTR geometry so the diagram reads the same in Arabic; text inside still renders RTL.
-    <div dir="ltr" role="img" aria-label={t("stage.aria")} className="lp-stage w-full max-w-[460px] mx-auto select-none">
+    <div
+      dir="ltr"
+      role="img"
+      aria-label={t("stage.aria")}
+      className="lp-stage w-full max-w-[460px] mx-auto select-none"
+    >
       <svg viewBox="0 0 400 500" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
         <defs>
           <linearGradient id="lp-funnel-fill" x1="0" y1="0" x2="0" y2="1">
@@ -82,7 +108,16 @@ export function HeroFunnel() {
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
-        <ellipse cx="200" cy="150" rx="140" ry="10" fill="none" stroke="url(#lp-funnel-stroke)" strokeOpacity="0.6" strokeWidth="1" />
+        <ellipse
+          cx="200"
+          cy="150"
+          rx="140"
+          ry="10"
+          fill="none"
+          stroke="url(#lp-funnel-stroke)"
+          strokeOpacity="0.6"
+          strokeWidth="1"
+        />
         <g clipPath="url(#lp-funnel-clip)">
           <rect className="lp-scan" x="40" y="150" width="320" height="2" fill="hsl(var(--brand-aqua))" />
         </g>
@@ -90,7 +125,15 @@ export function HeroFunnel() {
         {/* Signal tracks + travelling beams */}
         {[BEAM_TO_META, BEAM_TO_TIKTOK].map((d) => (
           <g key={d}>
-            <path d={d} pathLength={100} fill="none" stroke="white" strokeOpacity="0.12" strokeWidth="1" strokeDasharray="0.8 1.6" />
+            <path
+              d={d}
+              pathLength={100}
+              fill="none"
+              stroke="white"
+              strokeOpacity="0.12"
+              strokeWidth="1"
+              strokeDasharray="0.8 1.6"
+            />
             <path
               d={d}
               pathLength={100}
@@ -107,7 +150,12 @@ export function HeroFunnel() {
 
       {/* Ad platforms */}
       {[
-        { x: 130, name: t("stage.tiktok"), api: t("stage.eventsApi"), dot: "bg-brand-aqua shadow-[3px_0_0_hsl(var(--brand-pink))]" },
+        {
+          x: 130,
+          name: t("stage.tiktok"),
+          api: t("stage.eventsApi"),
+          dot: "bg-brand-aqua shadow-[3px_0_0_hsl(var(--brand-pink))]",
+        },
         { x: 270, name: t("stage.meta"), api: t("stage.conversionsApi"), dot: "bg-brand-blue" },
       ].map((p) => (
         <div
@@ -123,7 +171,10 @@ export function HeroFunnel() {
         </div>
       ))}
 
-      <div className="lp-at rounded-full border border-brand-aqua/30 bg-brand-aqua/10 px-[2.4cqw] py-[0.8cqw] text-[2.6cqw] text-brand-aqua whitespace-nowrap" style={at(200, 98)}>
+      <div
+        className="lp-at rounded-full border border-brand-aqua/30 bg-brand-aqua/10 px-[2.4cqw] py-[0.8cqw] text-[2.6cqw] text-brand-aqua whitespace-nowrap"
+        style={at(200, 98)}
+      >
         <span dir="auto">{t("stage.clicks")}</span>
       </div>
 
@@ -135,11 +186,17 @@ export function HeroFunnel() {
         />
       ))}
 
-      <div className="lp-at rounded-full bg-black/50 border border-white/10 px-[2.4cqw] py-[0.9cqw] text-[2.6cqw] font-medium text-white/85 whitespace-nowrap backdrop-blur" style={at(200, 206)}>
+      <div
+        className="lp-at rounded-full bg-black/50 border border-white/10 px-[2.4cqw] py-[0.9cqw] text-[2.6cqw] font-medium text-white/85 whitespace-nowrap backdrop-blur"
+        style={at(200, 206)}
+      >
         <span dir="auto">{t("stage.reads")}</span>
       </div>
 
-      <div className="lp-at flex items-center gap-[1cqw] rounded-full border border-brand-pink/40 bg-brand-pink/10 px-[2cqw] py-[0.8cqw] text-[2.4cqw] text-brand-pink whitespace-nowrap" style={at(338, 232)}>
+      <div
+        className="lp-at flex items-center gap-[1cqw] rounded-full border border-brand-pink/40 bg-brand-pink/10 px-[2cqw] py-[0.8cqw] text-[2.4cqw] text-brand-pink whitespace-nowrap"
+        style={at(338, 232)}
+      >
         <Zap className="h-[2.6cqw] w-[2.6cqw]" />
         <span dir="auto">{t("stage.signal")}</span>
       </div>
@@ -149,7 +206,10 @@ export function HeroFunnel() {
         <div
           key={b.key}
           data-still={b.still ? "" : undefined}
-          className={cn("lp-bubble rounded-[2.4cqw] rounded-bl-[0.6cqw] px-[2.4cqw] py-[1.2cqw] text-[2.9cqw] font-medium", BUBBLE_STYLE[b.kind])}
+          className={cn(
+            "lp-bubble rounded-[2.4cqw] rounded-bl-[0.6cqw] px-[2.4cqw] py-[1.2cqw] text-[2.9cqw] font-medium",
+            BUBBLE_STYLE[b.kind],
+          )}
           style={{ "--dx": b.dx, animationDelay: `${b.delay}s` } as CSSProperties}
         >
           <span dir="auto">{t(`stage.bubbles.${b.key}`)}</span>

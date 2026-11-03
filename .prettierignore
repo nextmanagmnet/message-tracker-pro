@@ -1,0 +1,10 @@
+dist
+node_modules
+graphify-out
+package-lock.json
+src/integrations/supabase/types.ts
+supabase/migrations
+supabase/tests
+*.md
+public
+api

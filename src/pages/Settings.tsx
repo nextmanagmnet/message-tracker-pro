@@ -70,7 +70,7 @@ function Segmented<T extends string>({
           aria-pressed={value === o.value}
           className={cn(
             "px-4 py-1.5 text-sm rounded-md transition-colors",
-            value === o.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            value === o.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {o.label}
@@ -250,7 +250,11 @@ const Settings = () => {
 
         {/* Preferences */}
         <div className="glass-card p-6">
-          <SectionHeader icon={Palette} title={t("settings.preferencesTitle")} subtitle={t("settings.preferencesSubtitle")} />
+          <SectionHeader
+            icon={Palette}
+            title={t("settings.preferencesTitle")}
+            subtitle={t("settings.preferencesSubtitle")}
+          />
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-foreground">{t("language.label")}</span>
@@ -292,7 +296,10 @@ const Settings = () => {
                 const isSelf = m.user_id === user?.id;
                 const label = m.full_name || m.email || t("common.unknownUser");
                 return (
-                  <div key={m.member_id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-secondary/50">
+                  <div
+                    key={m.member_id}
+                    className="flex items-center justify-between gap-3 p-4 rounded-lg bg-secondary/50"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-brand-pink to-brand-orange flex items-center justify-center text-sm font-semibold text-white">
                         {label.charAt(0).toUpperCase()}
@@ -409,7 +416,10 @@ const Settings = () => {
           />
           <div className="space-y-3">
             {PREF_LABELS.map(({ key, label }) => (
-              <label key={key} className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 cursor-pointer">
+              <label
+                key={key}
+                className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 cursor-pointer"
+              >
                 <span className="text-foreground">{t(label)}</span>
                 <Switch checked={prefs[key]} onCheckedChange={(v) => togglePref(key, v)} />
               </label>

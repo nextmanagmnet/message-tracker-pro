@@ -3,9 +3,29 @@
 
 export const DEFAULT_ORDER_MARKER = "ORDER CONFIRMED";
 
-const DIGITS: Record<string, string> = { "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4", "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9" };
-const CURRENCY: Record<string, string> = { "$": "USD", "€": "EUR", "£": "GBP", "ر.س": "SAR", "ريال": "SAR", "ر.س.": "SAR", "دولار": "USD" };
-const TOTAL = /(?:total|amount|sum|المجموع|الإجمالي|الاجمالي|المبلغ)\s*[:：=-]?\s*(\$|€|£)?\s*([\d.,]+)\s*([A-Za-z]{3}\b|\$|€|£|ر\.?س\.?|ريال|دولار)?/i;
+const DIGITS: Record<string, string> = {
+  "٠": "0",
+  "١": "1",
+  "٢": "2",
+  "٣": "3",
+  "٤": "4",
+  "٥": "5",
+  "٦": "6",
+  "٧": "7",
+  "٨": "8",
+  "٩": "9",
+};
+const CURRENCY: Record<string, string> = {
+  $: "USD",
+  "€": "EUR",
+  "£": "GBP",
+  "ر.س": "SAR",
+  ريال: "SAR",
+  "ر.س.": "SAR",
+  دولار: "USD",
+};
+const TOTAL =
+  /(?:total|amount|sum|المجموع|الإجمالي|الاجمالي|المبلغ)\s*[:：=-]?\s*(\$|€|£)?\s*([\d.,]+)\s*([A-Za-z]{3}\b|\$|€|£|ر\.?س\.?|ريال|دولار)?/i;
 
 /**
  * Fills what the message/AI/manual entry left out from the client's default order value.
@@ -21,7 +41,7 @@ export function pickOrderValue(
   return { value, currency };
 }
 
-export const isOrderMessage =(text: string, marker: string | null) =>
+export const isOrderMessage = (text: string, marker: string | null) =>
   Boolean(marker?.trim()) && text.toLowerCase().includes(marker!.trim().toLowerCase());
 
 export function parseOrder(text: string): { value: number | null; currency: string | null } {

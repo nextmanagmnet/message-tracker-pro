@@ -65,8 +65,12 @@ export async function invokeFn<T = Record<string, unknown>>(name: string, body: 
 }
 
 export const isLimitError = (e: unknown) =>
-  e instanceof LimitError || (e instanceof Error && e.message.includes("WOB_LIMIT")) ||
-  (typeof e === "object" && e !== null && "message" in e && String((e as { message: unknown }).message).includes("WOB_LIMIT"));
+  e instanceof LimitError ||
+  (e instanceof Error && e.message.includes("WOB_LIMIT")) ||
+  (typeof e === "object" &&
+    e !== null &&
+    "message" in e &&
+    String((e as { message: unknown }).message).includes("WOB_LIMIT"));
 
 export const maskHash = (h: string) => (h.length <= 8 ? h : `•••• ${h.slice(-4).toUpperCase()}`);
 

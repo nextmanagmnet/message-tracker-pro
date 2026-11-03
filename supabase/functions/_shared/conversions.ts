@@ -22,7 +22,8 @@ const LEAD_COLS =
 export const metaActionSource = () => Deno.env.get("META_ACTION_SOURCE") || "chat";
 
 // The page TikTok events name: WOB's WhatsApp bridge, i.e. the site the ad actually linked to.
-const bridgeUrl = () => `${(Deno.env.get("APP_ORIGINS") ?? "https://wob-platform.vercel.app").split(",")[0].trim()}/go.html`;
+const bridgeUrl = () =>
+  `${(Deno.env.get("APP_ORIGINS") ?? "https://wob-platform.vercel.app").split(",")[0].trim()}/go.html`;
 
 // POSTs events to a client's pixel with the token they pasted.
 export async function postMetaEvents(pixelId: string, token: string, payload: unknown) {
@@ -61,7 +62,10 @@ export async function reportStage(
   if (stage === "client") {
     // Amount from the message / AI / manual entry first, then the client's default order value.
     const { data: client } = await supabase
-      .from("clients").select("default_order_value, default_order_currency").eq("id", lead.client_id).maybeSingle();
+      .from("clients")
+      .select("default_order_value, default_order_currency")
+      .eq("id", lead.client_id)
+      .maybeSingle();
     const order = pickOrderValue(
       { value: opts.value ?? lead.order_value ?? null, currency: opts.currency ?? lead.order_currency ?? null },
       { value: client?.default_order_value ?? null, currency: client?.default_order_currency ?? null },
@@ -112,23 +116,33 @@ async function tiktokPhoneHash(supabase: SupabaseClient, leadId: string): Promis
   const { data: conv } = await supabase.from("conversations").select("id").eq("lead_id", leadId).maybeSingle();
   if (!conv) return null;
   const { data: contact } = await supabase
-    .from("conversation_contacts").select("contact_jid").eq("conversation_id", conv.id).maybeSingle();
-  const digits = String(contact?.contact_jid ?? "").split("@")[0].replace(/\D/g, "");
+    .from("conversation_contacts")
+    .select("contact_jid")
+    .eq("conversation_id", conv.id)
+    .maybeSingle();
+  const digits = String(contact?.contact_jid ?? "")
+    .split("@")[0]
+    .replace(/\D/g, "");
   if (!digits) return null;
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`+${digits}`));
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 // Sends (or re-sends) one conversion_events row and records the outcome.
 export async function sendConversionEvent(supabase: SupabaseClient, ev: ConversionEventRow, lead?: LeadRow | null) {
   lead ??= (await supabase.from("leads").select(LEAD_COLS).eq("id", ev.lead_id).maybeSingle()).data;
   const finish = (status: string, response: unknown) =>
-    supabase.from("conversion_events").update({
-      status,
-      response,
-      attempts: (ev.attempts ?? 0) + (status === "skipped" ? 0 : 1),
-      sent_at: status === "sent" ? new Date().toISOString() : null,
-    }).eq("id", ev.id);
+    supabase
+      .from("conversion_events")
+      .update({
+        status,
+        response,
+        attempts: (ev.attempts ?? 0) + (status === "skipped" ? 0 : 1),
+        sent_at: status === "sent" ? new Date().toISOString() : null,
+      })
+      .eq("id", ev.id);
 
   if (!lead) return finish("skipped", { reason: "lead_missing" });
   const input = {
@@ -147,12 +161,15 @@ export async function sendConversionEvent(supabase: SupabaseClient, ev: Conversi
         supabase.from("tiktok_accounts").select("access_token").eq("client_id", ev.client_id).limit(1).maybeSingle(),
         supabase.from("tiktok_pixels").select("pixel_code").eq("client_id", ev.client_id).limit(1).maybeSingle(),
       ]);
-      if (!acct?.access_token || !pixel?.pixel_code) return finish("skipped", { reason: !acct ? "no_tiktok_account" : "no_pixel" });
+      if (!acct?.access_token || !pixel?.pixel_code)
+        return finish("skipped", { reason: !acct ? "no_tiktok_account" : "no_pixel" });
       const phoneHash = (await tiktokPhoneHash(supabase, lead.id)) ?? input.phoneHash;
       const res = await fetch("https://business-api.tiktok.com/open_api/v1.3/event/track/", {
         method: "POST",
         headers: { "Access-Token": acct.access_token, "Content-Type": "application/json" },
-        body: JSON.stringify(buildTikTokPayload(pixel.pixel_code, { ...input, phoneHash, clickId: lead.ttclid, pageUrl: bridgeUrl() })),
+        body: JSON.stringify(
+          buildTikTokPayload(pixel.pixel_code, { ...input, phoneHash, clickId: lead.ttclid, pageUrl: bridgeUrl() }),
+        ),
       });
       const result = await res.json().catch(() => ({}));
       return finish(result?.code === 0 ? "sent" : "failed", { code: result?.code, message: result?.message });

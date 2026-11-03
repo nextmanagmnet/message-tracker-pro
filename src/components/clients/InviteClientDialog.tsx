@@ -13,7 +13,13 @@ type Invite = { id: string; email: string; created_at: string; accepted_at: stri
 type ClientUser = { user_id: string; email: string | null };
 
 // Give a client their own login (one client only). The agency sends the link however it likes.
-export function InviteClientDialog({ client, onClose }: { client: { id: string; name: string } | null; onClose: () => void }) {
+export function InviteClientDialog({
+  client,
+  onClose,
+}: {
+  client: { id: string; name: string } | null;
+  onClose: () => void;
+}) {
   const { t } = useTranslation("features");
   const [invites, setInvites] = useState<Invite[]>([]);
   const [users, setUsers] = useState<ClientUser[]>([]);
@@ -24,12 +30,16 @@ export function InviteClientDialog({ client, onClose }: { client: { id: string; 
   const load = useCallback(async () => {
     if (!client) return;
     const [inv, members] = await Promise.all([
-      supabase.from("client_invites").select("id, email, created_at, accepted_at").eq("client_id", client.id).is("accepted_at", null),
+      supabase
+        .from("client_invites")
+        .select("id, email, created_at, accepted_at")
+        .eq("client_id", client.id)
+        .is("accepted_at", null),
       supabase.from("agency_members").select("user_id").eq("client_id", client.id).eq("role", "client"),
     ]);
     setInvites((inv.data ?? []) as Invite[]);
     const ids = (members.data ?? []).map((m) => m.user_id);
-    const profiles = ids.length ? (await supabase.from("profiles").select("id, email").in("id", ids)).data ?? [] : [];
+    const profiles = ids.length ? ((await supabase.from("profiles").select("id, email").in("id", ids)).data ?? []) : [];
     setUsers(ids.map((id) => ({ user_id: id, email: profiles.find((p) => p.id === id)?.email ?? null })));
   }, [client]);
 
@@ -76,7 +86,14 @@ export function InviteClientDialog({ client, onClose }: { client: { id: string; 
         <div className="space-y-2">
           <Label htmlFor="invite-email">{t("invite.email")}</Label>
           <div className="flex gap-2">
-            <Input id="invite-email" type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && email && create()} />
+            <Input
+              id="invite-email"
+              type="email"
+              dir="ltr"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !busy && email && create()}
+            />
             <Button variant="glow" onClick={create} disabled={busy || !email.trim()}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("invite.create")}
             </Button>
@@ -86,9 +103,15 @@ export function InviteClientDialog({ client, onClose }: { client: { id: string; 
         {link && (
           <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
             <p className="text-sm font-medium text-foreground">{t("invite.ready")}</p>
-            <p className="break-all text-xs text-muted-foreground" dir="ltr">{link}</p>
+            <p className="break-all text-xs text-muted-foreground" dir="ltr">
+              {link}
+            </p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(link).then(() => toast.success(t("common.copied")))}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigator.clipboard.writeText(link).then(() => toast.success(t("common.copied")))}
+              >
                 <Copy className="h-4 w-4" /> {t("invite.copy")}
               </Button>
               <Button size="sm" variant="outline" asChild>
@@ -104,7 +127,11 @@ export function InviteClientDialog({ client, onClose }: { client: { id: string; 
         {users.length > 0 && (
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">{t("invite.active")}</p>
-            {users.map((u) => <p key={u.user_id} className="text-sm text-muted-foreground" dir="ltr">{u.email ?? u.user_id}</p>)}
+            {users.map((u) => (
+              <p key={u.user_id} className="text-sm text-muted-foreground" dir="ltr">
+                {u.email ?? u.user_id}
+              </p>
+            ))}
           </div>
         )}
 
@@ -114,7 +141,9 @@ export function InviteClientDialog({ client, onClose }: { client: { id: string; 
             {invites.map((i) => (
               <div key={i.id} className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
                 <span dir="ltr">{i.email}</span>
-                <Button size="icon" variant="ghost" aria-label={t("invite.revoke")} onClick={() => revoke(i.id)}><Trash2 className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" aria-label={t("invite.revoke")} onClick={() => revoke(i.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>

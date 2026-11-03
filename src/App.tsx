@@ -69,30 +69,116 @@ const App = () => (
           <BrowserRouter>
             <Suspense fallback={<PageFallback />}>
               <SetPasswordGate>
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/" element={<Home />} />
-                <Route path="/welcome" element={<Landing />} />
-                <Route path="/leads" element={<P><Leads /></P>} />
-                <Route path="/campaigns" element={<P><Campaigns /></P>} />
-                <Route path="/connections" element={<P><Connections /></P>} />
-                <Route path="/ai-agent" element={<P><StaffOnly><AIAgent /></StaffOnly></P>} />
-                <Route path="/catalog" element={<P><Catalog /></P>} />
-                <Route path="/reports" element={<P><Reports /></P>} />
-                <Route path="/settings" element={<P><Settings /></P>} />
-                <Route path="/onboarding" element={<P><Onboarding /></P>} />
-                <Route path="/agency" element={<AgencyOnly><AgencyOverview /></AgencyOnly>} />
-                <Route path="/clients" element={<AgencyOnly><ClientsPage /></AgencyOnly>} />
-                <Route path="/funding" element={<AgencyOnly><Funding /></AgencyOnly>} />
-                <Route path="/tiktok/callback" element={<P><TikTokCallback /></P>} />
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/" element={<Home />} />
+                  <Route path="/welcome" element={<Landing />} />
+                  <Route
+                    path="/leads"
+                    element={
+                      <P>
+                        <Leads />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/campaigns"
+                    element={
+                      <P>
+                        <Campaigns />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/connections"
+                    element={
+                      <P>
+                        <Connections />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/ai-agent"
+                    element={
+                      <P>
+                        <StaffOnly>
+                          <AIAgent />
+                        </StaffOnly>
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/catalog"
+                    element={
+                      <P>
+                        <Catalog />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/reports"
+                    element={
+                      <P>
+                        <Reports />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <P>
+                        <Settings />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/onboarding"
+                    element={
+                      <P>
+                        <Onboarding />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/agency"
+                    element={
+                      <AgencyOnly>
+                        <AgencyOverview />
+                      </AgencyOnly>
+                    }
+                  />
+                  <Route
+                    path="/clients"
+                    element={
+                      <AgencyOnly>
+                        <ClientsPage />
+                      </AgencyOnly>
+                    }
+                  />
+                  <Route
+                    path="/funding"
+                    element={
+                      <AgencyOnly>
+                        <Funding />
+                      </AgencyOnly>
+                    }
+                  />
+                  <Route
+                    path="/tiktok/callback"
+                    element={
+                      <P>
+                        <TikTokCallback />
+                      </P>
+                    }
+                  />
 
-                {/* Old routes from before the WOB restructure */}
-                <Route path="/feed" element={<Navigate to="/leads" replace />} />
-                <Route path="/tiktok" element={<Navigate to="/campaigns" replace />} />
-                <Route path="/whatsapp" element={<Navigate to="/connections" replace />} />
+                  {/* Old routes from before the WOB restructure */}
+                  <Route path="/feed" element={<Navigate to="/leads" replace />} />
+                  <Route path="/tiktok" element={<Navigate to="/campaigns" replace />} />
+                  <Route path="/whatsapp" element={<Navigate to="/connections" replace />} />
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
               </SetPasswordGate>
             </Suspense>
           </BrowserRouter>

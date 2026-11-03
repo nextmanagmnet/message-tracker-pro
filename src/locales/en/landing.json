@@ -82,12 +82,30 @@
     "eyebrow": "Features",
     "title": "Everything between the click and the cash.",
     "items": [
-      { "title": "Lead sorting", "body": "Every conversation is labeled: not a lead, real, qualified or client. No more scrolling to guess." },
-      { "title": "Sale detection", "body": "WOB recognizes when a chat turns into an order and records it against the right campaign." },
-      { "title": "Signals back to the ads", "body": "Qualified leads and sales are sent to TikTok's Events API and Meta's Conversions API." },
-      { "title": "Real cost metrics", "body": "Cost per qualified lead and cost per client, per campaign, next to the numbers you already know." },
-      { "title": "Your phone, your WhatsApp", "body": "Connect with a QR scan. Nothing changes for you or your customers." },
-      { "title": "Built for Arabic and English", "body": "Understands both languages, and the whole app works right-to-left." }
+      {
+        "title": "Lead sorting",
+        "body": "Every conversation is labeled: not a lead, real, qualified or client. No more scrolling to guess."
+      },
+      {
+        "title": "Sale detection",
+        "body": "WOB recognizes when a chat turns into an order and records it against the right campaign."
+      },
+      {
+        "title": "Signals back to the ads",
+        "body": "Qualified leads and sales are sent to TikTok's Events API and Meta's Conversions API."
+      },
+      {
+        "title": "Real cost metrics",
+        "body": "Cost per qualified lead and cost per client, per campaign, next to the numbers you already know."
+      },
+      {
+        "title": "Your phone, your WhatsApp",
+        "body": "Connect with a QR scan. Nothing changes for you or your customers."
+      },
+      {
+        "title": "Built for Arabic and English",
+        "body": "Understands both languages, and the whole app works right-to-left."
+      }
     ]
   },
   "plans": {
@@ -97,14 +115,24 @@
     "individual": {
       "name": "Individual",
       "tagline": "For a business running its own ads.",
-      "items": ["1 WhatsApp number", "1 TikTok ad account", "1 Meta ad account", "Lead sorting, sale detection and reporting"],
+      "items": [
+        "1 WhatsApp number",
+        "1 TikTok ad account",
+        "1 Meta ad account",
+        "Lead sorting, sale detection and reporting"
+      ],
       "cta": "Get started"
     },
     "agency": {
       "name": "Agency",
       "badge": "For teams",
       "tagline": "For agencies managing ads for many clients.",
-      "items": ["Many clients, each with their own WhatsApp and ad accounts", "Cross-client overview", "Your team in one workspace", "Everything in Individual"],
+      "items": [
+        "Many clients, each with their own WhatsApp and ad accounts",
+        "Cross-client overview",
+        "Your team in one workspace",
+        "Everything in Individual"
+      ],
       "cta": "Get started"
     },
     "noPricing": "Pricing will be announced soon. Create an account to get started."

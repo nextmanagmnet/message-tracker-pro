@@ -39,9 +39,14 @@ export async function jsonCompletion(opts: {
   };
   try {
     // Server-side refusal fallback is only available for the Opus/Sonnet tier.
-    const response: LlmResponse = opts.model === REPLY_MODEL
-      ? await client.beta.messages.create({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" })
-      : await client.messages.create(params);
+    const response: LlmResponse =
+      opts.model === REPLY_MODEL
+        ? await client.beta.messages.create({
+            ...params,
+            betas: ["server-side-fallback-2026-07-01"],
+            fallbacks: "default",
+          })
+        : await client.messages.create(params);
     if (response.stop_reason === "refusal") {
       console.warn("LLM refused", response.stop_details?.category);
       return null;
@@ -59,6 +64,9 @@ export async function jsonCompletion(opts: {
 // Recent chat as a plain transcript the model can read (Arabic or English).
 export function transcript(messages: Array<{ direction: string; author: string; text: string }>): string {
   return messages
-    .map((m) => `${m.direction === "in" ? "CUSTOMER" : m.author === "ai" ? "BUSINESS (assistant)" : "BUSINESS"}: ${m.text}`)
+    .map(
+      (m) =>
+        `${m.direction === "in" ? "CUSTOMER" : m.author === "ai" ? "BUSINESS (assistant)" : "BUSINESS"}: ${m.text}`,
+    )
     .join("\n");
 }

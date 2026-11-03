@@ -27,7 +27,13 @@ describe("pickOrderValue", () => {
     expect(pickOrderValue({ value: 45, currency: null }, defaults)).toEqual({ value: 45, currency: "USD" });
   });
   it("sends no value when there is no default either", () => {
-    expect(pickOrderValue({ value: null, currency: null }, { value: null, currency: null })).toEqual({ value: null, currency: null });
-    expect(pickOrderValue({ value: null, currency: null }, { value: 0, currency: "USD" })).toEqual({ value: null, currency: null });
+    expect(pickOrderValue({ value: null, currency: null }, { value: null, currency: null })).toEqual({
+      value: null,
+      currency: null,
+    });
+    expect(pickOrderValue({ value: null, currency: null }, { value: 0, currency: "USD" })).toEqual({
+      value: null,
+      currency: null,
+    });
   });
 });

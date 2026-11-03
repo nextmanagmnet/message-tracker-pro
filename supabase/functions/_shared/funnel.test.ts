@@ -46,7 +46,10 @@ describe("event mapping", () => {
     const base = { eventName: "Purchase", eventId: "x", eventTime: 1, clickId: "c", phoneHash: "h" };
     const { clickId: _clickId, ...metaBase } = base;
     expect(buildMetaPayload(metaBase).data[0]).not.toHaveProperty("custom_data");
-    expect(buildMetaPayload({ ...metaBase, value: 50, currency: "SAR" }).data[0].custom_data).toEqual({ value: 50, currency: "SAR" });
+    expect(buildMetaPayload({ ...metaBase, value: 50, currency: "SAR" }).data[0].custom_data).toEqual({
+      value: 50,
+      currency: "SAR",
+    });
     const tt = buildTikTokPayload("PIX", { ...base, value: 10 });
     expect(tt.event_source_id).toBe("PIX");
     expect(tt.data[0].properties).toMatchObject({ value: 10, currency: "USD" });
@@ -57,15 +60,35 @@ describe("event mapping", () => {
     expect(e).not.toHaveProperty("messaging_channel");
     expect(e.user_data).not.toHaveProperty("ctwa_clid");
     expect(e.user_data).not.toHaveProperty("fbc");
-    expect(buildMetaPayload({ eventName: "Lead", eventId: "e", eventTime: 1, phoneHash: "h", actionSource: "system_generated" }).data[0].action_source)
-      .toBe("system_generated");
+    expect(
+      buildMetaPayload({
+        eventName: "Lead",
+        eventId: "e",
+        eventTime: 1,
+        phoneHash: "h",
+        actionSource: "system_generated",
+      }).data[0].action_source,
+    ).toBe("system_generated");
   });
   it("adds fbc when the chat carried an fbclid", () => {
     expect(buildFbc("ABCdef123456", 1700000000000)).toBe("fb.1.1700000000000.ABCdef123456");
-    const e = buildMetaPayload({ eventName: "Purchase", eventId: "e", eventTime: 1700000500, phoneHash: "h", fbclid: "ABCdef123456", fbclidAtMs: 1700000000000 }).data[0];
+    const e = buildMetaPayload({
+      eventName: "Purchase",
+      eventId: "e",
+      eventTime: 1700000500,
+      phoneHash: "h",
+      fbclid: "ABCdef123456",
+      fbclidAtMs: 1700000000000,
+    }).data[0];
     expect(e.user_data).toMatchObject({ fbc: "fb.1.1700000000000.ABCdef123456", ph: ["h"] });
     // no click time recorded: falls back to the event time
-    const f = buildMetaPayload({ eventName: "Lead", eventId: "e", eventTime: 42, phoneHash: "h", fbclid: "ABCdef123456" }).data[0];
+    const f = buildMetaPayload({
+      eventName: "Lead",
+      eventId: "e",
+      eventTime: 42,
+      phoneHash: "h",
+      fbclid: "ABCdef123456",
+    }).data[0];
     expect(f.user_data).toMatchObject({ fbc: "fb.1.42000.ABCdef123456" });
   });
 });
@@ -93,7 +116,9 @@ describe("parseAdContext", () => {
     const ctx = parseAdContext({
       extendedTextMessage: {
         text: "hi",
-        contextInfo: { externalAdReply: { sourceId: "123", sourceUrl: "https://fb.me/x", ctwaClid: "CLID", title: "Ad" } },
+        contextInfo: {
+          externalAdReply: { sourceId: "123", sourceUrl: "https://fb.me/x", ctwaClid: "CLID", title: "Ad" },
+        },
       },
     });
     expect(ctx).toEqual({ ctwaClid: "CLID", adId: "123", sourceUrl: "https://fb.me/x", headline: "Ad" });
@@ -146,8 +171,11 @@ describe("misc guards", () => {
     expect(isOptOut("don't stop sending")).toBe(false);
   });
   it("validates analysis JSON", () => {
-    expect(parseAnalysis('{"is_spam":false,"stage":"client","order_value":"120","currency":"sar","confidence":0.9,"evidence":"ok","language":"ar"}'))
-      .toMatchObject({ stage: "client", order_value: 120, currency: "SAR", confidence: 0.9 });
+    expect(
+      parseAnalysis(
+        '{"is_spam":false,"stage":"client","order_value":"120","currency":"sar","confidence":0.9,"evidence":"ok","language":"ar"}',
+      ),
+    ).toMatchObject({ stage: "client", order_value: 120, currency: "SAR", confidence: 0.9 });
     expect(parseAnalysis('{"is_spam":false,"stage":"vip"}')).toBeNull();
     expect(parseAnalysis("not json")).toBeNull();
   });

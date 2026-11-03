@@ -13,7 +13,13 @@ const STAGE_STYLE: Record<Stage, string> = {
 export function StageBadge({ stage, className }: { stage: Stage; className?: string }) {
   const { t } = useTranslation("features");
   return (
-    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", STAGE_STYLE[stage], className)}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        STAGE_STYLE[stage],
+        className,
+      )}
+    >
       {t(`stage.${stage}`)}
     </span>
   );
@@ -26,7 +32,7 @@ export function PlatformChip({ platform }: { platform: Platform | null }) {
     <span
       className={cn(
         "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
-        platform === "tiktok" ? "bg-chart-1/15 text-chart-1" : "bg-chart-4/15 text-chart-4"
+        platform === "tiktok" ? "bg-chart-1/15 text-chart-1" : "bg-chart-4/15 text-chart-4",
       )}
     >
       {t(`platform.${platform}`)}

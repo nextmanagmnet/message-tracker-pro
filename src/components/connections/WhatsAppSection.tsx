@@ -11,9 +11,23 @@ import { ConnectionCard } from "./ConnectionCard";
 import { SalesMessage } from "./SalesMessage";
 
 type Num = { id: string; phone_number: string; status: string };
-type LeadLite = { whatsapp_number_id: string | null; status: string; stage: string | null; first_message: string; created_at: string };
+type LeadLite = {
+  whatsapp_number_id: string | null;
+  status: string;
+  stage: string | null;
+  first_message: string;
+  created_at: string;
+};
 
-export function WhatsAppSection({ clientId, isIndividual, canManage }: { clientId: string; isIndividual: boolean; canManage: boolean }) {
+export function WhatsAppSection({
+  clientId,
+  isIndividual,
+  canManage,
+}: {
+  clientId: string;
+  isIndividual: boolean;
+  canManage: boolean;
+}) {
   const { t } = useTranslation("features");
   const [numbers, setNumbers] = useState<Num[] | null>(null);
   const [leads, setLeads] = useState<LeadLite[]>([]);
@@ -21,9 +35,17 @@ export function WhatsAppSection({ clientId, isIndividual, canManage }: { clientI
 
   const load = useCallback(async () => {
     const [n, l] = await Promise.all([
-      supabase.from("whatsapp_numbers").select("id, phone_number, status").eq("client_id", clientId).order("created_at", { ascending: false }),
-      supabase.from("leads").select("whatsapp_number_id, status, stage, first_message, created_at").eq("client_id", clientId)
-        .order("created_at", { ascending: false }).limit(500),
+      supabase
+        .from("whatsapp_numbers")
+        .select("id, phone_number, status")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("leads")
+        .select("whatsapp_number_id, status, stage, first_message, created_at")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     if (n.error) toast.error(t("whatsapp.loadFailed"));
     setNumbers(n.data ?? []);
@@ -101,13 +123,7 @@ export function WhatsAppSection({ clientId, isIndividual, canManage }: { clientI
         <p className="mt-3 text-xs text-muted-foreground">{t("limits.whatsapp")}</p>
       )}
       {active.length > 0 && <SalesMessage clientId={clientId} canManage={canManage} />}
-      <WhatsAppConnectDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        clientId={clientId}
-        onSuccess={load}
-      />
+      <WhatsAppConnectDialog open={dialogOpen} onOpenChange={setDialogOpen} clientId={clientId} onSuccess={load} />
     </ConnectionCard>
   );
 }
-

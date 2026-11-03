@@ -1,5 +1,5 @@
 // Provider payload parsing (Meta Cloud API / Evolution / Green-API). Pure: no Deno or network APIs.
-import { parseAdContext } from '../_shared/funnel.ts';
+import { parseAdContext } from "../_shared/funnel.ts";
 
 export interface Referral {
   ctwaClid: string | null;
@@ -20,7 +20,7 @@ export interface WaMessage {
 }
 
 // A parsed message before it is matched to one of our WhatsApp numbers.
-export type InboundMessage = Omit<WaMessage, 'num'>;
+export type InboundMessage = Omit<WaMessage, "num">;
 
 // The referral block Meta attaches to a message that came from an ad.
 interface MetaReferral {
@@ -32,12 +32,14 @@ interface MetaReferral {
   click_timestamp?: string | number;
 }
 
-export function readMetaReferral(message: { referral?: MetaReferral; context?: { referral?: MetaReferral } } | null): Referral | null {
+export function readMetaReferral(
+  message: { referral?: MetaReferral; context?: { referral?: MetaReferral } } | null,
+): Referral | null {
   const ref = message?.referral ?? message?.context?.referral ?? null;
   if (!ref) return null;
   return {
     ctwaClid: ref.ctwa_clid ?? ref.ctwaClid ?? null,
-    adId: ref.source_type === 'ad' ? ref.source_id ?? null : null,
+    adId: ref.source_type === "ad" ? (ref.source_id ?? null) : null,
     sourceType: ref.source_type ?? null,
     headline: ref.headline ?? null,
     clickTs: ref.click_timestamp ? Number(ref.click_timestamp) : null,
@@ -58,9 +60,10 @@ export interface MetaMessage {
 }
 
 export function parseMetaMessage(message: MetaMessage): InboundMessage {
-  const text = message.type === 'text'
-    ? (message.text?.body || '')
-    : (message.button?.text || message.interactive?.list_reply?.title || `[${message.type}]`);
+  const text =
+    message.type === "text"
+      ? message.text?.body || ""
+      : message.button?.text || message.interactive?.list_reply?.title || `[${message.type}]`;
   return {
     jid: String(message.from),
     text,
@@ -73,7 +76,13 @@ export function parseMetaMessage(message: MetaMessage): InboundMessage {
 
 // Evolution API (QR / linked device) events
 // Evolution API webhook body; only the fields read below.
-interface EvolutionKey { remoteJid?: string; remoteJidAlt?: string; senderPn?: string; id?: string; fromMe?: boolean }
+interface EvolutionKey {
+  remoteJid?: string;
+  remoteJidAlt?: string;
+  senderPn?: string;
+  id?: string;
+  fromMe?: boolean;
+}
 export interface EvolutionItem {
   key?: EvolutionKey;
   message?: {
@@ -87,14 +96,20 @@ export interface EvolutionItem {
   messageType?: string;
   messageTimestamp?: string | number;
 }
-export interface EvolutionBody { instance?: unknown; event?: unknown; data?: unknown }
+export interface EvolutionBody {
+  instance?: unknown;
+  event?: unknown;
+  data?: unknown;
+}
 
 // One messages.upsert item; null for groups, broadcasts, status, or unresolved lid.
 export function parseEvolutionItem(d: EvolutionItem | undefined): InboundMessage | null {
   const key: EvolutionKey = d?.key || {};
   // Prefer the real phone JID when WhatsApp hides it behind a @lid id
-  const jid: string = [key.remoteJid, key.remoteJidAlt, key.senderPn]
-    .find((j) => typeof j === 'string' && j.endsWith('@s.whatsapp.net')) || '';
+  const jid: string =
+    [key.remoteJid, key.remoteJidAlt, key.senderPn].find(
+      (j) => typeof j === "string" && j.endsWith("@s.whatsapp.net"),
+    ) || "";
   if (!jid || !d) return null;
 
   const msg = d.message || {};
@@ -105,7 +120,7 @@ export function parseEvolutionItem(d: EvolutionItem | undefined): InboundMessage
     msg.videoMessage?.caption ??
     msg.buttonsResponseMessage?.selectedDisplayText ??
     msg.listResponseMessage?.title ??
-    `[${d.messageType || 'message'}]`;
+    `[${d.messageType || "message"}]`;
 
   const ad = parseAdContext(msg) ?? parseAdContext(d);
   const ts = Number(d.messageTimestamp);
@@ -115,7 +130,9 @@ export function parseEvolutionItem(d: EvolutionItem | undefined): InboundMessage
     ts: ts ? new Date(ts * 1000) : new Date(),
     externalId: key.id ?? null,
     fromMe: Boolean(key.fromMe),
-    referral: ad ? { ctwaClid: ad.ctwaClid, adId: ad.adId, sourceType: 'ad', headline: ad.headline, clickTs: null } : null,
+    referral: ad
+      ? { ctwaClid: ad.ctwaClid, adId: ad.adId, sourceType: "ad", headline: ad.headline, clickTs: null }
+      : null,
   };
 }
 
@@ -138,18 +155,18 @@ export interface GreenBody {
 
 // An incoming/outgoing chat message; null for other notifications, groups, broadcasts, status.
 export function parseGreenMessage(body: GreenBody): InboundMessage | null {
-  const fromMe = body.typeWebhook === 'outgoingMessageReceived';
-  if (body.typeWebhook !== 'incomingMessageReceived' && !fromMe) return null;
+  const fromMe = body.typeWebhook === "outgoingMessageReceived";
+  if (body.typeWebhook !== "incomingMessageReceived" && !fromMe) return null;
 
-  const chatId: string = body.senderData?.chatId || '';
-  if (!chatId.endsWith('@c.us')) return null; // ignore groups, broadcasts, status
+  const chatId: string = body.senderData?.chatId || "";
+  if (!chatId.endsWith("@c.us")) return null; // ignore groups, broadcasts, status
 
   const md = body.messageData || {};
   const text: string =
     md.textMessageData?.textMessage ??
     md.extendedTextMessageData?.text ??
     md.fileMessageData?.caption ??
-    `[${md.typeMessage || 'message'}]`;
+    `[${md.typeMessage || "message"}]`;
 
   return {
     jid: chatId,

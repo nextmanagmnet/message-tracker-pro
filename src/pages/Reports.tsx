@@ -46,7 +46,16 @@ const Reports = () => {
       [c("conversionsSent"), totals.conversionsSent],
       [],
       [c("platform"), c("campaign"), c("spend"), c("clicks"), c("real"), c("qualified"), c("clients"), c("revenue")],
-      ...rows.map((r) => [r.platform, r.name, r.spend.toFixed(2), r.clicks, r.real, r.qualified, r.clients, r.revenue.toFixed(2)]),
+      ...rows.map((r) => [
+        r.platform,
+        r.name,
+        r.spend.toFixed(2),
+        r.clicks,
+        r.real,
+        r.qualified,
+        r.clients,
+        r.revenue.toFixed(2),
+      ]),
     ]);
   };
 
@@ -74,12 +83,16 @@ const Reports = () => {
       {!selectedClient ? (
         <p className="text-muted-foreground">{t("common.selectClient")}</p>
       ) : loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
       ) : (
         <div className="glass-card p-8 space-y-8" id="report">
           <div>
             <p className="text-sm text-muted-foreground">{agency?.name}</p>
-            <h2 className="text-2xl font-bold text-foreground">{t("reports.heading", { client: selectedClient.name })}</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              {t("reports.heading", { client: selectedClient.name })}
+            </h2>
             <p className="text-sm text-muted-foreground">{period}</p>
           </div>
 
@@ -109,14 +122,18 @@ const Reports = () => {
                     <tr>
                       <th className="text-start py-2">{t("reports.csv.campaign")}</th>
                       {["spend", "real", "qualified", "clients", "costPerClient"].map((k) => (
-                        <th key={k} className="text-end py-2 ps-3">{t(`reports.csv.${k}`)}</th>
+                        <th key={k} className="text-end py-2 ps-3">
+                          {t(`reports.csv.${k}`)}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r) => (
                       <tr key={r.key} className="border-b border-border/50 text-foreground">
-                        <td className="py-2">{t(`platform.${r.platform}`)} · {r.name}</td>
+                        <td className="py-2">
+                          {t(`platform.${r.platform}`)} · {r.name}
+                        </td>
                         <td className="text-end">{f.money(r.spend, "USD")}</td>
                         <td className="text-end">{f.num(r.real)}</td>
                         <td className="text-end">{f.num(r.qualified)}</td>

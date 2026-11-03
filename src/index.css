@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700&family=Unbounded:wght@500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700&family=Unbounded:wght@500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -64,7 +64,12 @@
     --sidebar-border: 20 14% 90%;
     --sidebar-ring: 2 74% 58%;
 
-    --gradient-primary: linear-gradient(120deg, hsl(var(--brand-pink)) 0%, hsl(var(--brand-coral)) 45%, hsl(var(--brand-orange)) 100%);
+    --gradient-primary: linear-gradient(
+      120deg,
+      hsl(var(--brand-pink)) 0%,
+      hsl(var(--brand-coral)) 45%,
+      hsl(var(--brand-orange)) 100%
+    );
     --gradient-cool: linear-gradient(120deg, hsl(var(--brand-blue)) 0%, hsl(var(--brand-aqua)) 100%);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(20 33% 98%) 100%);
     --gradient-glow: radial-gradient(ellipse at center, hsl(var(--brand-coral) / 0.18) 0%, transparent 70%);
@@ -155,7 +160,7 @@
   h1,
   h2,
   .font-display {
-    font-family: 'Unbounded', 'Readex Pro', sans-serif;
+    font-family: "Unbounded", "Readex Pro", sans-serif;
     letter-spacing: 0.01em;
   }
 
@@ -165,11 +170,11 @@
   }
 
   /* Arabic: Readex Pro everywhere, no uppercase/extended display face */
-  [dir='rtl'] body,
-  [dir='rtl'] h1,
-  [dir='rtl'] h2,
-  [dir='rtl'] .font-display {
-    font-family: 'Readex Pro', 'Montserrat', sans-serif;
+  [dir="rtl"] body,
+  [dir="rtl"] h1,
+  [dir="rtl"] h2,
+  [dir="rtl"] .font-display {
+    font-family: "Readex Pro", "Montserrat", sans-serif;
     letter-spacing: 0;
   }
 
@@ -203,7 +208,7 @@
   }
 
   .glow-effect::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: -1px;
     background: var(--gradient-primary);
@@ -268,7 +273,7 @@
     box-shadow: inset 3px 0 0 hsl(var(--primary));
   }
 
-  [dir='rtl'] .sidebar-link.active {
+  [dir="rtl"] .sidebar-link.active {
     box-shadow: inset -3px 0 0 hsl(var(--primary));
   }
 
@@ -337,7 +342,7 @@
     }
   }
 
-  [dir='rtl'] .slide-in {
+  [dir="rtl"] .slide-in {
     animation-name: slideInRtl;
   }
 
@@ -387,7 +392,7 @@
   }
 
   .wob-mesh-card::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -396,7 +401,7 @@
       radial-gradient(60% 70% at 0% 100%, hsl(var(--brand-blue) / 0.18) 0%, transparent 60%);
   }
 
-  [dir='rtl'] .wob-mesh-card::after {
+  [dir="rtl"] .wob-mesh-card::after {
     transform: scaleX(-1);
   }
 }

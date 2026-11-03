@@ -27,8 +27,7 @@ export function evolutionClient() {
 
 export type EvolutionClient = ReturnType<typeof evolutionClient>;
 
-const stripQr = (b: unknown) =>
-  typeof b === "string" && b ? b.replace(/^data:image\/\w+;base64,/, "") : null;
+const stripQr = (b: unknown) => (typeof b === "string" && b ? b.replace(/^data:image\/\w+;base64,/, "") : null);
 
 // QR / linked-device actions: qr-start, qr-status, qr-logout.
 export async function qrAction(ctx: ConnectContext, action: string): Promise<Response> {
@@ -89,16 +88,26 @@ export async function qrAction(ctx: ConnectContext, action: string): Promise<Res
       const owner = String(info?.ownerJid || info?.instance?.owner || info?.number || "").split("@")[0];
       const phone = owner ? `+${owner.replace(/\D/g, "")}` : "WhatsApp";
 
-      const { data: other } = await supabase.from("whatsapp_numbers").select("id, client_id")
-        .eq("phone_number_id", name).maybeSingle();
+      const { data: other } = await supabase
+        .from("whatsapp_numbers")
+        .select("id, client_id")
+        .eq("phone_number_id", name)
+        .maybeSingle();
       if (other && other.client_id !== clientId) {
         return json({ state: "authorized", error: "This WhatsApp line is already linked to another client." });
       }
       const { error: upErr } = other
-        ? await supabase.from("whatsapp_numbers").update({ status: "connected", phone_number: phone }).eq("id", other.id)
+        ? await supabase
+            .from("whatsapp_numbers")
+            .update({ status: "connected", phone_number: phone })
+            .eq("id", other.id)
         : await supabase.from("whatsapp_numbers").insert({
-            client_id: clientId, tenant_id: tenantId, phone_number: phone,
-            phone_number_id: name, waba_id: "evolution", status: "connected",
+            client_id: clientId,
+            tenant_id: tenantId,
+            phone_number: phone,
+            phone_number_id: name,
+            waba_id: "evolution",
+            status: "connected",
           });
       if (upErr) return limitError(upErr) ?? json({ state: "authorized", error: upErr.message });
       return json({ instance: name, state: "connected", phoneNumber: phone });
@@ -106,8 +115,11 @@ export async function qrAction(ctx: ConnectContext, action: string): Promise<Res
 
     case "qr-logout": {
       await evo.call(`/instance/logout/${reqInstance}`, { method: "DELETE" }).catch(() => ({}));
-      await supabase.from("whatsapp_numbers").update({ status: "disconnected" })
-        .eq("phone_number_id", reqInstance).eq("client_id", clientId);
+      await supabase
+        .from("whatsapp_numbers")
+        .update({ status: "disconnected" })
+        .eq("phone_number_id", reqInstance)
+        .eq("client_id", clientId);
       return json({ success: true });
     }
 

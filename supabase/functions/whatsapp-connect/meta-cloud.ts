@@ -4,7 +4,13 @@ import { type ConnectContext, GRAPH_BASE } from "./types.ts";
 
 // Meta Cloud API: find the platform token's WABAs and import their numbers.
 
-interface Waba { id: string; name: string; businessId: string; businessName: string; status: string }
+interface Waba {
+  id: string;
+  name: string;
+  businessId: string;
+  businessName: string;
+  status: string;
+}
 
 export async function validateToken({ whatsappToken }: ConnectContext): Promise<Response> {
   // Validate the WhatsApp token by fetching business info
@@ -24,7 +30,7 @@ export async function fetchWabas({ whatsappToken }: ConnectContext): Promise<Res
   const seen = new Set<string>();
 
   const debugRes = await fetch(
-    `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(whatsappToken)}&access_token=${encodeURIComponent(whatsappToken)}`
+    `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(whatsappToken)}&access_token=${encodeURIComponent(whatsappToken)}`,
   );
   const debugData = await debugRes.json().catch(() => ({}));
   const wabaIds: string[] = [];
@@ -36,7 +42,7 @@ export async function fetchWabas({ whatsappToken }: ConnectContext): Promise<Res
 
   for (const id of wabaIds) {
     const r = await fetch(
-      `${GRAPH_BASE}/${id}?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`
+      `${GRAPH_BASE}/${id}?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`,
     );
     if (!r.ok) {
       console.error(`WABA ${id} lookup failed`, r.status, await r.text());
@@ -59,7 +65,7 @@ export async function fetchWabas({ whatsappToken }: ConnectContext): Promise<Res
     const me = await meRes.json().catch(() => ({}));
     if (me?.id) {
       const aRes = await fetch(
-        `${GRAPH_BASE}/${me.id}/assigned_whatsapp_business_accounts?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`
+        `${GRAPH_BASE}/${me.id}/assigned_whatsapp_business_accounts?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`,
       );
       const aData = await aRes.json().catch(() => ({}));
       if (!aRes.ok) console.error("assigned WABAs lookup failed", aRes.status, JSON.stringify(aData));
@@ -81,7 +87,7 @@ export async function fetchWabas({ whatsappToken }: ConnectContext): Promise<Res
   let fallbackError: string | null = null;
   if (wabas.length === 0) {
     const wabasRes = await fetch(
-      `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${encodeURIComponent(whatsappToken)}`
+      `${GRAPH_BASE}/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,account_review_status}&access_token=${encodeURIComponent(whatsappToken)}`,
     );
     const wabasData = await wabasRes.json().catch(() => ({}));
     if (!wabasRes.ok) {
@@ -120,7 +126,7 @@ export async function lookupWaba({ body, whatsappToken }: ConnectContext): Promi
     return json({ error: "Enter a valid numeric WhatsApp Business Account ID" });
   }
   const r = await fetch(
-    `${GRAPH_BASE}/${wabaId}?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`
+    `${GRAPH_BASE}/${wabaId}?fields=id,name,account_review_status,owner_business_info&access_token=${encodeURIComponent(whatsappToken)}`,
   );
   const w = await r.json().catch(() => ({}));
   if (!r.ok) {
@@ -143,7 +149,7 @@ export async function fetchPhoneNumbers({ body, whatsappToken }: ConnectContext)
 
   // Fetch phone numbers for a WABA
   const phonesRes = await fetch(
-    `${GRAPH_BASE}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,platform_type&access_token=${encodeURIComponent(whatsappToken)}`
+    `${GRAPH_BASE}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,platform_type&access_token=${encodeURIComponent(whatsappToken)}`,
   );
   if (!phonesRes.ok) {
     const errData = await phonesRes.json();
@@ -151,13 +157,21 @@ export async function fetchPhoneNumbers({ body, whatsappToken }: ConnectContext)
   }
   const phonesData = await phonesRes.json();
 
-  const phones = (phonesData.data || []).map((p: { id: string; display_phone_number?: string; verified_name?: string; quality_rating?: string; platform_type?: string }) => ({
-    id: p.id,
-    phoneNumber: p.display_phone_number,
-    verifiedName: p.verified_name,
-    qualityRating: p.quality_rating,
-    platformType: p.platform_type,
-  }));
+  const phones = (phonesData.data || []).map(
+    (p: {
+      id: string;
+      display_phone_number?: string;
+      verified_name?: string;
+      quality_rating?: string;
+      platform_type?: string;
+    }) => ({
+      id: p.id,
+      phoneNumber: p.display_phone_number,
+      verifiedName: p.verified_name,
+      qualityRating: p.quality_rating,
+      platformType: p.platform_type,
+    }),
+  );
 
   return json({ phoneNumbers: phones });
 }
@@ -172,7 +186,7 @@ export async function embeddedSignup({ body, supabase, clientId, tenantId }: Con
   }
   // Exchange code for the business's token (validates the signup)
   const tRes = await fetch(
-    `${GRAPH_BASE}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}`
+    `${GRAPH_BASE}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}`,
   );
   const tData = await tRes.json().catch(() => ({}));
   if (!tRes.ok || !tData.access_token) {
@@ -187,21 +201,27 @@ export async function embeddedSignup({ body, supabase, clientId, tenantId }: Con
   });
   if (!subRes.ok) console.error("subscribed_apps failed", await subRes.text());
   // Read phone number details
-  const pRes = await fetch(
-    `${GRAPH_BASE}/${esPhoneId}?fields=display_phone_number,verified_name`,
-    { headers: { Authorization: `Bearer ${bizToken}` } }
-  );
+  const pRes = await fetch(`${GRAPH_BASE}/${esPhoneId}?fields=display_phone_number,verified_name`, {
+    headers: { Authorization: `Bearer ${bizToken}` },
+  });
   const p = await pRes.json().catch(() => ({}));
   const display = p.display_phone_number || esPhoneId;
 
   const { data: existing } = await supabase
-    .from("whatsapp_numbers").select("id")
-    .eq("phone_number_id", esPhoneId).eq("client_id", clientId).maybeSingle();
+    .from("whatsapp_numbers")
+    .select("id")
+    .eq("phone_number_id", esPhoneId)
+    .eq("client_id", clientId)
+    .maybeSingle();
   const { error: upErr } = existing
     ? await supabase.from("whatsapp_numbers").update({ status: "connected", waba_id: esWabaId }).eq("id", existing.id)
     : await supabase.from("whatsapp_numbers").insert({
-        client_id: clientId, tenant_id: tenantId, phone_number: display,
-        phone_number_id: esPhoneId, waba_id: esWabaId, status: "connected",
+        client_id: clientId,
+        tenant_id: tenantId,
+        phone_number: display,
+        phone_number_id: esPhoneId,
+        waba_id: esWabaId,
+        status: "connected",
       });
   if (upErr) return limitError(upErr) ?? json({ error: upErr.message });
   return json({ success: true, phoneNumber: display });
@@ -229,25 +249,20 @@ export async function importNumbers({ body, supabase, clientId, tenantId }: Conn
 
     if (existing) {
       // Update status to connected
-      await supabase
-        .from("whatsapp_numbers")
-        .update({ status: "connected" })
-        .eq("id", existing.id);
+      await supabase.from("whatsapp_numbers").update({ status: "connected" }).eq("id", existing.id);
       imported.push(phoneNumberId);
       continue;
     }
 
     // Insert new
-    const { error: insertError } = await supabase
-      .from("whatsapp_numbers")
-      .insert({
-        client_id: clientId,
-        tenant_id: tenantId,
-        phone_number: displayPhoneNumber,
-        phone_number_id: phoneNumberId,
-        waba_id: wabaId,
-        status: "connected",
-      });
+    const { error: insertError } = await supabase.from("whatsapp_numbers").insert({
+      client_id: clientId,
+      tenant_id: tenantId,
+      phone_number: displayPhoneNumber,
+      phone_number_id: phoneNumberId,
+      waba_id: wabaId,
+      status: "connected",
+    });
 
     if (insertError) {
       const limited = limitError(insertError);

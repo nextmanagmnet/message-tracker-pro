@@ -209,10 +209,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const updateClient = async (clientId: string, name: string): Promise<boolean> => {
     if (!canManage) return false;
 
-    const { error } = await supabase
-      .from("clients")
-      .update({ name })
-      .eq("id", clientId);
+    const { error } = await supabase.from("clients").update({ name }).eq("id", clientId);
 
     if (error) {
       console.error("Error updating client:", error);
@@ -226,10 +223,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const deleteClient = async (clientId: string): Promise<boolean> => {
     if (!canManage) return false;
 
-    const { error } = await supabase
-      .from("clients")
-      .delete()
-      .eq("id", clientId);
+    const { error } = await supabase.from("clients").delete().eq("id", clientId);
 
     if (error) {
       console.error("Error deleting client:", error);

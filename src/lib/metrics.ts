@@ -37,7 +37,7 @@ export function toCsv(rows: (string | number | null | undefined)[][]): string {
           const s = v === null || v === undefined ? "" : String(v);
           return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
         })
-        .join(",")
+        .join(","),
     )
     .join("\n");
 }

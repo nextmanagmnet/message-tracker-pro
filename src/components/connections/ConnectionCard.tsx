@@ -23,7 +23,9 @@ export function ConnectionCard({
   return (
     <section className="glass-card p-6">
       <div className="flex flex-wrap items-start gap-4">
-        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white", accent)}>{icon}</div>
+        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white", accent)}>
+          {icon}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-semibold text-foreground">{title}</h2>

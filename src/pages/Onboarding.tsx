@@ -89,8 +89,8 @@ const Onboarding = () => {
                     s === step
                       ? "bg-white text-black"
                       : stepDone[s]
-                      ? "bg-brand-aqua text-black"
-                      : "bg-white/15 text-white"
+                        ? "bg-brand-aqua text-black"
+                        : "bg-white/15 text-white",
                   )}
                 >
                   {stepDone[s] ? <Check className="h-4 w-4" /> : i + 1}
@@ -130,7 +130,11 @@ const Onboarding = () => {
               )}
               {step === "ads" && (
                 <>
-                  <Button variant="glow" disabled={!selectedClient} onClick={() => navigate("/connections?connect=tiktok")}>
+                  <Button
+                    variant="glow"
+                    disabled={!selectedClient}
+                    onClick={() => navigate("/connections?connect=tiktok")}
+                  >
                     {t("onboarding.connectTiktok")}
                     {done.tiktok && <Check className="h-4 w-4" />}
                   </Button>

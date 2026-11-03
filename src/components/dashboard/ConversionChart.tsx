@@ -46,8 +46,20 @@ export const ConversionChart = ({ data }: { data: ChartPoint[] }) => {
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="date" axisLine={false} tickLine={false} reversed={i18n.dir() === "rtl"} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-            <YAxis allowDecimals={false} axisLine={false} tickLine={false} orientation={i18n.dir() === "rtl" ? "right" : "left"} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+            <XAxis
+              dataKey="date"
+              axisLine={false}
+              tickLine={false}
+              reversed={i18n.dir() === "rtl"}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            />
+            <YAxis
+              allowDecimals={false}
+              axisLine={false}
+              tickLine={false}
+              orientation={i18n.dir() === "rtl" ? "right" : "left"}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
@@ -57,7 +69,15 @@ export const ConversionChart = ({ data }: { data: ChartPoint[] }) => {
               }}
             />
             {SERIES.map((s) => (
-              <Area key={s.key} type="monotone" dataKey={s.key} name={t(`chart.${s.key}`)} stroke={s.color} strokeWidth={2} fill={`url(#grad-${s.key})`} />
+              <Area
+                key={s.key}
+                type="monotone"
+                dataKey={s.key}
+                name={t(`chart.${s.key}`)}
+                stroke={s.color}
+                strokeWidth={2}
+                fill={`url(#grad-${s.key})`}
+              />
             ))}
           </AreaChart>
         </ResponsiveContainer>

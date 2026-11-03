@@ -7,10 +7,15 @@ export async function disconnect({ body, supabase, clientId, evo }: ConnectConte
   const { numberId } = body;
   if (!numberId) return json({ error: "numberId is required" }, 400);
 
-  const { data: dNum } = await supabase.from("whatsapp_numbers").select("waba_id, phone_number_id")
-    .eq("id", numberId).eq("client_id", clientId).maybeSingle();
+  const { data: dNum } = await supabase
+    .from("whatsapp_numbers")
+    .select("waba_id, phone_number_id")
+    .eq("id", numberId)
+    .eq("client_id", clientId)
+    .maybeSingle();
   if (dNum?.waba_id === "evolution" && evo.base && evo.key) {
-    await evo.call(`/instance/logout/${dNum.phone_number_id}`, { method: "DELETE" })
+    await evo
+      .call(`/instance/logout/${dNum.phone_number_id}`, { method: "DELETE" })
       .catch((e) => console.error("logout failed", e));
   }
 
@@ -29,8 +34,12 @@ export async function reconnect({ body, supabase, clientId, evo, whatsappToken }
   const { numberId } = body;
   if (!numberId) return json({ error: "numberId is required" }, 400);
 
-  const { data: gNum } = await supabase.from("whatsapp_numbers").select("waba_id, phone_number_id")
-    .eq("id", numberId).eq("client_id", clientId).maybeSingle();
+  const { data: gNum } = await supabase
+    .from("whatsapp_numbers")
+    .select("waba_id, phone_number_id")
+    .eq("id", numberId)
+    .eq("client_id", clientId)
+    .maybeSingle();
   if (gNum?.waba_id === "evolution" || gNum?.waba_id === "green-api") {
     const st = gNum.waba_id === "evolution" && evo.base ? await evo.state(gNum.phone_number_id) : "close";
     if (st !== "open") {
@@ -58,7 +67,7 @@ export async function reconnect({ body, supabase, clientId, evo, whatsappToken }
 
   // Verify the phone number still exists in Meta
   const phoneRes = await fetch(
-    `${GRAPH_BASE}/${numberData.phone_number_id}?fields=display_phone_number,verified_name&access_token=${encodeURIComponent(whatsappToken)}`
+    `${GRAPH_BASE}/${numberData.phone_number_id}?fields=display_phone_number,verified_name&access_token=${encodeURIComponent(whatsappToken)}`,
   );
   if (!phoneRes.ok) {
     return json({ error: "Phone number no longer exists in your Meta account. Please add it again." }, 400);

@@ -55,7 +55,9 @@ const Campaigns = () => {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <DateRangePicker value={range} onChange={setRange} />
         <Select value={platform} onValueChange={(v) => setPlatform(v as PlatformFilter)}>
-          <SelectTrigger className="w-[150px] bg-secondary border-border"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[150px] bg-secondary border-border">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("campaigns.allPlatforms")}</SelectItem>
             <SelectItem value="tiktok">{t("platform.tiktok")}</SelectItem>
@@ -69,9 +71,13 @@ const Campaigns = () => {
       </div>
 
       {!selectedClient ? (
-        <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">{t("common.selectClient")}</div>
+        <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">
+          {t("common.selectClient")}
+        </div>
       ) : loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -106,7 +112,9 @@ const Campaigns = () => {
             <div className="glass-card wob-mesh-card p-10 text-center">
               <p className="text-foreground font-medium">{t("campaigns.empty")}</p>
               <p className="text-sm text-muted-foreground mt-1">{t("campaigns.emptyHint")}</p>
-              <Button className="mt-4" onClick={() => navigate("/connections")}>{t("campaigns.goConnections")}</Button>
+              <Button className="mt-4" onClick={() => navigate("/connections")}>
+                {t("campaigns.goConnections")}
+              </Button>
             </div>
           ) : (
             <div className="glass-card overflow-hidden">
@@ -114,8 +122,21 @@ const Campaigns = () => {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      {["campaign", "spend", "clicks", "real", "qualified", "clients", "costPerQualified", "costPerClient", "revenue", "roas"].map((k) => (
-                        <th key={k} className="text-start whitespace-nowrap">{t(`campaigns.col.${k}`)}</th>
+                      {[
+                        "campaign",
+                        "spend",
+                        "clicks",
+                        "real",
+                        "qualified",
+                        "clients",
+                        "costPerQualified",
+                        "costPerClient",
+                        "revenue",
+                        "roas",
+                      ].map((k) => (
+                        <th key={k} className="text-start whitespace-nowrap">
+                          {t(`campaigns.col.${k}`)}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -162,12 +183,21 @@ function AttributionHelp({ clientId }: { clientId: string }) {
   const [pixel, setPixel] = useState("");
 
   useEffect(() => {
-    supabase.from("whatsapp_numbers").select("id, phone_number").eq("client_id", clientId).eq("status", "connected")
+    supabase
+      .from("whatsapp_numbers")
+      .select("id, phone_number")
+      .eq("client_id", clientId)
+      .eq("status", "connected")
       .then(({ data }) => {
         setNumbers(data ?? []);
         setNumberId(data?.[0]?.id ?? "");
       });
-    supabase.from("tiktok_pixels").select("pixel_code").eq("client_id", clientId).limit(1).maybeSingle()
+    supabase
+      .from("tiktok_pixels")
+      .select("pixel_code")
+      .eq("client_id", clientId)
+      .limit(1)
+      .maybeSingle()
       .then(({ data }) => setPixel(data?.pixel_code ?? ""));
   }, [clientId]);
 
@@ -184,8 +214,12 @@ function AttributionHelp({ clientId }: { clientId: string }) {
         <Info className="w-5 h-5 text-primary" /> {t("campaigns.help.title")}
       </h3>
       <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-        <li><span className="font-medium text-foreground">{t("platform.meta")}:</span> {t("campaigns.help.meta")}</li>
-        <li><span className="font-medium text-foreground">{t("platform.tiktok")}:</span> {t("campaigns.help.tiktok")}</li>
+        <li>
+          <span className="font-medium text-foreground">{t("platform.meta")}:</span> {t("campaigns.help.meta")}
+        </li>
+        <li>
+          <span className="font-medium text-foreground">{t("platform.tiktok")}:</span> {t("campaigns.help.tiktok")}
+        </li>
       </ul>
       {numbers.length === 0 ? (
         <p className="mt-4 text-sm text-warning">{t("campaigns.help.noNumber")}</p>
@@ -194,16 +228,29 @@ function AttributionHelp({ clientId }: { clientId: string }) {
           <div className="flex flex-wrap gap-2">
             {numbers.length > 1 && (
               <Select value={numberId} onValueChange={setNumberId}>
-                <SelectTrigger className="w-[200px] bg-secondary border-border"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[200px] bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {numbers.map((n) => <SelectItem key={n.id} value={n.id}>{n.phone_number}</SelectItem>)}
+                  {numbers.map((n) => (
+                    <SelectItem key={n.id} value={n.id}>
+                      {n.phone_number}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
-            <Input className="flex-1 min-w-[220px]" value={text} onChange={(e) => setText(e.target.value)} aria-label={t("campaigns.help.textLabel")} />
+            <Input
+              className="flex-1 min-w-[220px]"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              aria-label={t("campaigns.help.textLabel")}
+            />
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-secondary/60 p-3">
-            <code className="flex-1 break-all text-xs text-foreground" dir="ltr">{link}</code>
+            <code className="flex-1 break-all text-xs text-foreground" dir="ltr">
+              {link}
+            </code>
             <Button
               size="icon"
               variant="ghost"

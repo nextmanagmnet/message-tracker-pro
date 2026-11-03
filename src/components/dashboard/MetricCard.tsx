@@ -25,7 +25,9 @@ export const MetricCard = ({ title, value, change, changeLabel, hint, icon, tren
   return (
     <div className="metric-card group">
       <div className="flex items-start justify-between mb-4">
-        <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">{icon}</div>
+        <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+          {icon}
+        </div>
         {change !== undefined && (
           <div className={`flex items-center gap-1 text-xs font-medium ${color}`}>
             <Icon className="w-3 h-3" />

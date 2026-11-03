@@ -28,18 +28,20 @@ export function initMonitoring(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!dsn || sentry) return;
   sentry = import("@sentry/react");
-  void sentry.then((S) =>
-    S.init({
-      dsn,
-      environment: import.meta.env.MODE,
-      tracesSampleRate: 0.05,
-      sendDefaultPii: false,
-      ignoreErrors: IGNORED_ERRORS,
-      beforeSend: scrubEvent,
-    }),
-  ).catch(() => {
-    sentry = null; // monitoring must never break the app
-  });
+  void sentry
+    .then((S) =>
+      S.init({
+        dsn,
+        environment: import.meta.env.MODE,
+        tracesSampleRate: 0.05,
+        sendDefaultPii: false,
+        ignoreErrors: IGNORED_ERRORS,
+        beforeSend: scrubEvent,
+      }),
+    )
+    .catch(() => {
+      sentry = null; // monitoring must never break the app
+    });
 }
 
 /** Tag events with the Supabase user id only (no email / ip). */
@@ -49,8 +51,6 @@ export function setMonitoringUser(id: string | null): void {
 
 export function captureError(error: unknown, componentStack?: string | null): void {
   void sentry
-    ?.then((S) =>
-      S.captureException(error, componentStack ? { contexts: { react: { componentStack } } } : undefined),
-    )
+    ?.then((S) => S.captureException(error, componentStack ? { contexts: { react: { componentStack } } } : undefined))
     .catch(() => {});
 }
