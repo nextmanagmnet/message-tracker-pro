@@ -4,6 +4,14 @@ import { authorizeClient, isInternalCall, serviceClient } from "../_shared/auth.
 import { hasLlm, jsonCompletion, REPLY_MODEL, transcript } from "../_shared/llm.ts";
 import { sendWhatsAppMedia, sendWhatsAppText } from "../_shared/whatsappSend.ts";
 import { withCors } from "../_shared/cors.ts";
+import {
+  MIN_TONE_SAMPLES,
+  profileFromJson,
+  sampleOwnerMessages,
+  TONE_SCHEMA,
+  TONE_SYSTEM,
+  toneSection,
+} from "../_shared/tone.ts";
 
 const SCHEMA = {
   type: "object",
@@ -36,6 +44,7 @@ interface AgentSettings {
   tone: string | null;
   qualifying_questions: string | null;
   business_knowledge: string | null;
+  tone_profile: string | null;
 }
 
 type Product = {
@@ -88,7 +97,7 @@ ${s?.business_knowledge || "(not provided — keep answers general and hand off 
 
 Product catalog (prices and stock here are the truth):
 ${catalogText(products)}
-When the customer asks about or would benefit from seeing a product that has photos/video, put its id in send_product_ids (max 3) and the photos are sent after your reply. Otherwise send_product_ids is [].`;
+When the customer asks about or would benefit from seeing a product that has photos/video, put its id in send_product_ids (max 3) and the photos are sent after your reply. Otherwise send_product_ids is [].${toneSection(s?.tone_profile)}`;
 }
 
 async function runAgent(
@@ -114,12 +123,73 @@ async function runAgent(
   }
 }
 
+// Samples the owner's own replies, asks Claude for a style profile, and stores only the profile.
+async function learnTone(supabase: SupabaseClient, userId: string, clientId: string): Promise<Response> {
+  const { data: client } = await supabase
+    .from("clients")
+    .select("agency_id, order_marker, delivery_marker, return_marker")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!client) return json({ error: "Client not found" }, 404);
+  const roles = await Promise.all(
+    ["owner", "admin"].map((role) =>
+      supabase.rpc("has_agency_role", { _user_id: userId, _agency_id: client.agency_id, _role: role }),
+    ),
+  );
+  if (!roles.some((r) => r.data)) return json({ error: "Only agency owners and admins can do this" }, 403);
+
+  // Over-fetch: media placeholders, acks and marker templates are dropped before sampling.
+  const { data: rows } = await supabase
+    .from("messages")
+    .select("text")
+    .eq("client_id", clientId)
+    .eq("author", "owner")
+    .order("created_at", { ascending: false })
+    .limit(1500);
+  const samples = sampleOwnerMessages(
+    (rows ?? []).map((r: { text: string | null }) => r.text),
+    [client.order_marker, client.delivery_marker, client.return_marker],
+  );
+  if (samples.length < MIN_TONE_SAMPLES)
+    return json({ status: "not_enough", count: samples.length, needed: MIN_TONE_SAMPLES });
+
+  const profile = profileFromJson(
+    await jsonCompletion({
+      model: REPLY_MODEL,
+      system: TONE_SYSTEM,
+      user: `The owner's own WhatsApp replies (newest first, one per line):\n${samples.map((t) => t.replace(/\s+/g, " ")).join("\n")}`,
+      schema: TONE_SCHEMA,
+      effort: "medium",
+      maxTokens: 4096,
+    }),
+  );
+  if (!profile) return json({ error: "The AI could not describe your tone, try again" }, 502);
+
+  const updated = {
+    tone_profile: profile,
+    tone_sample_size: samples.length,
+    tone_updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from("ai_agent_settings")
+    .upsert({ client_id: clientId, ...updated }, { onConflict: "client_id" });
+  if (error) return json({ error: error.message }, 500);
+  return json({ status: "learned", ...updated });
+}
+
 Deno.serve(
   withCors(async (req) => {
     if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
     if (!hasLlm()) return json({ error: "AI is not configured (ANTHROPIC_API_KEY missing)" }, 503);
     try {
       const body = await req.json().catch(() => ({}));
+
+      // ---- Learn tone: { clientId, action: 'learn-tone' } — agency owner/admin only
+      if (!isInternalCall(req) && body.action === "learn-tone") {
+        const auth = await authorizeClient(req, body.clientId);
+        if (auth instanceof Response) return auth;
+        return await learnTone(auth.supabase, auth.userId, body.clientId);
+      }
 
       // ---- Playground: { clientId, dryRun: true, messages: [{ role: 'lead'|'business', text }] }
       if (!isInternalCall(req)) {

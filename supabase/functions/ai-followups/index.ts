@@ -4,6 +4,7 @@ import { isFollowUpEligible } from "../_shared/funnel.ts";
 import { hasLlm, jsonCompletion, REPLY_MODEL, transcript } from "../_shared/llm.ts";
 import { sendWhatsAppText } from "../_shared/whatsappSend.ts";
 import { withCors } from "../_shared/cors.ts";
+import { toneSection } from "../_shared/tone.ts";
 
 const SCHEMA = {
   type: "object",
@@ -64,7 +65,7 @@ Deno.serve(
           model: REPLY_MODEL,
           system: `You write one short, friendly WhatsApp follow-up from a business to a customer who went quiet.
 Use the customer's language. Refer to what they were interested in. No pressure, no invented offers.
-Business information: ${s.business_knowledge || "(none)"}. Tone: ${s.tone || "friendly"}.`,
+Business information: ${s.business_knowledge || "(none)"}. Tone: ${s.tone || "friendly"}.${toneSection(s.tone_profile)}`,
           user: `Chat (oldest first):\n${transcript((msgs ?? []).reverse())}`,
           schema: SCHEMA,
           effort: "low",

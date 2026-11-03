@@ -1,3 +1,15 @@
 {
-  "title": "Your tone"
+  "title": "Your tone",
+  "status": "Learned from {{count}} of your own replies on {{date}}. The assistant writes in this style.",
+  "notLearned": "Not learned yet. The assistant can learn how you write from your own WhatsApp replies.",
+  "learn": "Learn my tone",
+  "relearn": "Re-learn",
+  "learned": "Your tone is learned",
+  "learnFailed": "Could not learn your tone, try again",
+  "notEnough": "Not enough of your own replies yet ({{count}} of {{needed}}). Keep chatting with customers and try again later.",
+  "placeholder": "Describe how you write: language and dialect, greetings, emoji, a few example phrases…",
+  "privacy": "Only your own replies are read, without phone numbers or emails. Only this style description is saved.",
+  "save": "Save",
+  "saved": "Tone saved",
+  "saveFailed": "Could not save the tone"
 }

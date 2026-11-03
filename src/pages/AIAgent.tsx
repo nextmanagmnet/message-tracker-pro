@@ -13,6 +13,7 @@ import { AlertTriangle, Bot, ChevronRight, Loader2, Package, Pencil, Send, Trash
 import { useAgency } from "@/hooks/useAgency";
 import { cn } from "@/lib/utils";
 import { db, invokeFn } from "@/components/leads/shared";
+import { ToneCard } from "@/components/ai-agent/ToneCard";
 
 type Settings = {
   enabled: boolean;
@@ -169,6 +170,8 @@ const AIAgent = () => {
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground rtl:-scale-x-100" />
             </Link>
+
+            <ToneCard clientId={selectedClient.id} canManage={canManage} />
 
             {!editing ? (
               <section className="glass-card space-y-3 p-6">
