@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { pickOrderValue } from "./orders.ts";
+import { nextOrderStatus, pickOrderValue } from "./orders.ts";
 import type { ConversionEventRow, LeadRow } from "./types.ts";
 import {
   buildMetaPayload,
@@ -7,6 +7,7 @@ import {
   canAdvance,
   eventIdFor,
   eventNameFor,
+  reportableStages,
   stagesPassed,
   type Platform,
   type Stage,
@@ -59,8 +60,66 @@ export async function reportStage(
   const patch: Record<string, unknown> = { stage, stage_updated_at: new Date().toISOString() };
   if (stage === "not_lead") Object.assign(patch, { status: "trash", is_real: false });
   else Object.assign(patch, { status: "verified", is_real: true, stage_suggestion: null });
+  let purchaseTrigger: string | null = null;
   if (stage === "client") {
     // Amount from the message / AI / manual entry first, then the client's default order value.
+    const { data: client } = await supabase
+      .from("clients")
+      .select("default_order_value, default_order_currency, purchase_trigger")
+      .eq("id", lead.client_id)
+      .maybeSingle();
+    const order = pickOrderValue(
+      { value: opts.value ?? lead.order_value ?? null, currency: opts.currency ?? lead.order_currency ?? null },
+      { value: client?.default_order_value ?? null, currency: client?.default_order_currency ?? null },
+    );
+    patch.order_value = order.value;
+    patch.order_currency = order.currency;
+    purchaseTrigger = client?.purchase_trigger ?? null;
+    Object.assign(patch, { order_status: "confirmed", order_confirmed_at: patch.stage_updated_at });
+  }
+  const { error } = await supabase.from("leads").update(patch).eq("id", leadId);
+  if (error) {
+    console.error("reportStage update failed", error);
+    return { changed: false };
+  }
+  if (stage === "not_lead") return { changed: true };
+
+  // Delivery mode: Purchase waits for reportOrder(..., "deliver").
+  await sendStageEvents(supabase, lead, reportableStages(passed, purchaseTrigger), {
+    value: (patch.order_value as number | null) ?? null,
+    currency: (patch.order_currency as string | null) ?? null,
+  });
+  return { changed: true };
+}
+
+/**
+ * Records a delivery or return the business announced (message phrase or LeadDrawer button).
+ * Delivery sends Purchase with the order value, once per lead like every event; a delivery with no
+ * earlier confirmation counts as both. A return never sends anything: TikTok has no refund event, so an
+ * already-sent Purchase stays and dashboards leave returned orders out instead.
+ */
+export async function reportOrder(
+  supabase: SupabaseClient,
+  leadId: string,
+  event: "deliver" | "return",
+  opts: { value?: number | null; currency?: string | null } = {},
+): Promise<{ changed: boolean }> {
+  if (event === "deliver") await reportStage(supabase, leadId, "client", opts); // no-op for a client already
+  const { data: lead } = await supabase
+    .from("leads")
+    .select(`${LEAD_COLS}, order_status`)
+    .eq("id", leadId)
+    .maybeSingle();
+  if (!lead || lead.stage !== "client") return { changed: false };
+  const status = nextOrderStatus(lead.order_status, event);
+  if (!status) return { changed: false };
+
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { order_status: status };
+  if (status === "returned") patch.returned_at = now;
+  else {
+    patch.delivered_at = now;
+    // A total in the delivery message (or typed in the drawer) wins; otherwise keep the confirmed value.
     const { data: client } = await supabase
       .from("clients")
       .select("default_order_value, default_order_currency")
@@ -73,28 +132,47 @@ export async function reportStage(
     patch.order_value = order.value;
     patch.order_currency = order.currency;
   }
-  const { error } = await supabase.from("leads").update(patch).eq("id", leadId);
+  // Only from the status just read, so a concurrent delivery/return can't both win.
+  const base = supabase.from("leads").update(patch).eq("id", leadId);
+  const { data: updated, error } = await (
+    lead.order_status ? base.eq("order_status", lead.order_status) : base.is("order_status", null)
+  ).select("id");
   if (error) {
-    console.error("reportStage update failed", error);
+    console.error("reportOrder update failed", error);
     return { changed: false };
   }
-  if (stage === "not_lead") return { changed: true };
+  if (!updated?.length) return { changed: false };
+  if (status === "delivered") {
+    await sendStageEvents(supabase, lead, ["client"], {
+      value: patch.order_value as number | null,
+      currency: patch.order_currency as string | null,
+    });
+  }
+  return { changed: true };
+}
 
+// Inserts and sends one event per (stage, platform); an existing event_id means it was already sent.
+async function sendStageEvents(
+  supabase: SupabaseClient,
+  lead: LeadRow,
+  stages: Stage[],
+  order: { value: number | null; currency: string | null },
+) {
   for (const platform of platformsFor(lead)) {
-    for (const s of passed) {
+    for (const s of stages) {
       const eventName = eventNameFor(platform, s);
       if (!eventName) continue;
       const { data: ev, error: insErr } = await supabase
         .from("conversion_events")
         .insert({
           client_id: lead.client_id,
-          lead_id: leadId,
+          lead_id: lead.id,
           platform,
           event_name: eventName,
           stage: s,
-          value: s === "client" ? patch.order_value : null,
-          currency: s === "client" ? patch.order_currency : null,
-          event_id: eventIdFor(leadId, s, platform),
+          value: s === "client" ? order.value : null,
+          currency: s === "client" ? order.currency : null,
+          event_id: eventIdFor(lead.id, s, platform),
           status: "pending",
           attempts: 0,
         })
@@ -107,7 +185,6 @@ export async function reportStage(
       await sendConversionEvent(supabase, ev, lead);
     }
   }
-  return { changed: true };
 }
 
 // TikTok matches on SHA-256 of the E.164 number ("+9665..."); leads only store a

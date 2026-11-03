@@ -21,7 +21,16 @@ export type Totals = Omit<CampaignRow, "key" | "platform" | "campaignId" | "name
   leads: number;
   conversionsSent: number;
   currency: string; // currency most orders were reported in (sums assume one currency)
+  delivered: number; // orders marked delivered (delivery mode: the ones Purchase was reported for)
+  returned: number; // returned orders, left out of clients and revenue
 };
+
+// The order status lives on leads but isn't in LEAD_COLUMNS.
+type FunnelLead = Lead & { order_status: string | null };
+const FUNNEL_COLUMNS = `${LEAD_COLUMNS}, order_status` as const;
+
+// A returned order isn't a sale: it stays out of order counts and revenue.
+const isOrder = (l: FunnelLead) => stageOf(l) === "client" && l.order_status !== "returned";
 
 type DbCampaign = {
   campaign_id: string;
@@ -46,11 +55,11 @@ const emptyRow = (platform: Platform, campaignId: string, name: string): Campaig
   revenue: 0,
 });
 
-function tally(row: Pick<CampaignRow, "real" | "qualified" | "clients" | "trash" | "revenue">, l: Lead) {
+function tally(row: Pick<CampaignRow, "real" | "qualified" | "clients" | "trash" | "revenue">, l: FunnelLead) {
   if (stageOf(l) === "not_lead") row.trash++;
   if (atLeast(l, "real")) row.real++;
   if (atLeast(l, "qualified")) row.qualified++;
-  if (stageOf(l) === "client") {
+  if (isOrder(l)) {
     row.clients++;
     row.revenue += Number(l.order_value) || 0;
   }
@@ -62,7 +71,7 @@ function tally(row: Pick<CampaignRow, "real" | "qualified" | "clients" | "trash"
  * re-cut by the picked date range; add per-day insights rows if that matters.
  */
 export function useFunnel(clientId: string | undefined, range: DateRange) {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<FunnelLead[]>([]);
   const [campaigns, setCampaigns] = useState<{ tiktok: DbCampaign[]; meta: DbCampaign[] }>({ tiktok: [], meta: [] });
   const [conversionsSent, setConversionsSent] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -80,7 +89,7 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
       const [l, tt, mt, ev] = await Promise.all([
         db
           .from("leads")
-          .select(LEAD_COLUMNS)
+          .select(FUNNEL_COLUMNS)
           .eq("client_id", clientId)
           .gte("created_at", range.from.toISOString())
           .lte("created_at", range.to.toISOString())
@@ -97,7 +106,7 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
           .lte("sent_at", range.to.toISOString()),
       ]);
       if (l.error) console.error("leads load failed", l.error);
-      setLeads((l.data ?? []) as Lead[]);
+      setLeads((l.data ?? []) as FunnelLead[]);
       // meta_campaigns may not exist until the Meta migration lands; treat as empty.
       setCampaigns({ tiktok: (tt.data ?? []) as DbCampaign[], meta: (mt.data ?? []) as DbCampaign[] });
       setConversionsSent(ev.count ?? 0);
@@ -149,16 +158,22 @@ export function useFunnel(clientId: string | undefined, range: DateRange) {
       leads: leads.length,
       conversionsSent,
       currency: "USD",
+      delivered: 0,
+      returned: 0,
     };
     for (const r of rows) {
       t.spend += r.spend;
       t.clicks += r.clicks;
       t.impressions += r.impressions;
     }
-    for (const l of leads) tally(t, l); // all leads, attributed or not
+    for (const l of leads) {
+      tally(t, l); // all leads, attributed or not
+      if (stageOf(l) === "client" && l.order_status === "delivered") t.delivered++;
+      if (stageOf(l) === "client" && l.order_status === "returned") t.returned++;
+    }
     const seen: Record<string, number> = {};
     for (const l of leads)
-      if (stageOf(l) === "client" && l.order_currency) seen[l.order_currency] = (seen[l.order_currency] ?? 0) + 1;
+      if (isOrder(l) && l.order_currency) seen[l.order_currency] = (seen[l.order_currency] ?? 0) + 1;
     t.currency = Object.entries(seen).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "USD";
     return t;
   }, [rows, leads, conversionsSent]);

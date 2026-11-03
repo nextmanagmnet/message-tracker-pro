@@ -268,3 +268,11 @@ export function parseAnalysis(raw: string): Analysis | null {
     return null;
   }
 }
+
+// ---- When a sale counts ----
+// "delivery": the order confirmation still makes the lead a client (dashboards count the order) and
+// reports Contact/SubmitForm, but Purchase waits until the order is delivered. Cash-on-delivery
+// businesses refuse many orders at the door, so this keeps refused orders out of the ad's learning.
+export function reportableStages(passed: Stage[], purchaseTrigger: string | null | undefined): Stage[] {
+  return purchaseTrigger === "delivery" ? passed.filter((s) => s !== "client") : passed;
+}

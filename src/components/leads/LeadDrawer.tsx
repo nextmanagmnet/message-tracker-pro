@@ -5,10 +5,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bot, Check, Hand, Loader2, Send, Sparkles, UserRound, XCircle } from "lucide-react";
+import { Bot, Check, Hand, Loader2, PackageCheck, Send, Sparkles, Undo2, UserRound, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAgency } from "@/hooks/useAgency";
 import { db, invokeFn, Lead, maskHash, stageOf, useFormat } from "./shared";
-import { PlatformChip, StageBadge } from "./badges";
+import { OrderStatusBadge, PlatformChip, StageBadge, type OrderStatus } from "./badges";
 
 type Message = {
   id: string;
@@ -30,6 +31,10 @@ type ConversionEvent = {
   created_at: string;
 };
 
+const EVENT_COLUMNS = "id, platform, event_name, stage, value, currency, status, sent_at, created_at";
+const isOrderStatus = (s: string | null | undefined): s is OrderStatus =>
+  s === "confirmed" || s === "delivered" || s === "returned";
+
 const EVENT_STATUS: Record<ConversionEvent["status"], string> = {
   sent: "text-success",
   pending: "text-warning",
@@ -47,6 +52,8 @@ export function LeadDrawer({
   onChanged: () => void;
 }) {
   const { t, i18n } = useTranslation("features");
+  const { t: td } = useTranslation("delivery");
+  const { canManage } = useAgency();
   const f = useFormat();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -56,6 +63,10 @@ export function LeadDrawer({
   const [value, setValue] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [reply, setReply] = useState("");
+  const [order, setOrder] = useState<{ status: OrderStatus | null; deliveryMode: boolean }>({
+    status: null,
+    deliveryMode: false,
+  });
 
   useEffect(() => {
     if (!lead) return;
@@ -63,15 +74,22 @@ export function LeadDrawer({
     setCurrency(lead.order_currency ?? "USD");
     setLoading(true);
     (async () => {
-      const [conv, ev] = await Promise.all([
+      const [conv, ev, orderRow, client] = await Promise.all([
         db.from("conversations").select("id, agent_status").eq("lead_id", lead.id).maybeSingle(),
         db
           .from("conversion_events")
-          .select("id, platform, event_name, stage, value, currency, status, sent_at, created_at")
+          .select(EVENT_COLUMNS)
           .eq("lead_id", lead.id)
           .order("created_at", { ascending: false }),
+        db.from("leads").select("order_status").eq("id", lead.id).maybeSingle(),
+        db.from("clients").select("purchase_trigger").eq("id", lead.client_id).maybeSingle(),
       ]);
       setConversation((conv.data as Conversation) ?? null);
+      const status = orderRow.data?.order_status;
+      setOrder({
+        status: isOrderStatus(status) ? status : null,
+        deliveryMode: client.data?.purchase_trigger === "delivery",
+      });
       setEvents((ev.data ?? []) as ConversionEvent[]);
       if (conv.data) {
         const { data } = await db
@@ -138,6 +156,28 @@ export function LeadDrawer({
       onChanged();
       if (action === "take_over") setConversation((c) => (c ? { ...c, agent_status: "handed_off" } : c));
       if (action === "hand_back") setConversation((c) => (c ? { ...c, agent_status: "ai_active" } : c));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Delivery sends Purchase; a return only takes the order out of the dashboards.
+  const markOrder = async (action: "mark_delivered" | "mark_returned") => {
+    if (!lead) return;
+    setBusy(action);
+    try {
+      await invokeFn("lead-actions", { action, leadId: lead.id, value: value ? Number(value) : null, currency });
+      toast.success(td(`order.done.${action}`));
+      setOrder((o) => ({ ...o, status: action === "mark_delivered" ? "delivered" : "returned" }));
+      const { data } = await db
+        .from("conversion_events")
+        .select(EVENT_COLUMNS)
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false });
+      if (data) setEvents(data as ConversionEvent[]);
+      onChanged();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -243,6 +283,46 @@ export function LeadDrawer({
               </div>
               <p className="text-xs text-muted-foreground">{t("leads.notLeadHint")}</p>
             </section>
+
+            {stage === "client" && (
+              <section className="mt-6 space-y-2">
+                <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  {td("order.title")}
+                  {order.status && <OrderStatusBadge status={order.status} />}
+                </h4>
+                {canManage && order.status !== "returned" && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!!busy || order.status === "delivered"}
+                      onClick={() => markOrder("mark_delivered")}
+                    >
+                      {busy === "mark_delivered" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <PackageCheck className="w-4 h-4" />
+                      )}
+                      {td("order.markDelivered")}
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={!!busy} onClick={() => markOrder("mark_returned")}>
+                      {busy === "mark_returned" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Undo2 className="w-4 h-4" />
+                      )}
+                      {td("order.markReturned")}
+                    </Button>
+                  </div>
+                )}
+                {order.status === "returned" ? (
+                  <p className="text-xs text-muted-foreground">{td("order.returnedHint")}</p>
+                ) : (
+                  order.deliveryMode &&
+                  order.status !== "delivered" && <p className="text-xs text-muted-foreground">{td("order.waiting")}</p>
+                )}
+              </section>
+            )}
 
             {conversation && conversation.agent_status !== "off" && (
               <section className="mt-6 flex items-center justify-between rounded-lg bg-secondary/50 p-3">

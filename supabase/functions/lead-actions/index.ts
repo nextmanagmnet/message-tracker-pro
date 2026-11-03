@@ -1,9 +1,17 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
-import { authorizeClient, serviceClient } from "../_shared/auth.ts";
-import { reportStage } from "../_shared/conversions.ts";
+import { authorizeAgencyAdmin, authorizeClient, serviceClient } from "../_shared/auth.ts";
+import { reportOrder, reportStage } from "../_shared/conversions.ts";
 import type { Stage } from "../_shared/funnel.ts";
 import { sendWhatsAppText } from "../_shared/whatsappSend.ts";
 import { withCors } from "../_shared/cors.ts";
+
+// The order value/currency typed in the drawer; null when left empty.
+function orderInput(body: { value?: unknown; currency?: unknown }) {
+  const value = body.value == null || body.value === "" ? null : Number(body.value);
+  if (value != null && (!Number.isFinite(value) || value < 0)) return null;
+  const currency = typeof body.currency === "string" && body.currency ? body.currency.toUpperCase().slice(0, 3) : null;
+  return { value, currency };
+}
 
 // User actions on a lead from the Leads page. Body: { action, leadId, value?, currency? }.
 Deno.serve(
@@ -32,14 +40,32 @@ Deno.serve(
 
       switch (action) {
         case "mark_client": {
-          const value = body.value == null || body.value === "" ? null : Number(body.value);
-          if (value != null && (!Number.isFinite(value) || value < 0))
-            return json({ error: "Invalid order value" }, 400);
-          const currency =
-            typeof body.currency === "string" && body.currency ? body.currency.toUpperCase().slice(0, 3) : null;
-          const r = await reportStage(supabase, leadId, "client", { value, currency });
+          const order = orderInput(body);
+          if (!order) return json({ error: "Invalid order value" }, 400);
+          const r = await reportStage(supabase, leadId, "client", order);
           if (!r.changed) return json({ error: "Lead is already a client or was marked not a lead" }, 409);
           return json({ success: true, stage: "client" });
+        }
+        case "mark_delivered":
+        case "mark_returned": {
+          // Delivery sends Purchase, so only agency owners/admins may do it.
+          const { data: client } = await supabase
+            .from("clients")
+            .select("agency_id")
+            .eq("id", lead.client_id)
+            .maybeSingle();
+          const admin = await authorizeAgencyAdmin(req, client?.agency_id);
+          if (admin instanceof Response) return admin;
+          const order = orderInput(body);
+          if (!order) return json({ error: "Invalid order value" }, 400);
+          const delivered = action === "mark_delivered";
+          const r = await reportOrder(supabase, leadId, delivered ? "deliver" : "return", order);
+          if (!r.changed)
+            return json(
+              { error: "Nothing to change: the order is already in that state, or the lead isn't a client" },
+              409,
+            );
+          return json({ success: true, orderStatus: delivered ? "delivered" : "returned" });
         }
         case "mark_not_lead": {
           const r = await reportStage(supabase, leadId, "not_lead");

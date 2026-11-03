@@ -16,6 +16,7 @@ import {
   isOptOut,
   parseAdContext,
   parseAnalysis,
+  reportableStages,
   type FollowUpInput,
 } from "./funnel";
 
@@ -200,5 +201,17 @@ describe("hidden click reference", () => {
       expect(decodeRef(msg)).toBe(id);
     }
     expect(decodeRef("plain hello")).toBeNull();
+  });
+});
+
+describe("reportableStages", () => {
+  const passed = stagesPassed("real", "client");
+  it("reports Purchase on confirmation by default", () => {
+    expect(reportableStages(passed, "confirmation")).toEqual(["qualified", "client"]);
+    expect(reportableStages(passed, null)).toEqual(["qualified", "client"]);
+  });
+  it("holds Purchase back in delivery mode but still reports the earlier stages", () => {
+    expect(reportableStages(stagesPassed("new", "client"), "delivery")).toEqual(["real", "qualified"]);
+    expect(reportableStages(["real"], "delivery")).toEqual(["real"]);
   });
 });

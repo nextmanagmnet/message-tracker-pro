@@ -39,3 +39,25 @@ export function PlatformChip({ platform }: { platform: Platform | null }) {
     </span>
   );
 }
+
+export type OrderStatus = "confirmed" | "delivered" | "returned";
+
+const ORDER_STYLE: Record<OrderStatus, string> = {
+  confirmed: "bg-chart-3/15 text-chart-3 border-chart-3/30",
+  delivered: "bg-success/15 text-success border-success/30",
+  returned: "bg-destructive/10 text-destructive border-destructive/30",
+};
+
+export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  const { t } = useTranslation("delivery");
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        ORDER_STYLE[status],
+      )}
+    >
+      {t(`order.status.${status}`)}
+    </span>
+  );
+}

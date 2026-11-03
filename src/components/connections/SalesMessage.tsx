@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { DeliverySettings } from "./DeliverySettings";
 
 // The message the business sends on every new order; WOB counts it as a sale and reports Purchase.
 export function SalesMessage({ clientId, canManage }: { clientId: string; canManage: boolean }) {
@@ -139,6 +140,7 @@ export function SalesMessage({ clientId, canManage }: { clientId: string; canMan
           </div>
         )}
       </div>
+      <DeliverySettings clientId={clientId} canManage={canManage} />
     </div>
   );
 }

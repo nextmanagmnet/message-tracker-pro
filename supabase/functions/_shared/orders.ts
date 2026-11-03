@@ -52,3 +52,27 @@ export function parseOrder(text: string): { value: number | null; currency: stri
   const currency = CURRENCY[raw] ?? (/^[A-Za-z]{3}$/.test(raw) ? raw.toUpperCase() : null);
   return { value: Number.isFinite(value) && value > 0 ? value : null, currency };
 }
+
+// ---- Order status: confirmed -> delivered, or returned ----
+export type OrderStatus = "confirmed" | "delivered" | "returned";
+export type OrderEvent = "confirm" | "deliver" | "return";
+
+// Which order step a business message announces. Return wins over delivery over confirmation, so a
+// custom phrase that contains another one ("NOT DELIVERED" vs "DELIVERED") never counts twice.
+export function orderEventFor(
+  text: string,
+  markers: { order: string | null; delivery: string | null; return: string | null },
+): OrderEvent | null {
+  if (isOrderMessage(text, markers.return)) return "return";
+  if (isOrderMessage(text, markers.delivery)) return "deliver";
+  if (isOrderMessage(text, markers.order)) return "confirm";
+  return null;
+}
+
+// The status an order moves to, or null when the step doesn't apply. A returned order stays returned.
+export function nextOrderStatus(current: string | null | undefined, event: OrderEvent): OrderStatus | null {
+  if (current === "returned") return null;
+  if (event === "confirm") return current ? null : "confirmed";
+  if (event === "deliver") return current === "delivered" ? null : "delivered";
+  return "returned";
+}

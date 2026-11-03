@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { isOrderMessage, parseOrder } from "../_shared/orders.ts";
-import { reportStage } from "../_shared/conversions.ts";
+import { orderEventFor, parseOrder } from "../_shared/orders.ts";
+import { reportOrder, reportStage } from "../_shared/conversions.ts";
 import { isOptOut } from "../_shared/funnel.ts";
 import { createLead } from "./leads.ts";
 import type { WaMessage } from "./parse.ts";
@@ -94,11 +94,20 @@ export async function handleMessage(supabase: SupabaseClient, m: WaMessage) {
     const patch: Record<string, unknown> = { last_outbound_at: now, last_message_at: now };
     if (conv.agent_status === "ai_active") patch.agent_status = "handed_off"; // owner took over
     await supabase.from("conversations").update(patch).eq("id", conv.id);
-    // The business's order-confirmation message counts as a sale.
-    const { data: client } = await supabase.from("clients").select("order_marker").eq("id", clientId).maybeSingle();
-    if (isOrderMessage(m.text, client?.order_marker)) {
-      await reportStage(supabase, existingLead.id, "client", parseOrder(m.text));
-    }
+    // The business's order-confirmation message counts as a sale; delivery/return messages update the order.
+    const { data: client } = await supabase
+      .from("clients")
+      .select("order_marker, purchase_trigger, delivery_marker, return_marker")
+      .eq("id", clientId)
+      .maybeSingle();
+    const event = orderEventFor(m.text, {
+      order: client?.order_marker ?? null,
+      // The delivery phrase only counts in delivery mode, so confirmation-mode clients behave as before.
+      delivery: client?.purchase_trigger === "delivery" ? (client.delivery_marker ?? null) : null,
+      return: client?.return_marker ?? null,
+    });
+    if (event === "confirm") await reportStage(supabase, existingLead.id, "client", parseOrder(m.text));
+    else if (event) await reportOrder(supabase, existingLead.id, event, parseOrder(m.text));
     return;
   }
 

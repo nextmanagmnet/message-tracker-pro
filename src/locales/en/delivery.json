@@ -1,3 +1,41 @@
 {
-  "title": "Count sales on delivery"
+  "title": "Count sales on delivery",
+  "trigger": {
+    "label": "Count a sale when…",
+    "confirmation": "The order is confirmed",
+    "confirmationHint": "Purchase is reported as soon as you send the sales message.",
+    "delivery": "The order is delivered",
+    "deliveryHint": "The sales message counts the order; Purchase is reported only when you send the delivery message.",
+    "why": "Paid on delivery? Many orders are refused at the door. Reporting Purchase only on delivery teaches TikTok who actually pays, so it finds more real buyers.",
+    "saved": "Saved"
+  },
+  "phrases": {
+    "deliveryTitle": "Delivery message",
+    "deliveryHint": "Send it when the customer receives the order. WOB then reports Purchase.",
+    "deliveryTemplate": "📦 {{marker}} #1234\nThank you, enjoy your order!",
+    "returnTitle": "Return message",
+    "returnHint": "Send it when an order is refused or returned. WOB leaves it out of revenue and orders.",
+    "returnTemplate": "↩️ {{marker}} #1234",
+    "label": "Key phrase WOB looks for",
+    "copy": "Copy template",
+    "copied": "Template copied",
+    "tooShort": "Use at least 4 characters",
+    "same": "Use different phrases for confirmation, delivery and return"
+  },
+  "order": {
+    "title": "Order",
+    "status": {
+      "confirmed": "Confirmed",
+      "delivered": "Delivered",
+      "returned": "Returned"
+    },
+    "markDelivered": "Mark delivered",
+    "markReturned": "Mark returned",
+    "done": {
+      "mark_delivered": "Marked delivered",
+      "mark_returned": "Marked returned"
+    },
+    "waiting": "Purchase will be reported when the order is delivered.",
+    "returnedHint": "Left out of revenue and order counts. A Purchase already sent stays: ad platforms have no refund event."
+  }
 }
