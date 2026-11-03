@@ -1,4 +1,53 @@
 {
   "title": "Audiences",
-  "subtitle": "Turn real buyers into TikTok audiences."
+  "subtitle": "Turn real buyers into TikTok audiences.",
+  "explain": "WOB uploads the WhatsApp numbers of your real buyers (hashed, never readable) to TikTok, so ads can find more people like them. Audiences refresh every week.",
+  "error": "Something went wrong",
+  "create": {
+    "buyers": "Create from buyers",
+    "qualified": "Create from qualified leads"
+  },
+  "createHint": "Leads in this group right now: {{n}}.",
+  "createButton": "Create audience",
+  "cancel": "Cancel",
+  "name": "Audience name",
+  "alsoLookalike": "Also make a lookalike audience",
+  "lookalikeHint": "TikTok builds lookalikes only from audiences with at least {{min}} matched people.",
+  "lookalikeLater": "Audience created. It's too small for a lookalike yet; make one from the list once it reaches the minimum.",
+  "makeLookalike": "Lookalike",
+  "created": "Audience sent to TikTok",
+  "uploading": "Uploading to TikTok…",
+  "confirmDelete": "Delete \"{{name}}\" from TikTok and WOB?",
+  "refresh": "Refresh now",
+  "delete": "Delete",
+  "yes": "Yes",
+  "empty": "No audiences yet.",
+  "noBuyers": "Not enough buyers yet. Once the AI marks chats as buyers, you can build an audience from them.",
+  "tooSmall": "Too small to use yet (TikTok needs {{min}}). It keeps growing every week.",
+  "notConnected": "Connect a TikTok ad account to build audiences.",
+  "reconnect": "TikTok needs you to reconnect so WOB can manage audiences.",
+  "reconnectButton": "Reconnect TikTok",
+  "source": {
+    "buyers": "Buyers",
+    "qualified": "Qualified leads"
+  },
+  "size": {
+    "NARROW": "Narrow",
+    "BALANCED": "Balanced",
+    "BROAD": "Broad"
+  },
+  "status": {
+    "pending": "Pending",
+    "syncing": "Syncing",
+    "ready": "Ready",
+    "failed": "Failed"
+  },
+  "col": {
+    "name": "Name",
+    "source": "Source",
+    "members": "Members",
+    "lookalike": "Lookalike",
+    "status": "Status",
+    "synced": "Last sync"
+  }
 }
