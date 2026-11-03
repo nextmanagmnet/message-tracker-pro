@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, Loader2, Zap } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Unplug, Zap } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,6 +135,17 @@ export function TikTokSection({
     }
   };
 
+  const [removing, setRemoving] = useState<Account | null>(null);
+
+  // Removes the login only; campaign history and the saved pixel stay, so connecting again picks up where it left off.
+  const disconnect = async (account: Account) => {
+    const { error } = await supabase.from("tiktok_accounts").delete().eq("id", account.id);
+    setRemoving(null);
+    if (error) return toast.error(t("connections.tiktok.disconnectFailed"));
+    toast.success(t("connections.tiktok.disconnected"));
+    load();
+  };
+
   const connected = accounts === null ? null : accounts.length > 0;
   // Individuals keep one ad account: once connected, the button re-authorizes it (new TikTok permissions,
   // expired login) instead of adding another.
@@ -161,8 +182,20 @@ export function TikTokSection({
           {accounts.map((a) => (
             <li key={a.id} className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2">
               <span className="text-foreground">{a.advertiser_name ?? t("connections.tiktok.unnamed")}</span>
-              <span className="text-xs text-muted-foreground" dir="ltr">
-                {a.advertiser_id}
+              <span className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground" dir="ltr">
+                  {a.advertiser_id}
+                </span>
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRemoving(a)}
+                    aria-label={t("connections.tiktok.disconnect")}
+                  >
+                    <Unplug className="w-4 h-4" /> {t("connections.tiktok.disconnect")}
+                  </Button>
+                )}
               </span>
             </li>
           ))}
@@ -215,6 +248,22 @@ export function TikTokSection({
       {isIndividual && (accounts?.length ?? 0) >= 1 && (
         <p className="mt-3 text-xs text-muted-foreground">{t("limits.tiktok")}</p>
       )}
+      <AlertDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("connections.tiktok.disconnectTitle", { name: removing?.advertiser_name ?? "" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t("connections.tiktok.disconnectBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => removing && disconnect(removing)}>
+              {t("connections.tiktok.disconnect")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ConnectionCard>
   );
 }
