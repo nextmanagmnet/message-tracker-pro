@@ -1,3 +1,22 @@
 {
-  "title": "Weekly report on WhatsApp"
+  "title": "Weekly report on WhatsApp",
+  "subtitle": "Once a week, the owner of {{client}} gets last week's chats, leads, orders, revenue and ad costs on WhatsApp, sent from the business's connected line.",
+  "enable": "Send the weekly report",
+  "phone": "Owner's WhatsApp number",
+  "phoneHint": "International format with country code, e.g. +966501234567.",
+  "phoneRequired": "Add the owner's WhatsApp number to turn the report on.",
+  "phoneInvalid": "Enter a valid number with its country code, e.g. +966501234567.",
+  "language": "Report language",
+  "weekday": "Day",
+  "hour": "Time",
+  "timezone": "Time zone",
+  "timezoneHint": "An IANA name such as Asia/Riyadh. Your browser uses {{tz}}.",
+  "timezoneInvalid": "That time zone isn't recognized. Use a name like Asia/Riyadh.",
+  "save": "Save",
+  "saved": "Weekly report settings saved",
+  "preview": "Preview",
+  "lastSent": "Last sent {{date}}",
+  "neverSent": "Not sent yet",
+  "adminsOnly": "Only agency owners and admins can change these settings.",
+  "error": "Something went wrong. Please try again."
 }
