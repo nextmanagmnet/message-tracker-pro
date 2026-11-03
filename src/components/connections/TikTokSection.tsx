@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeFn, isLimitError } from "@/components/leads/shared";
+import { TikTokBalanceCard } from "@/components/tiktok/TikTokBalanceCard";
 import { ConnectionCard } from "./ConnectionCard";
 import { beginOAuth, TIKTOK_KEY } from "./oauth";
 
@@ -177,6 +178,7 @@ export function TikTokSection({
         </>
       }
     >
+      {connected && <TikTokBalanceCard clientId={clientId} className="mb-4" />}
       {accounts && accounts.length > 0 && (
         <ul className="mb-4 space-y-1 text-sm">
           {accounts.map((a) => (

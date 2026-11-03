@@ -1,0 +1,23 @@
+{
+  "title": "Ask your agency to top up",
+  "hint": "Your ad account is funded by your agency. Send the amount you need; they approve it in WOB and the money moves from the account's Business Center.",
+  "amount": "Amount",
+  "note": "Note (optional)",
+  "notePlaceholder": "For example: campaign starts Monday",
+  "max": "Up to {{max}} per request.",
+  "send": "Send request",
+  "sent": "Request sent to your agency",
+  "failed": "Could not send the request",
+  "waiting": "Waiting for approval: {{amount}}.",
+  "cancel": "Cancel request",
+  "orSelf": "Or add funds yourself in TikTok",
+  "status": {
+    "pending": "Waiting",
+    "approved": "Approved: funds added",
+    "declined": "Declined",
+    "cancelled": "Cancelled",
+    "failed": "Failed"
+  },
+  "banner": "Top-up requests waiting for your approval: {{count}}",
+  "review": "Review"
+}

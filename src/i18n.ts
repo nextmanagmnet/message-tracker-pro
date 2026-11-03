@@ -6,6 +6,8 @@ import enFeatures from "./locales/en/features.json";
 import arFeatures from "./locales/ar/features.json";
 import enLanding from "./locales/en/landing.json";
 import arLanding from "./locales/ar/landing.json";
+import enTopup from "./locales/en/topup.json";
+import arTopup from "./locales/ar/topup.json";
 import enLaunch from "./locales/en/launch.json";
 import arLaunch from "./locales/ar/launch.json";
 import enAudiences from "./locales/en/audiences.json";
@@ -48,6 +50,7 @@ i18n.use(initReactI18next).init({
       common: enCommon,
       features: enFeatures,
       landing: enLanding,
+      topup: enTopup,
       launch: enLaunch,
       audiences: enAudiences,
       optimizer: enOptimizer,
@@ -60,6 +63,7 @@ i18n.use(initReactI18next).init({
       common: arCommon,
       features: arFeatures,
       landing: arLanding,
+      topup: arTopup,
       launch: arLaunch,
       audiences: arAudiences,
       optimizer: arOptimizer,
@@ -71,7 +75,19 @@ i18n.use(initReactI18next).init({
   },
   lng: initial,
   fallbackLng: "en",
-  ns: ["common", "features", "landing", "launch", "audiences", "optimizer", "inbox", "weekly", "tone", "delivery"],
+  ns: [
+    "common",
+    "features",
+    "landing",
+    "topup",
+    "launch",
+    "audiences",
+    "optimizer",
+    "inbox",
+    "weekly",
+    "tone",
+    "delivery",
+  ],
   defaultNS: "common",
   interpolation: { escapeValue: false },
   returnNull: false,

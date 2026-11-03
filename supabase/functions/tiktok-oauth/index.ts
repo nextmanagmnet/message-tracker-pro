@@ -1,5 +1,6 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
+import { balance } from "./balance.ts";
 import { fetchCampaigns } from "./campaigns.ts";
 import { ensurePixelAction, testEvent } from "./events.ts";
 import { callback, getAuthUrl } from "./oauth.ts";
@@ -52,6 +53,8 @@ Deno.serve(
           return await getAuthUrl(ctx);
         case "callback":
           return await callback(ctx);
+        case "balance":
+          return await balance(ctx);
         case "fetch-campaigns":
           return await fetchCampaigns(ctx);
         default:

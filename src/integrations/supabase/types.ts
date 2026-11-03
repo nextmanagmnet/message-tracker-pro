@@ -1423,6 +1423,85 @@ export type Database = {
           },
         ]
       }
+      topup_requests: {
+        Row: {
+          advertiser_id: string
+          advertiser_name: string | null
+          amount: number
+          client_id: string
+          client_name: string | null
+          created_at: string
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          error: string | null
+          fund_transfer_id: string | null
+          funding_agency_id: string
+          id: string
+          note: string | null
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          advertiser_id: string
+          advertiser_name?: string | null
+          amount: number
+          client_id: string
+          client_name?: string | null
+          created_at?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          error?: string | null
+          fund_transfer_id?: string | null
+          funding_agency_id: string
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          advertiser_id?: string
+          advertiser_name?: string | null
+          amount?: number
+          client_id?: string
+          client_name?: string | null
+          created_at?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          error?: string | null
+          fund_transfer_id?: string | null
+          funding_agency_id?: string
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topup_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topup_requests_fund_transfer_id_fkey"
+            columns: ["fund_transfer_id"]
+            isOneToOne: false
+            referencedRelation: "fund_transfers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topup_requests_funding_agency_id_fkey"
+            columns: ["funding_agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_report_settings: {
         Row: {
           client_id: string

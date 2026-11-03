@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { TikTokBalanceCard } from "@/components/tiktok/TikTokBalanceCard";
+import { TopUpRequestsBanner } from "@/components/tiktok/TopUpRequestsBanner";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -80,6 +82,9 @@ const Index = () => {
         </div>
       ) : (
         <>
+          <TopUpRequestsBanner className="mb-6" />
+          <TikTokBalanceCard clientId={selectedClient.id} className="mb-6" />
+
           <section className="glass-card wob-mesh-hero p-6 mb-6" aria-label={t("dashboard.funnel")}>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/80 mb-4">
               {t("dashboard.funnel")}

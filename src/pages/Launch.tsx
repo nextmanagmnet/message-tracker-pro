@@ -14,6 +14,8 @@ import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeFn, useFormat } from "@/components/leads/shared";
 import { goLink } from "@/lib/goLink";
+import { TopUpButton } from "@/components/tiktok/TopUpButton";
+import { useTikTokBalance } from "@/components/tiktok/useTikTokBalance";
 import { cn } from "@/lib/utils";
 import {
   type Gender,
@@ -77,6 +79,7 @@ const Launch = () => {
   const navigate = useNavigate();
   const { selectedClient, canManage } = useAgency();
   const clientId = selectedClient?.id;
+  const topUpAccount = useTikTokBalance(clientId).accounts?.[0];
   const lang = i18n.language === "ar" ? "ar" : "en";
 
   const [options, setOptions] = useState<Options | null>(null);
@@ -675,9 +678,13 @@ const Launch = () => {
                     <>
                       {" "}
                       {t("review.lowBalance")}{" "}
-                      <Link to="/funding" className="text-primary underline">
-                        {t("review.addFunds")}
-                      </Link>
+                      {topUpAccount && (
+                        <TopUpButton
+                          advertiserId={topUpAccount.advertiserId}
+                          underBusinessCenter={topUpAccount.underBusinessCenter}
+                          size="sm"
+                        />
+                      )}
                     </>
                   )}
                 </p>
