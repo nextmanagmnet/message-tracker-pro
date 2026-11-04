@@ -267,8 +267,8 @@ const Launch = () => {
           <p className="text-foreground" dir="auto">
             {loadError}
           </p>
-          <Button className="mt-4" onClick={() => navigate("/connections")}>
-            {t("reconnect.action")}
+          <Button className="mt-4" onClick={() => navigate(managed ? backTo : "/connections")}>
+            {managed ? t("result.back") : t("reconnect.action")}
           </Button>
         </div>
       );

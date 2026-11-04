@@ -1,4 +1,5 @@
 import { authorizeCampaigns } from "../_shared/auth.ts";
+import { advertiserBalance } from "../_shared/bcAccounts.ts";
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
 import { hasLlm, jsonCompletion, REPLY_MODEL } from "../_shared/llm.ts";
@@ -58,7 +59,7 @@ Deno.serve(
 
       const { data: account } = await supabase
         .from("tiktok_accounts")
-        .select("advertiser_id, access_token")
+        .select("advertiser_id, access_token, managed_by_agency_id")
         .eq("client_id", clientId)
         .limit(1)
         .maybeSingle();
@@ -215,6 +216,21 @@ Deno.serve(
               cover: null,
             });
         const adv = info.data?.list?.[0];
+        let balance = adv ? { amount: Number(adv.balance ?? 0), currency: String(adv.currency ?? "USD") } : null;
+        // A managed account is paid from the agency's Business Center, which is where its credit is held.
+        if (account.managed_by_agency_id) {
+          const { data: bc } = await supabase
+            .from("bc_accounts")
+            .select("bc_id")
+            .eq("agency_id", account.managed_by_agency_id)
+            .eq("advertiser_id", advertiserId)
+            .maybeSingle();
+          const credit = bc
+            ? await advertiserBalance(bc.bc_id, account.access_token, advertiserId).catch(() => null)
+            : null;
+          if (credit?.balance != null)
+            balance = { amount: credit.balance, currency: credit.currency ?? balance?.currency ?? "USD" };
+        }
         return json({
           identities: [...ids.values()],
           videos: [...videos.values()],
@@ -225,7 +241,7 @@ Deno.serve(
           })),
           pixel: pixel.data,
           pixelError: pixel.error,
-          balance: adv ? { amount: Number(adv.balance ?? 0), currency: String(adv.currency ?? "USD") } : null,
+          balance,
           country: typeof adv?.country === "string" ? adv.country : null,
           ctas: CTAS,
           maxBudget: Number(Deno.env.get("LAUNCH_MAX_DAILY_BUDGET")) || MAX_DAILY_BUDGET,

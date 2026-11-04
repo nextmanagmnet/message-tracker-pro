@@ -58,7 +58,7 @@ export async function authorizeCampaigns(
   });
   if (own) return { userId, supabase, managed: false };
 
-  const { data: managed } = await supabase.rpc("agency_can_run_ads", { _user_id: userId, _client_id: clientId });
+  const { data: managed } = await supabase.rpc("agency_can_run_ads", { p_user: userId, p_client: clientId });
   if (managed) return { userId, supabase, managed: true };
   return json({ error: "You can't run ads for this account", code: "no_permission" }, 403);
 }

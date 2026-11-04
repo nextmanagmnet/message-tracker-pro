@@ -32,6 +32,7 @@ export async function tt(
 async function listBalances(
   bcId: string,
   token: string,
+  stopAt?: string, // stop paging once this ad account has been read
 ): Promise<{ rows: BcAdvertiser[]; sample: unknown; error?: string }> {
   const rows: BcAdvertiser[] = [];
   let sample: unknown = null;
@@ -54,10 +55,25 @@ async function listBalances(
       const p = parseAdvertiserBalance(r);
       if (p) rows.push(p);
     }
+    if (stopAt && rows.some((r) => r.advertiserId === stopAt)) break;
     const totalPages = Number(d.data?.page_info?.total_page);
     if (list.length === 0 || (Number.isFinite(totalPages) ? page >= totalPages : list.length < PAGE_SIZE)) break;
   }
   return { rows, sample };
+}
+
+/**
+ * One ad account's credit inside a Business Center: what TikTok shows as available to it. An account paid for by a
+ * Business Center holds its money there, so the account's own info page does not carry it.
+ * ponytail: pages through the BC's accounts until it finds this one (~10 calls for 500 accounts); cache if it gets slow.
+ */
+export async function advertiserBalance(
+  bcId: string,
+  token: string,
+  advertiserId: string,
+): Promise<BcAdvertiser | null> {
+  const { rows } = await listBalances(bcId, token, advertiserId);
+  return rows.find((r) => r.advertiserId === advertiserId) ?? null;
 }
 
 export type BcResult = BcSummary & {
