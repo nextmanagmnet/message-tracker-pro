@@ -26,6 +26,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Launch = lazy(() => import("./pages/Launch"));
+const WalletPage = lazy(() => import("./pages/Wallet"));
 const Audiences = lazy(() => import("./pages/Audiences"));
 const Optimizer = lazy(() => import("./pages/Optimizer"));
 const Inbox = lazy(() => import("./pages/Inbox"));
@@ -206,6 +207,14 @@ const App = () => (
                     element={
                       <P>
                         <Inbox />
+                      </P>
+                    }
+                  />
+                  <Route
+                    path="/wallet"
+                    element={
+                      <P>
+                        <WalletPage />
                       </P>
                     }
                   />

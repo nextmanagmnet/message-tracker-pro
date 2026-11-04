@@ -21,7 +21,8 @@
     "funding": "Funding",
     "inbox": "Team inbox",
     "optimizer": "Recommendations",
-    "audiences": "Audiences"
+    "audiences": "Audiences",
+    "wallet": "Wallet"
   },
   "theme": {
     "label": "Theme",

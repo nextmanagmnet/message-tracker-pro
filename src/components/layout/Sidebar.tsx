@@ -17,6 +17,7 @@ import {
   Inbox,
   UsersRound,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useAgency } from "@/hooks/useAgency";
@@ -26,6 +27,7 @@ const mainItems = [
   { icon: LayoutDashboard, key: "nav.dashboard", path: "/" },
   { icon: MessageCircle, key: "nav.leads", path: "/leads" },
   { icon: Inbox, key: "nav.inbox", path: "/inbox" },
+  { icon: CreditCard, key: "nav.wallet", path: "/wallet" },
   { icon: TrendingUp, key: "nav.campaigns", path: "/campaigns" },
   { icon: Sparkles, key: "nav.optimizer", path: "/optimizer" },
   { icon: UsersRound, key: "nav.audiences", path: "/audiences" },

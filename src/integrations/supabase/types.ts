@@ -285,6 +285,41 @@ export type Database = {
           },
         ]
       }
+      agency_wallet_settings: {
+        Row: {
+          agency_id: string
+          commission_percent: number
+          flat_fee: number
+          min_topup: number
+          payment_instructions: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          commission_percent?: number
+          flat_fee?: number
+          min_topup?: number
+          payment_instructions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          commission_percent?: number
+          flat_fee?: number
+          min_topup?: number
+          payment_instructions?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_wallet_settings_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: true
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_agent_settings: {
         Row: {
           allowed_hours_end: number
@@ -346,6 +381,38 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: true
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bc_accounts: {
+        Row: {
+          advertiser_id: string
+          advertiser_name: string | null
+          agency_id: string
+          bc_id: string
+          updated_at: string
+        }
+        Insert: {
+          advertiser_id: string
+          advertiser_name?: string | null
+          agency_id: string
+          bc_id: string
+          updated_at?: string
+        }
+        Update: {
+          advertiser_id?: string
+          advertiser_name?: string | null
+          agency_id?: string
+          bc_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bc_accounts_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
         ]
@@ -666,6 +733,8 @@ export type Database = {
           advertiser_name: string | null
           agency_id: string
           amount: number
+          bc_id: string | null
+          bc_name: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -680,6 +749,8 @@ export type Database = {
           advertiser_name?: string | null
           agency_id: string
           amount: number
+          bc_id?: string | null
+          bc_name?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -694,6 +765,8 @@ export type Database = {
           advertiser_name?: string | null
           agency_id?: string
           amount?: number
+          bc_id?: string | null
+          bc_name?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1435,12 +1508,15 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           error: string | null
+          fee: number
           fund_transfer_id: string | null
           funding_agency_id: string
           id: string
           note: string | null
+          refund_entry_id: string | null
           requested_by: string | null
           status: string
+          wallet_entry_id: string | null
         }
         Insert: {
           advertiser_id: string
@@ -1453,12 +1529,15 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           error?: string | null
+          fee?: number
           fund_transfer_id?: string | null
           funding_agency_id: string
           id?: string
           note?: string | null
+          refund_entry_id?: string | null
           requested_by?: string | null
           status?: string
+          wallet_entry_id?: string | null
         }
         Update: {
           advertiser_id?: string
@@ -1471,12 +1550,15 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           error?: string | null
+          fee?: number
           fund_transfer_id?: string | null
           funding_agency_id?: string
           id?: string
           note?: string | null
+          refund_entry_id?: string | null
           requested_by?: string | null
           status?: string
+          wallet_entry_id?: string | null
         }
         Relationships: [
           {
@@ -1498,6 +1580,109 @@ export type Database = {
             columns: ["funding_agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topup_requests_refund_entry_id_fkey"
+            columns: ["refund_entry_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topup_requests_wallet_entry_id_fkey"
+            columns: ["wallet_entry_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_entries: {
+        Row: {
+          amount: number
+          balance_after: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          note: string | null
+          provider: string | null
+          provider_ref: string | null
+          request_id: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          request_id?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_entries_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "topup_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          client_id: string
+          currency: string
+          reference_code: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          client_id: string
+          currency?: string
+          reference_code?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          client_id?: string
+          currency?: string
+          reference_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1603,6 +1788,20 @@ export type Database = {
           last_sign_in_at: string
         }[]
       }
+      create_topup_request: {
+        Args: {
+          p_advertiser: string
+          p_advertiser_name: string
+          p_agency: string
+          p_amount: number
+          p_by: string
+          p_client: string
+          p_client_name: string
+          p_currency: string
+          p_note: string
+        }
+        Returns: string
+      }
       get_agency_members: {
         Args: { _agency_id: string }
         Returns: {
@@ -1631,6 +1830,14 @@ export type Database = {
         Args: { p_campaign_id: string; p_to: string; p_ttclid: string }
         Returns: number
       }
+      settle_topup_request: {
+        Args: { p_by: string; p_outcome: string; p_request: string }
+        Returns: string
+      }
+      topup_fee: {
+        Args: { p_agency: string; p_amount: number }
+        Returns: number
+      }
       user_can_access_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -1638,6 +1845,22 @@ export type Database = {
       user_in_agency: {
         Args: { _agency_id: string; _user_id: string }
         Returns: boolean
+      }
+      wallet_apply: {
+        Args: {
+          p_amount: number
+          p_by: string
+          p_client: string
+          p_kind: string
+          p_note: string
+          p_provider: string
+          p_provider_ref: string
+          p_request: string
+        }
+        Returns: {
+          out_balance: number
+          out_duplicate: boolean
+        }[]
       }
     }
     Enums: {
