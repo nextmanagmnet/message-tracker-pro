@@ -508,6 +508,7 @@ export type Database = {
           advertiser_name: string | null
           agency_id: string
           bc_id: string
+          bc_name: string | null
           updated_at: string
         }
         Insert: {
@@ -515,6 +516,7 @@ export type Database = {
           advertiser_name?: string | null
           agency_id: string
           bc_id: string
+          bc_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -522,6 +524,7 @@ export type Database = {
           advertiser_name?: string | null
           agency_id?: string
           bc_id?: string
+          bc_name?: string | null
           updated_at?: string
         }
         Relationships: [

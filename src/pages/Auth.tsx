@@ -21,7 +21,8 @@ async function landingPath(): Promise<string> {
 const Auth = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [isLogin, setIsLogin] = useState(true);
+  // /auth?mode=signup opens the sign-up form (used by the invite page); account type already defaults to individual.
+  const [isLogin, setIsLogin] = useState(() => new URLSearchParams(window.location.search).get("mode") !== "signup");
   const [loading, setLoading] = useState(false);
   const [needsConfirm, setNeedsConfirm] = useState(false);
   const [accountType, setAccountType] = useState<AccountType>("individual");

@@ -1,4 +1,116 @@
 {
   "title": "Ad accounts",
-  "subtitle": "Your Business Center accounts and the users you invite."
+  "subtitle": "Your Business Center accounts and the users you invite.",
+  "common": { "cancel": "Cancel", "close": "Close", "error": "Something went wrong. Try again." },
+  "tabs": { "accounts": "Accounts", "performance": "Performance" },
+  "chips": { "total": "Total", "notInvited": "Not invited", "invited": "Invited", "joined": "Linked" },
+  "status": { "not_invited": "Not invited", "invited": "Invited", "joined": "Linked", "revoked": "Invite revoked" },
+  "noBc": {
+    "title": "Connect your TikTok Business Center",
+    "body": "Connect it on the Funding page and all its ad accounts will show up here, ready to invite.",
+    "cta": "Go to Funding"
+  },
+  "accounts": {
+    "search": "Search by name or ID",
+    "refresh": "Refresh from TikTok",
+    "refreshed": "{{count}} ad accounts loaded from TikTok",
+    "columns": { "name": "Ad account", "bc": "Business Center", "status": "Status", "actions": "Actions" },
+    "selectAll": "Select all visible accounts",
+    "selectRow": "Select {{name}}",
+    "selected": "{{count}} selected",
+    "inviteSelected": "Invite selected",
+    "clearSelection": "Clear",
+    "maxBatch": "You can invite up to {{max}} accounts at a time. Only the first {{max}} were selected.",
+    "none": "No ad accounts match.",
+    "page": "Page {{page}} of {{pages}}",
+    "prev": "Previous",
+    "next": "Next",
+    "invite": "Invite",
+    "reinvite": "Re-invite",
+    "revoke": "Revoke invite",
+    "unlink": "Unlink",
+    "invitedOn": "Invited {{date}}",
+    "expires": "expires {{date}}",
+    "linkedOn": "Linked {{date}}",
+    "revoked": "Invite revoked.",
+    "unlinked": "Ad account unlinked.",
+    "unlinkTitle": "Unlink {{name}}?",
+    "unlinkBody": "The user keeps all their data and their workspace. They lose the agency's TikTok login for this ad account, and you stop seeing its campaign numbers. You can invite them again later.",
+    "confirmUnlink": "Unlink"
+  },
+  "invite": {
+    "title": "Invite links ready",
+    "intro": "Send each link to the ad account's owner. These links are shown only now, so copy or share them before you close this window.",
+    "note": "Each link works once and expires in 30 days. Re-inviting an account replaces its old link. After accepting, you will see campaign numbers only: spend, clicks, chats, qualified leads, orders and revenue. Never their messages, phone numbers or lead details.",
+    "copy": "Copy link",
+    "copied": "Link copied",
+    "copyAll": "Copy all",
+    "copiedAll": "All links copied",
+    "whatsapp": "WhatsApp",
+    "message": "{{agency}} invited you to manage your ad account on WOB. Open this link to accept: {{url}}"
+  },
+  "perf": {
+    "privacy": "You see campaign numbers only. Chats, phone numbers and lead details stay private to each user.",
+    "columns": {
+      "account": "Ad account",
+      "spend": "Spend (7d)",
+      "clicks": "Clicks",
+      "chats": "Chats",
+      "qualified": "Qualified leads",
+      "orders": "Orders",
+      "revenue": "Revenue",
+      "cpl": "Cost / qualified lead",
+      "cpo": "Cost / order",
+      "synced": "Last sync"
+    },
+    "totals": "Total",
+    "never": "Never",
+    "emptyTitle": "No linked ad accounts yet",
+    "emptyBody": "Ad accounts appear here after their owners accept your invite. Invite them from the Accounts tab.",
+    "open": "View campaigns for {{name}}",
+    "sheetDesc": "Last 7 days, campaign numbers only.",
+    "noCampaigns": "No campaign data for this period.",
+    "campaign": "Campaign"
+  },
+  "join": {
+    "checking": "Checking your invite…",
+    "invalidTitle": "This invite link is no longer valid",
+    "invalidBody": "It may have been used, revoked or expired. Ask the agency to send you a new link.",
+    "home": "Go to the home page",
+    "title": "{{agency}} invited you to manage {{account}} on WOB",
+    "titleNoName": "{{agency}} invited you to link an ad account on WOB",
+    "canSee": "What the agency can see",
+    "canSeeList": [
+      "Campaign numbers: spend, clicks, number of chats",
+      "Qualified leads and orders counts",
+      "Revenue for the campaigns"
+    ],
+    "cannotSee": "What the agency cannot see",
+    "cannotSeeList": ["Your messages and conversations", "Phone numbers", "Lead details"],
+    "funds": "The agency funds this ad account from its own Business Center, and you don't need to connect TikTok yourself.",
+    "leave": "You can leave the agency at any time, and your data stays with you.",
+    "create": "Create my account",
+    "signIn": "I already have an account",
+    "accept": "Accept and link my ad account",
+    "accepting": "Linking…",
+    "success": "Linked! {{account}} is now managed by {{agency}}.",
+    "noClientTitle": "You need an individual account",
+    "noClientBody": "This is an agency workspace. To accept an invite, sign in with (or create) an individual account for the business that owns the ad account.",
+    "errors": {
+      "invite_invalid": "This invite link is no longer valid. Ask the agency for a new one.",
+      "own_agency": "You can't accept an invite from your own agency.",
+      "already_linked": "This ad account is already linked to an agency.",
+      "limit": "Your plan's ad account limit has been reached."
+    }
+  },
+  "managed": {
+    "badge": "Managed by {{agency}}",
+    "hint": "{{agency}} funds this ad account and sees its campaign numbers only.",
+    "leave": "Leave agency",
+    "leaveTitle": "Leave {{agency}}?",
+    "leaveBody": "The agency's access stops at once. Your data stays with you, and you can connect your own TikTok account afterwards.",
+    "confirm": "Leave agency",
+    "left": "You left the agency.",
+    "failed": "Could not leave the agency."
+  }
 }

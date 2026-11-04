@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, Loader2, Unplug, Zap } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, LogOut, Unplug, Zap } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ import { TikTokBalanceCard } from "@/components/tiktok/TikTokBalanceCard";
 import { ConnectionCard } from "./ConnectionCard";
 import { beginOAuth, TIKTOK_KEY } from "./oauth";
 
+type Managed = { id: string; agency_name: string; advertiser_id: string };
 type Account = { id: string; advertiser_id: string; advertiser_name: string | null };
 
 export function TikTokSection({
@@ -35,6 +37,9 @@ export function TikTokSection({
   autoStart: boolean;
 }) {
   const { t } = useTranslation("features");
+  const { t: tl } = useTranslation("agencylinks");
+  const [managed, setManaged] = useState<Managed[]>([]);
+  const [leaving, setLeaving] = useState<Managed | null>(null);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [pixelId, setPixelId] = useState<string | null>(null);
   const [pixelCode, setPixelCode] = useState("");
@@ -45,10 +50,16 @@ export function TikTokSection({
   const triedSetup = useRef(false);
 
   const load = useCallback(async () => {
-    const [a, p] = await Promise.all([
+    const [a, p, m] = await Promise.all([
       supabase.from("tiktok_accounts").select("id, advertiser_id, advertiser_name").eq("client_id", clientId),
       supabase.from("tiktok_pixels").select("id, pixel_code").eq("client_id", clientId).maybeSingle(),
+      supabase
+        .from("agency_client_links")
+        .select("id, agency_name, advertiser_id")
+        .eq("client_id", clientId)
+        .eq("status", "active"),
     ]);
+    setManaged(m.data ?? []);
     setAccounts(a.data ?? []);
     setPixelId(p.data?.id ?? null);
     setPixelCode(p.data?.pixel_code ?? "");
@@ -147,11 +158,26 @@ export function TikTokSection({
     load();
   };
 
+  const managedFor = (a: Account) => managed.find((m) => m.advertiser_id === a.advertiser_id);
+
+  const leave = async (m: Managed) => {
+    setLeaving(null);
+    try {
+      await invokeFn("agency-join", { action: "leave", clientId, linkId: m.id });
+      toast.success(tl("managed.left"));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : tl("managed.failed"));
+    }
+  };
+
   const connected = accounts === null ? null : accounts.length > 0;
   // Individuals keep one ad account: once connected, the button re-authorizes it (new TikTok permissions,
   // expired login) instead of adding another.
   const atLimit = isIndividual && (accounts?.length ?? 0) >= 1;
-  const canConnect = canManage;
+  // A managed account uses the agency's login, so there is nothing to reconnect until the user leaves.
+  const allManaged = !!accounts?.length && accounts.every((a) => managedFor(a));
+  const canConnect = canManage && !allManaged;
 
   return (
     <ConnectionCard
@@ -181,26 +207,40 @@ export function TikTokSection({
       {connected && <TikTokBalanceCard clientId={clientId} className="mb-4" />}
       {accounts && accounts.length > 0 && (
         <ul className="mb-4 space-y-1 text-sm">
-          {accounts.map((a) => (
-            <li key={a.id} className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2">
-              <span className="text-foreground">{a.advertiser_name ?? t("connections.tiktok.unnamed")}</span>
-              <span className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground" dir="ltr">
-                  {a.advertiser_id}
+          {accounts.map((a) => {
+            const m = managedFor(a);
+            return (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/50 px-3 py-2"
+              >
+                <span className="flex flex-wrap items-center gap-2 text-foreground">
+                  {a.advertiser_name ?? t("connections.tiktok.unnamed")}
+                  {m && <Badge variant="outline">{tl("managed.badge", { agency: m.agency_name })}</Badge>}
                 </span>
-                {canManage && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setRemoving(a)}
-                    aria-label={t("connections.tiktok.disconnect")}
-                  >
-                    <Unplug className="w-4 h-4" /> {t("connections.tiktok.disconnect")}
-                  </Button>
-                )}
-              </span>
-            </li>
-          ))}
+                <span className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground" dir="ltr">
+                    {a.advertiser_id}
+                  </span>
+                  {canManage && m && (
+                    <Button variant="ghost" size="sm" onClick={() => setLeaving(m)}>
+                      <LogOut className="w-4 h-4" /> {tl("managed.leave")}
+                    </Button>
+                  )}
+                  {canManage && !m && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRemoving(a)}
+                      aria-label={t("connections.tiktok.disconnect")}
+                    >
+                      <Unplug className="w-4 h-4" /> {t("connections.tiktok.disconnect")}
+                    </Button>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
       {connected && (
@@ -250,6 +290,18 @@ export function TikTokSection({
       {isIndividual && (accounts?.length ?? 0) >= 1 && (
         <p className="mt-3 text-xs text-muted-foreground">{t("limits.tiktok")}</p>
       )}
+      <AlertDialog open={!!leaving} onOpenChange={(o) => !o && setLeaving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tl("managed.leaveTitle", { agency: leaving?.agency_name ?? "" })}</AlertDialogTitle>
+            <AlertDialogDescription>{tl("managed.leaveBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tl("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => leaving && leave(leaving)}>{tl("managed.confirm")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
