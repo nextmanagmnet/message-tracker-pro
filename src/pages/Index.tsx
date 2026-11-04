@@ -20,9 +20,10 @@ const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 
 const Index = () => {
   const { t, i18n } = useTranslation("features");
+  const { t: tl } = useTranslation("agencylinks");
   const f = useFormat();
   const navigate = useNavigate();
-  const { selectedClient } = useAgency();
+  const { selectedClient, linkedAccounts } = useAgency();
   const [range, setRange] = useState<DateRange>(getDefaultDateRange());
   const { leads, totals, loading } = useFunnel(selectedClient?.id, range);
 
@@ -73,10 +74,17 @@ const Index = () => {
       </div>
 
       {!selectedClient ? (
-        <div className="glass-card wob-mesh-hero p-12 text-center">
-          <p className="text-foreground mb-4">{t("dashboard.noClient")}</p>
-          <Button onClick={() => navigate("/connections")}>{t("dashboard.getStarted")}</Button>
-        </div>
+        linkedAccounts.length > 0 ? (
+          <div className="glass-card wob-mesh-hero p-12 text-center">
+            <p className="text-foreground mb-4">{tl("linked.indexHint")}</p>
+            <Button onClick={() => navigate("/agency")}>{tl("linked.openOverview")}</Button>
+          </div>
+        ) : (
+          <div className="glass-card wob-mesh-hero p-12 text-center">
+            <p className="text-foreground mb-4">{t("dashboard.noClient")}</p>
+            <Button onClick={() => navigate("/connections")}>{t("dashboard.getStarted")}</Button>
+          </div>
+        )
       ) : loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />

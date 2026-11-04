@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -13,6 +13,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { InviteClientDialog } from "@/components/clients/InviteClientDialog";
+import { LinkedUsersSection } from "@/components/clients/LinkedUsersSection";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAgency } from "@/hooks/useAgency";
@@ -47,7 +48,16 @@ import {
 export default function ClientsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { clients, canManage, createClient, updateClient, deleteClient, setSelectedClient } = useAgency();
+  const {
+    clients,
+    canManage,
+    createClient,
+    updateClient,
+    deleteClient,
+    setSelectedClient,
+    linkedAccounts,
+    refreshLinked,
+  } = useAgency();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -56,6 +66,11 @@ export default function ClientsPage() {
   const [clientName, setClientName] = useState("");
   const [inviteFor, setInviteFor] = useState<{ id: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // A freshly accepted invite shows up as soon as the page opens.
+  useEffect(() => {
+    void refreshLinked();
+  }, [refreshLinked]);
 
   const handleCreate = async () => {
     if (!clientName.trim()) {
@@ -141,7 +156,9 @@ export default function ClientsPage() {
   return (
     <DashboardLayout title={t("clients.title")} subtitle={t("clients.subtitle")}>
       <div className="flex items-center justify-between mb-8">
-        <span className="text-sm text-muted-foreground">{t("clients.count", { count: clients.length })}</span>
+        <span className="text-sm text-muted-foreground">
+          {t("clients.count", { count: clients.length + linkedAccounts.length })}
+        </span>
         {canManage && (
           <Button variant="glow" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="w-4 h-4" />
@@ -150,7 +167,7 @@ export default function ClientsPage() {
         )}
       </div>
 
-      {clients.length === 0 ? (
+      {clients.length === 0 && linkedAccounts.length === 0 ? (
         <div className="dark wob-mesh-cool rounded-2xl p-12 text-center text-white">
           <Building2 className="w-12 h-12 mx-auto mb-4 text-white/80" />
           <h3 className="text-lg font-semibold mb-2">{t("clients.emptyTitle")}</h3>
@@ -162,7 +179,7 @@ export default function ClientsPage() {
             </Button>
           )}
         </div>
-      ) : (
+      ) : clients.length === 0 ? null : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {clients.map((client) => (
             <div key={client.id} className="glass-card p-6 hover:border-primary/50 transition-colors">
@@ -235,6 +252,8 @@ export default function ClientsPage() {
           ))}
         </div>
       )}
+
+      <LinkedUsersSection />
 
       <InviteClientDialog client={inviteFor} onClose={() => setInviteFor(null)} />
 

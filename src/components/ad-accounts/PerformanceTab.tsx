@@ -6,11 +6,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useFormat } from "@/components/leads/shared";
+import { CampaignsTable, type Campaign } from "./CampaignsTable";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type Metric = Database["public"]["Functions"]["agency_client_metrics"]["Returns"][number];
-type Campaign = Database["public"]["Functions"]["agency_client_campaigns"]["Returns"][number];
 
 const sum = (rows: Metric[], k: "spend" | "clicks" | "chats" | "qualified" | "orders" | "revenue") =>
   rows.reduce((s, r) => s + Number(r[k] ?? 0), 0);
@@ -148,37 +148,7 @@ export function PerformanceTab({ agencyId }: { agencyId: string }) {
             <SheetDescription>{t("perf.sheetDesc")}</SheetDescription>
           </SheetHeader>
           <div className="mt-4">
-            {!campaigns ? (
-              <Skeleton className="h-40 w-full" />
-            ) : campaigns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("perf.noCampaigns")}</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("perf.campaign")}</TableHead>
-                    {(["spend", "clicks", "chats", "qualified", "orders", "revenue"] as const).map((k) => (
-                      <TableHead key={k} className="text-end">
-                        {t(`perf.columns.${k}`)}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {campaigns.map((c) => (
-                    <TableRow key={c.campaign_id}>
-                      <TableCell className="font-medium">{c.campaign_name}</TableCell>
-                      <TableCell className="text-end tabular-nums">{f.money(c.spend, open?.currency)}</TableCell>
-                      <TableCell className="text-end tabular-nums">{f.num(c.clicks)}</TableCell>
-                      <TableCell className="text-end tabular-nums">{f.num(c.chats)}</TableCell>
-                      <TableCell className="text-end tabular-nums">{f.num(c.qualified)}</TableCell>
-                      <TableCell className="text-end tabular-nums">{f.num(c.orders)}</TableCell>
-                      <TableCell className="text-end tabular-nums">{f.money(c.revenue, open?.currency)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <CampaignsTable campaigns={campaigns} currency={open?.currency} />
           </div>
         </SheetContent>
       </Sheet>

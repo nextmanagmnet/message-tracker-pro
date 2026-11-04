@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useMatch, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Building2, ChevronDown, Plus, Check } from "lucide-react";
+import { Building2, ChevronDown, Link2, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAgency } from "@/hooks/useAgency";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,20 @@ import { Label } from "@/components/ui/label";
 
 export function ClientSwitcher() {
   const { t } = useTranslation();
-  const { clients, selectedClient, setSelectedClient, canManage, createClient, isIndividual } = useAgency();
+  const navigate = useNavigate();
+  const {
+    clients,
+    selectedClient,
+    setSelectedClient,
+    canManage,
+    createClient,
+    isIndividual,
+    linkedAccounts,
+    refreshLinked,
+  } = useAgency();
+  // On a linked user's page the dropdown shows that user, so the header never names a different client than the page.
+  const linkedId = useMatch("/linked/:clientId")?.params.clientId;
+  const linked = linkedAccounts.find((a) => a.client_id === linkedId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -33,7 +47,7 @@ export function ClientSwitcher() {
   // Individual accounts have exactly one business; nothing to switch.
   if (isIndividual) return null;
 
-  const isFirst = clients.length === 0;
+  const isFirst = clients.length === 0 && linkedAccounts.length === 0;
 
   const handleCreateClient = async () => {
     if (!newClientName.trim()) {
@@ -102,12 +116,14 @@ export function ClientSwitcher() {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={(open) => open && void refreshLinked()}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="gap-2 min-w-[200px] justify-between">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              <span className="truncate max-w-[140px]">{selectedClient?.name || t("clientSwitcher.select")}</span>
+              <span className="truncate max-w-[140px]">
+                {linked?.advertiser_name || selectedClient?.name || t("clientSwitcher.select")}
+              </span>
             </div>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </Button>
@@ -118,13 +134,35 @@ export function ClientSwitcher() {
           {clients.map((client) => (
             <DropdownMenuItem
               key={client.id}
-              onClick={() => setSelectedClient(client)}
+              onClick={() => {
+                setSelectedClient(client);
+                if (linkedId) navigate("/");
+              }}
               className="flex items-center justify-between"
             >
               <span className="truncate">{client.name}</span>
-              {selectedClient?.id === client.id && <Check className="h-4 w-4 text-primary" />}
+              {!linked && selectedClient?.id === client.id && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
           ))}
+          {linkedAccounts.length > 0 && (
+            <>
+              {clients.length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Link2 className="h-3 w-3" aria-hidden />
+                {t("linked.group", { ns: "agencylinks" })}
+              </DropdownMenuLabel>
+              {linkedAccounts.map((a) => (
+                <DropdownMenuItem
+                  key={a.client_id}
+                  onClick={() => navigate(`/linked/${a.client_id}`)}
+                  className="flex items-center justify-between"
+                >
+                  <span className="truncate">{a.advertiser_name}</span>
+                  {linkedId === a.client_id && <Check className="h-4 w-4 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
           {canManage && (
             <>
               <DropdownMenuSeparator />

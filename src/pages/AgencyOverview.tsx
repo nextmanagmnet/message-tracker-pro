@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { getDefaultDateRange, type DateRange } from "@/components/dashboard/dateRange";
 import { Button } from "@/components/ui/button";
+import { LinkedUsersTable } from "@/components/clients/LinkedUsersSection";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
 import { computeStats, downloadCsv, LeadLite } from "@/lib/metrics";
@@ -16,12 +17,17 @@ type SortKey = "name" | "spend" | "real" | "cost" | "trash";
 const AgencyOverview = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { agency, clients, setSelectedClient } = useAgency();
+  const { agency, clients, setSelectedClient, linkedAccounts, refreshLinked } = useAgency();
   const [range, setRange] = useState<DateRange>(getDefaultDateRange());
   const [leads, setLeads] = useState<LeadLite[]>([]);
   const [spendByClient, setSpendByClient] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "spend", desc: true });
+
+  // A freshly accepted invite shows up as soon as the page opens.
+  useEffect(() => {
+    void refreshLinked();
+  }, [refreshLinked]);
 
   useEffect(() => {
     if (!clients.length) {
@@ -86,6 +92,9 @@ const AgencyOverview = () => {
     return computeStats(leads, spend);
   }, [leads, spendByClient]);
 
+  // With only linked users and no clients of its own, the agency sees just the linked table.
+  const showOwn = loading || clients.length > 0 || linkedAccounts.length === 0;
+
   const toggleSort = (key: SortKey) => setSort((s) => ({ key, desc: s.key === key ? !s.desc : true }));
 
   const exportCsv = () =>
@@ -139,7 +148,11 @@ const AgencyOverview = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricCard title={t("agency.activeClients")} value={clients.length} icon={<Building2 className="w-5 h-5" />} />
+        <MetricCard
+          title={t("agency.activeClients")}
+          value={clients.length + linkedAccounts.length}
+          icon={<Building2 className="w-5 h-5" />}
+        />
         <MetricCard
           title={t("agency.totalSpend")}
           value={`$${totals.spend.toFixed(2)}`}
@@ -157,53 +170,59 @@ const AgencyOverview = () => {
         />
       </div>
 
-      <div className="glass-card overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        ) : !clients.length ? (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground mb-4">{t("agency.noClients")}</p>
-            <Button onClick={() => navigate("/clients")}>{t("agency.addClient")}</Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-border">
-                <tr>
-                  <Th k="name" label={t("agency.colClient")} />
-                  <Th k="spend" label={t("agency.colSpend")} />
-                  <Th k="real" label={t("agency.colReal")} />
-                  <Th k="cost" label={t("agency.colCost")} />
-                  <Th k="trash" label={t("agency.colTrash")} />
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ client, stats }) => (
-                  <tr key={client.id} className="border-b border-border/50 hover:bg-secondary/30">
-                    <td className="px-6 py-4 font-medium text-foreground">{client.name}</td>
-                    <td className="px-6 py-4 text-foreground">${stats.spend.toFixed(2)}</td>
-                    <td className="px-6 py-4 text-success font-semibold">{stats.real}</td>
-                    <td className="px-6 py-4 text-foreground">
-                      {stats.costPerReal !== null ? `$${stats.costPerReal.toFixed(2)}` : "—"}
-                    </td>
-                    <td className={`px-6 py-4 ${stats.trashRatio > 50 ? "text-destructive" : "text-muted-foreground"}`}>
-                      {stats.trashRatio.toFixed(1)}%
-                    </td>
-                    <td className="px-6 py-4 text-end">
-                      <Button size="sm" variant="ghost" onClick={() => openClient(client.id)}>
-                        {t("common.open")}
-                      </Button>
-                    </td>
+      {showOwn && (
+        <div className="glass-card overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : !clients.length ? (
+            <div className="p-12 text-center">
+              <p className="text-muted-foreground mb-4">{t("agency.noClients")}</p>
+              <Button onClick={() => navigate("/clients")}>{t("agency.addClient")}</Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-border">
+                  <tr>
+                    <Th k="name" label={t("agency.colClient")} />
+                    <Th k="spend" label={t("agency.colSpend")} />
+                    <Th k="real" label={t("agency.colReal")} />
+                    <Th k="cost" label={t("agency.colCost")} />
+                    <Th k="trash" label={t("agency.colTrash")} />
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {rows.map(({ client, stats }) => (
+                    <tr key={client.id} className="border-b border-border/50 hover:bg-secondary/30">
+                      <td className="px-6 py-4 font-medium text-foreground">{client.name}</td>
+                      <td className="px-6 py-4 text-foreground">${stats.spend.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-success font-semibold">{stats.real}</td>
+                      <td className="px-6 py-4 text-foreground">
+                        {stats.costPerReal !== null ? `$${stats.costPerReal.toFixed(2)}` : "—"}
+                      </td>
+                      <td
+                        className={`px-6 py-4 ${stats.trashRatio > 50 ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {stats.trashRatio.toFixed(1)}%
+                      </td>
+                      <td className="px-6 py-4 text-end">
+                        <Button size="sm" variant="ghost" onClick={() => openClient(client.id)}>
+                          {t("common.open")}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      <LinkedUsersTable />
     </DashboardLayout>
   );
 };

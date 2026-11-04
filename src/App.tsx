@@ -30,6 +30,7 @@ const Launch = lazy(() => import("./pages/Launch"));
 const WalletPage = lazy(() => import("./pages/Wallet"));
 const AdAccounts = lazy(() => import("./pages/AdAccounts"));
 const Join = lazy(() => import("./pages/Join"));
+const LinkedAccount = lazy(() => import("./pages/LinkedAccount"));
 const Audiences = lazy(() => import("./pages/Audiences"));
 const Optimizer = lazy(() => import("./pages/Optimizer"));
 const Inbox = lazy(() => import("./pages/Inbox"));
@@ -223,6 +224,14 @@ const App = () => (
                     }
                   />
                   <Route path="/join" element={<Join />} />
+                  <Route
+                    path="/linked/:clientId"
+                    element={
+                      <AgencyOnly>
+                        <LinkedAccount />
+                      </AgencyOnly>
+                    }
+                  />
                   <Route
                     path="/ad-accounts"
                     element={

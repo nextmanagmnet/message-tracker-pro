@@ -1,5 +1,6 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./useAuth";
 
 export type AccountType = "individual" | "agency";
@@ -25,6 +26,9 @@ interface AgencyMember {
   client_id?: string | null;
 }
 
+/** A user who linked their ad account to this agency. The agency sees campaign numbers only. */
+export type LinkedAccount = Database["public"]["Functions"]["agency_client_metrics"]["Returns"][number];
+
 export interface Client {
   id: string;
   agency_id: string;
@@ -49,6 +53,10 @@ interface AgencyContextType {
   /** Staff with edit rights, or the client user for their own client. */
   canManageClient: boolean;
   refreshClients: () => Promise<void>;
+  /** Users linked through an invite (last 7 days of campaign numbers). Empty for individuals and client logins. */
+  linkedAccounts: LinkedAccount[];
+  linkedLoading: boolean;
+  refreshLinked: () => Promise<void>;
   createClient: (name: string) => Promise<CreateClientResult>;
   updateClient: (clientId: string, name: string) => Promise<boolean>;
   deleteClient: (clientId: string) => Promise<boolean>;
@@ -76,6 +84,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
+  const [linkedLoading, setLinkedLoading] = useState(false);
 
   const isOwner = membership?.role === "owner";
   const isAdmin = membership?.role === "admin";
@@ -87,6 +97,28 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const isIndividual = accountType === "individual";
 
   const userId = user?.id ?? null;
+  const agencyId = agency?.id ?? null;
+  const hasLinks = !!agencyId && !isIndividual && !isClientUser;
+
+  const refreshLinked = useCallback(async () => {
+    if (!agencyId || !hasLinks) return;
+    const { data, error } = await supabase.rpc("agency_client_metrics", { p_agency: agencyId });
+    if (error) {
+      console.error("Error fetching linked accounts:", error);
+      return;
+    }
+    setLinkedAccounts([...(data ?? [])].sort((a, b) => Number(b.spend) - Number(a.spend)));
+  }, [agencyId, hasLinks]);
+
+  // Load once per agency; screens call refreshLinked again when they open so a freshly accepted invite shows up.
+  useEffect(() => {
+    if (!hasLinks) {
+      setLinkedAccounts([]);
+      return;
+    }
+    setLinkedLoading(true);
+    void refreshLinked().finally(() => setLinkedLoading(false));
+  }, [hasLinks, refreshLinked]);
 
   // Refetch whenever the signed-in user changes. `cancelled` makes a response that arrives after
   // the user changed (or the provider unmounted) a no-op, so one user's data never lands under another.
@@ -256,6 +288,9 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
         isClientUser,
         canManageClient,
         refreshClients,
+        linkedAccounts,
+        linkedLoading,
+        refreshLinked,
         createClient,
         updateClient,
         deleteClient,
