@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { TikTokBalanceCard } from "@/components/tiktok/TikTokBalanceCard";
 import { WalletCard } from "@/components/wallet/WalletCard";
 import { TopUpRequestsBanner } from "@/components/tiktok/TopUpRequestsBanner";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -20,10 +20,9 @@ const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 
 const Index = () => {
   const { t, i18n } = useTranslation("features");
-  const { t: tl } = useTranslation("agencylinks");
   const f = useFormat();
   const navigate = useNavigate();
-  const { selectedClient, linkedAccounts } = useAgency();
+  const { selectedClient, loading: agencyLoading, isIndividual, isClientUser, clients } = useAgency();
   const [range, setRange] = useState<DateRange>(getDefaultDateRange());
   const { leads, totals, loading } = useFunnel(selectedClient?.id, range);
 
@@ -61,6 +60,10 @@ const Index = () => {
   const trashRate = totals.leads ? totals.trash / totals.leads : 0;
   const money = (v: number | null) => (v === null ? "—" : f.money(v, "USD"));
 
+  // An agency with no clients of its own lands on its overview, where the linked users are.
+  if (!agencyLoading && !isIndividual && !isClientUser && clients.length === 0)
+    return <Navigate to="/agency" replace />;
+
   return (
     <DashboardLayout
       title={t("dashboard.title")}
@@ -74,17 +77,10 @@ const Index = () => {
       </div>
 
       {!selectedClient ? (
-        linkedAccounts.length > 0 ? (
-          <div className="glass-card wob-mesh-hero p-12 text-center">
-            <p className="text-foreground mb-4">{tl("linked.indexHint")}</p>
-            <Button onClick={() => navigate("/agency")}>{tl("linked.openOverview")}</Button>
-          </div>
-        ) : (
-          <div className="glass-card wob-mesh-hero p-12 text-center">
-            <p className="text-foreground mb-4">{t("dashboard.noClient")}</p>
-            <Button onClick={() => navigate("/connections")}>{t("dashboard.getStarted")}</Button>
-          </div>
-        )
+        <div className="glass-card wob-mesh-hero p-12 text-center">
+          <p className="text-foreground mb-4">{t("dashboard.noClient")}</p>
+          <Button onClick={() => navigate("/connections")}>{t("dashboard.getStarted")}</Button>
+        </div>
       ) : loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />

@@ -54,7 +54,9 @@ interface SidebarProps {
 export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { isIndividual, isClientUser } = useAgency();
+  const { isIndividual, isClientUser, clients, loading } = useAgency();
+  // An agency with no clients of its own works only through linked users, so the per-client pages would all be empty.
+  const lean = !loading && !isIndividual && !isClientUser && clients.length === 0;
   const rtl = i18n.dir() === "rtl";
 
   const renderItem = (item: (typeof mainItems)[number]) => {
@@ -96,9 +98,16 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-          {mainItems.filter((i) => !(isClientUser && i.path === "/ai-agent")).map(renderItem)}
+          {lean ? (
+            <>
+              {agencyItems.map(renderItem)}
+              {mainItems.filter((i) => i.path === "/settings").map(renderItem)}
+            </>
+          ) : (
+            !loading && mainItems.filter((i) => !(isClientUser && i.path === "/ai-agent")).map(renderItem)
+          )}
 
-          {!isIndividual && !isClientUser && (
+          {!lean && !loading && !isIndividual && !isClientUser && (
             <div className="pt-6">
               {!collapsed && (
                 <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">

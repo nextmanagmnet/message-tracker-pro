@@ -149,8 +149,6 @@
     "back": "Back to overview",
     "impressions": "Impressions",
     "campaigns": "Campaigns",
-    "openOverview": "Open agency overview",
-    "indexHint": "You have no clients of your own yet. Your linked users are in the agency overview.",
     "count_one": "{{count}} linked user",
     "count_other": "{{count}} linked users",
     "lastSync": "Last sync: {{when}}"
