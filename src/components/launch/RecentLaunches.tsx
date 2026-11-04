@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useFormat } from "@/components/leads/shared";
 import { cn } from "@/lib/utils";
-import { type Launch, launchParams } from "./api";
+import { type Launch, launchParams, loadWorkspace } from "./api";
 import { LaunchStatus } from "./LaunchStatus";
 
 const TONE: Record<string, string> = {
@@ -23,13 +22,13 @@ export function RecentLaunches({ clientId }: { clientId: string }) {
   const [open, setOpen] = useState<Launch | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("ad_launches")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false })
-      .limit(5)
-      .then(({ data }) => setLaunches(data ?? []));
+    let cancelled = false;
+    loadWorkspace(clientId)
+      .then((w) => !cancelled && setLaunches(w.launches))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [clientId]);
 
   if (!launches.length) return null;

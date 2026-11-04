@@ -130,6 +130,7 @@ const Join = () => {
               </div>
               <ul className="space-y-1.5 text-sm text-muted-foreground list-disc ps-5">
                 <li>{t("join.funds")}</li>
+                <li>{t("join.runAds")}</li>
                 <li>{t("join.leave")}</li>
               </ul>
 

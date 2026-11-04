@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 const Index = lazy(() => import("./pages/Index"));
 const Leads = lazy(() => import("./pages/Leads"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
+const AgencyCampaigns = lazy(() => import("./pages/AgencyCampaigns"));
 const Connections = lazy(() => import("./pages/Connections"));
 const AIAgent = lazy(() => import("./pages/AIAgent"));
 const Catalog = lazy(() => import("./pages/Catalog"));
@@ -68,6 +69,13 @@ const AgencyOnly = ({ children }: { children: ReactNode }) => {
   return <P>{children}</P>;
 };
 
+// An agency that works only through linked users has no campaigns of its own to list: it picks a user instead.
+const CampaignsRoute = () => {
+  const { loading, isIndividual, isClientUser, clients } = useAgency();
+  if (loading) return <PageFallback />;
+  return !isIndividual && !isClientUser && clients.length === 0 ? <AgencyCampaigns /> : <Campaigns />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -95,7 +103,7 @@ const App = () => (
                     path="/campaigns"
                     element={
                       <P>
-                        <Campaigns />
+                        <CampaignsRoute />
                       </P>
                     }
                   />
@@ -224,6 +232,14 @@ const App = () => (
                     }
                   />
                   <Route path="/join" element={<Join />} />
+                  <Route
+                    path="/linked/:clientId/launch"
+                    element={
+                      <AgencyOnly>
+                        <Launch />
+                      </AgencyOnly>
+                    }
+                  />
                   <Route
                     path="/linked/:clientId"
                     element={

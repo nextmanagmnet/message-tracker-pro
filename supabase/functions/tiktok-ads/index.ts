@@ -1,5 +1,4 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { authorizeClient } from "../_shared/auth.ts";
+import { authorizeCampaigns } from "../_shared/auth.ts";
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
 import { hasLlm, jsonCompletion, REPLY_MODEL } from "../_shared/llm.ts";
@@ -24,7 +23,8 @@ import {
 } from "../_shared/tiktokAds.ts";
 
 // AI campaign launcher: builds a TikTok lead-generation campaign that lands on WOB's WhatsApp link.
-// Body: { action, clientId, ... }. Agency owners/admins only; the TikTok token never leaves the server.
+// Body: { action, clientId, ... }. Agency staff with the "campaigns" permission only, for their own clients or for a
+// linked user who allows it; the TikTok token never leaves the server.
 // Nothing spends unless the request carries confirm: true (the wizard's explicit Launch / Resume click).
 
 type Row = Record<string, unknown>;
@@ -46,28 +46,15 @@ async function attempt<T>(fn: () => Promise<T>): Promise<{ data: T | null; recon
   }
 }
 
-async function isAgencyAdmin(supabase: SupabaseClient, userId: string, clientId: string) {
-  const { data: client } = await supabase.from("clients").select("agency_id").eq("id", clientId).maybeSingle();
-  if (!client) return false;
-  const roles = await Promise.all(
-    ["owner", "admin"].map((role) =>
-      supabase.rpc("has_agency_role", { _user_id: userId, _agency_id: client.agency_id, _role: role }),
-    ),
-  );
-  return roles.some((r) => r.data === true);
-}
-
 Deno.serve(
   withCors(async (req) => {
     if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
     try {
       const body = await req.json().catch(() => ({}));
-      const auth = await authorizeClient(req, body.clientId);
+      const auth = await authorizeCampaigns(req, body.clientId);
       if (auth instanceof Response) return auth;
-      const { supabase, userId } = auth;
+      const { supabase, managed, userId } = auth;
       const clientId: string = body.clientId;
-      if (!(await isAgencyAdmin(supabase, userId, clientId)))
-        return json({ error: "Only agency owners and admins can launch campaigns" }, 403);
 
       const { data: account } = await supabase
         .from("tiktok_accounts")
@@ -231,7 +218,11 @@ Deno.serve(
         return json({
           identities: [...ids.values()],
           videos: [...videos.values()],
-          numbers: numbers.data ?? [],
+          // A linked user's phone numbers stay private: the agency picks by label (last 4 digits).
+          numbers: (numbers.data ?? []).map((n) => ({
+            id: n.id,
+            phone_number: managed ? `•••• ${String(n.phone_number).slice(-4)}` : n.phone_number,
+          })),
           pixel: pixel.data,
           pixelError: pixel.error,
           balance: adv ? { amount: Number(adv.balance ?? 0), currency: String(adv.currency ?? "USD") } : null,
@@ -246,6 +237,45 @@ Deno.serve(
             ads: ads.reconnect, // Ads Management: creating and reading campaigns
           },
         });
+      }
+
+      // Everything the wizard shows from this client's own tables. It comes through here, not the browser, so an
+      // agency running ads for a linked user never needs read access to that user's data.
+      if (action === "workspace") {
+        const [launches, media, products] = await Promise.all([
+          supabase
+            .from("ad_launches")
+            .select("*")
+            .eq("client_id", clientId)
+            .order("created_at", { ascending: false })
+            .limit(5),
+          supabase
+            .from("ad_media")
+            .select("*")
+            .eq("client_id", clientId)
+            .eq("kind", "video")
+            .order("created_at", { ascending: false })
+            .limit(20),
+          supabase
+            .from("products")
+            .select("id, name, videos")
+            .eq("client_id", clientId)
+            .order("created_at", { ascending: false })
+            .limit(50),
+        ]);
+        return json({ launches: launches.data ?? [], media: media.data ?? [], products: products.data ?? [] });
+      }
+
+      // A one-time upload slot in this client's media folder (the browser sends the file straight to storage).
+      if (action === "upload-url") {
+        const ext = String(body.ext ?? "mp4")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 5);
+        const path = `${clientId}/${crypto.randomUUID()}.${ext || "mp4"}`;
+        const { data, error } = await supabase.storage.from("ad-media").createSignedUploadUrl(path);
+        if (error || !data) return json({ error: "Could not prepare the upload" }, 500);
+        return json({ path, token: data.token });
       }
 
       if (action === "regions") {

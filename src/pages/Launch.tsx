@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, ArrowRight, Loader2, Plus, Rocket, Sparkles, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAgency } from "@/hooks/useAgency";
-import { supabase } from "@/integrations/supabase/client";
 import { invokeFn, useFormat } from "@/components/leads/shared";
 import { goLink } from "@/lib/goLink";
 import { TopUpButton } from "@/components/tiktok/TopUpButton";
@@ -20,6 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   type Gender,
   type Launch as LaunchRow,
+  loadWorkspace,
   MAX_TEXT,
   MIN_BUDGET,
   type Options,
@@ -77,9 +77,19 @@ const Launch = () => {
   const { t, i18n } = useTranslation("launch");
   const f = useFormat();
   const navigate = useNavigate();
-  const { selectedClient, canManage } = useAgency();
-  const clientId = selectedClient?.id;
-  const topUpAccount = useTikTokBalance(clientId).accounts?.[0];
+  // /linked/:clientId/launch runs ads on a linked user's account; /campaigns/new on the selected client's.
+  const { clientId: linkedId } = useParams();
+  const { selectedClient, can, linkedAccounts } = useAgency();
+  const managed = !!linkedId;
+  const linked = linkedAccounts.find((a) => a.client_id === linkedId);
+  const clientId = linkedId ?? selectedClient?.id;
+  const clientName = linked?.advertiser_name ?? selectedClient?.name;
+  const canManage = can("campaigns");
+  // Fixing a TikTok login happens where the agency's Business Center is connected, not on the user's Connections.
+  const fixHref = managed ? "/funding" : "/connections";
+  const backTo = managed ? `/linked/${linkedId}` : "/campaigns";
+  // Someone else's account is funded from Funding, never from the user's own wallet or top-up button.
+  const topUpAccount = useTikTokBalance(managed ? undefined : clientId).accounts?.[0];
   const lang = i18n.language === "ar" ? "ar" : "en";
 
   const [options, setOptions] = useState<Options | null>(null);
@@ -111,18 +121,14 @@ const Launch = () => {
           whatsappNumberId: o.numbers[0]?.id ?? "",
           identityId: o.identities[0]?.id ?? "",
           country: o.country ?? "",
-          name: `${selectedClient?.name ?? "WOB"} - WhatsApp - ${new Date().toISOString().slice(0, 10)}`,
+          name: `${clientName ?? "WOB"} - WhatsApp - ${new Date().toISOString().slice(0, 10)}`,
         }));
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : t("error")));
-    supabase
-      .from("products")
-      .select("id, name")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data }) => setProducts(data ?? []));
-  }, [clientId, canManage, selectedClient?.name, t]);
+    loadWorkspace(clientId)
+      .then((w) => setProducts(w.products.map(({ id, name }) => ({ id, name }))))
+      .catch(() => undefined);
+  }, [clientId, canManage, clientName, t]);
 
   useEffect(() => {
     if (!clientId || !canManage) return;
@@ -251,7 +257,7 @@ const Launch = () => {
   );
 
   const body = () => {
-    if (!selectedClient)
+    if (!clientId)
       return <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">{t("selectClient")}</div>;
     if (!canManage)
       return <div className="glass-card wob-mesh-card p-12 text-center text-muted-foreground">{t("adminsOnly")}</div>;
@@ -280,9 +286,9 @@ const Launch = () => {
             {result.status === "launched" ? t("result.launched") : t("result.failed")}
           </h2>
           {result.status === "launched" && <p className="text-sm text-muted-foreground">{t("result.reviewHint")}</p>}
-          <LaunchStatus clientId={selectedClient.id} launch={result} onChange={setResult} />
+          <LaunchStatus clientId={clientId} launch={result} onChange={setResult} />
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => navigate("/campaigns")}>
+            <Button variant="outline" onClick={() => navigate(backTo)}>
               {t("result.back")}
             </Button>
             <Button
@@ -443,10 +449,16 @@ const Launch = () => {
             <div className="space-y-4">
               {options.numbers.length === 0 ? (
                 <p className="text-sm text-warning">
-                  {t("contact.noNumber")}{" "}
-                  <Link to="/connections" className="text-primary underline">
-                    {t("reconnect.action")}
-                  </Link>
+                  {managed ? (
+                    t("contact.noNumberManaged")
+                  ) : (
+                    <>
+                      {t("contact.noNumber")}{" "}
+                      <Link to="/connections" className="text-primary underline">
+                        {t("reconnect.action")}
+                      </Link>
+                    </>
+                  )}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -541,13 +553,8 @@ const Launch = () => {
             </div>
           )}
 
-          {step === "media" && selectedClient && (
-            <MediaStep
-              clientId={selectedClient.id}
-              options={options}
-              selected={draft.mediaIds}
-              onToggle={toggleMedia}
-            />
+          {step === "media" && clientId && (
+            <MediaStep clientId={clientId} options={options} selected={draft.mediaIds} onToggle={toggleMedia} />
           )}
 
           {step === "text" && (
@@ -607,7 +614,7 @@ const Launch = () => {
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>
                     {t("reconnect.ads")}{" "}
-                    <Link to="/connections" className="text-primary underline">
+                    <Link to={fixHref} className="text-primary underline">
                       {t("reconnect.action")}
                     </Link>
                   </span>
@@ -618,7 +625,7 @@ const Launch = () => {
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>
                     {t("reconnect.identity")}{" "}
-                    <Link to="/connections" className="text-primary underline">
+                    <Link to={fixHref} className="text-primary underline">
                       {t("reconnect.action")}
                     </Link>
                   </span>

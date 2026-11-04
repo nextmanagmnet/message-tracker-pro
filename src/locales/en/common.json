@@ -244,12 +244,14 @@
       "perm": {
         "clients": "Manage your own clients",
         "funding": "Fund accounts, approve top-ups, set fees",
-        "ad_accounts": "Invite users and manage linked ad accounts"
+        "ad_accounts": "Invite users and manage linked ad accounts",
+        "campaigns": "Create and manage campaigns for linked users"
       },
       "permShort": {
         "clients": "Clients",
         "funding": "Funding",
-        "ad_accounts": "Ad accounts"
+        "ad_accounts": "Ad accounts",
+        "campaigns": "Campaigns"
       },
       "preset": {
         "full": "Full admin",

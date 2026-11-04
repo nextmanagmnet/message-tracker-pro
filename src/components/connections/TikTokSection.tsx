@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { CheckCircle2, ExternalLink, Loader2, LogOut, Unplug, Zap } from "lucide-react";
 import {
   AlertDialog,
@@ -22,7 +23,7 @@ import { TikTokBalanceCard } from "@/components/tiktok/TikTokBalanceCard";
 import { ConnectionCard } from "./ConnectionCard";
 import { beginOAuth, TIKTOK_KEY } from "./oauth";
 
-type Managed = { id: string; agency_name: string; advertiser_id: string };
+type Managed = { id: string; agency_name: string; advertiser_id: string; can_run_ads: boolean };
 type Account = { id: string; advertiser_id: string; advertiser_name: string | null };
 
 export function TikTokSection({
@@ -55,7 +56,7 @@ export function TikTokSection({
       supabase.from("tiktok_pixels").select("id, pixel_code").eq("client_id", clientId).maybeSingle(),
       supabase
         .from("agency_client_links")
-        .select("id, agency_name, advertiser_id")
+        .select("id, agency_name, advertiser_id, can_run_ads")
         .eq("client_id", clientId)
         .eq("status", "active"),
     ]);
@@ -158,6 +159,19 @@ export function TikTokSection({
     load();
   };
 
+  const setRunAds = async (m: Managed, allow: boolean) => {
+    setManaged((all) => all.map((x) => (x.id === m.id ? { ...x, can_run_ads: allow } : x)));
+    const { error } = await supabase.rpc("set_link_run_ads", { p_client: clientId, p_allow: allow });
+    if (error) {
+      setManaged((all) => all.map((x) => (x.id === m.id ? { ...x, can_run_ads: !allow } : x)));
+      toast.error(tl("managed.failed"));
+    } else {
+      toast.success(
+        allow ? tl("managed.runAdsOn", { agency: m.agency_name }) : tl("managed.runAdsOff", { agency: m.agency_name }),
+      );
+    }
+  };
+
   const managedFor = (a: Account) => managed.find((m) => m.advertiser_id === a.advertiser_id);
 
   const leave = async (m: Managed) => {
@@ -222,6 +236,12 @@ export function TikTokSection({
                   <span className="text-xs text-muted-foreground" dir="ltr">
                     {a.advertiser_id}
                   </span>
+                  {canManage && m && (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {tl("managed.runAds")}
+                      <Switch checked={m.can_run_ads} onCheckedChange={(v) => void setRunAds(m, v)} />
+                    </label>
+                  )}
                   {canManage && m && (
                     <Button variant="ghost" size="sm" onClick={() => setLeaving(m)}>
                       <LogOut className="w-4 h-4" /> {tl("managed.leave")}

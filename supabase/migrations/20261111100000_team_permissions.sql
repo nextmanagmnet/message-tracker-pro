@@ -5,13 +5,14 @@
 --   clients      create, edit and delete the agency's own clients
 --   funding      fund accounts, approve or decline top-ups, wallet payments and fees
 --   ad_accounts  invite users to link their ad account, unlink them
+--   campaigns    create and manage campaigns on linked users' ad accounts (only where the user allows it)
 -- permissions = NULL means "all of them" (every admin before this migration keeps working unchanged).
 -- Only an owner can change a member's role or permissions (existing owner-only policy on agency_members).
 
 ALTER TABLE public.agency_members ADD COLUMN IF NOT EXISTS permissions TEXT[];
 ALTER TABLE public.agency_members DROP CONSTRAINT IF EXISTS agency_members_permissions_chk;
 ALTER TABLE public.agency_members ADD CONSTRAINT agency_members_permissions_chk
-  CHECK (permissions IS NULL OR permissions <@ ARRAY['clients', 'funding', 'ad_accounts']::TEXT[]);
+  CHECK (permissions IS NULL OR permissions <@ ARRAY['clients', 'funding', 'ad_accounts', 'campaigns']::TEXT[]);
 
 CREATE OR REPLACE FUNCTION public.has_agency_permission(_user_id UUID, _agency_id UUID, _perm TEXT)
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.team_invites (
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   role public.agency_role NOT NULL CHECK (role IN ('admin', 'viewer')),
-  permissions TEXT[] NOT NULL DEFAULT '{}' CHECK (permissions <@ ARRAY['clients', 'funding', 'ad_accounts']::TEXT[]),
+  permissions TEXT[] NOT NULL DEFAULT '{}' CHECK (permissions <@ ARRAY['clients', 'funding', 'ad_accounts', 'campaigns']::TEXT[]),
   created_by UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   accepted_at TIMESTAMPTZ,
@@ -132,3 +133,31 @@ DROP POLICY IF EXISTS "Agency admins manage wallet settings" ON public.agency_wa
 CREATE POLICY "Agency admins manage wallet settings" ON public.agency_wallet_settings FOR ALL TO authenticated
 USING (public.has_agency_permission((SELECT auth.uid()), agency_id, 'funding'))
 WITH CHECK (public.has_agency_permission((SELECT auth.uid()), agency_id, 'funding'));
+
+-- ---------- Running ads for a linked user ----------
+-- A user decides whether the agency that manages their ad account may also create and manage campaigns on it.
+-- On by default for new links (the invite page says so); the user can switch it off at any time.
+ALTER TABLE public.agency_client_links ADD COLUMN IF NOT EXISTS can_run_ads BOOLEAN NOT NULL DEFAULT true;
+
+-- Used by the campaign function (service role): may this person run ads on this client's ad account?
+-- Needs an active link that allows it AND the "campaigns" permission in the linking agency.
+CREATE OR REPLACE FUNCTION public.agency_can_run_ads(p_user uuid, p_client uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.agency_client_links l
+    WHERE l.client_id = p_client AND l.status = 'active' AND l.can_run_ads
+      AND public.has_agency_permission(p_user, l.agency_id, 'campaigns')
+  )
+$$;
+REVOKE EXECUTE ON FUNCTION public.agency_can_run_ads(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.agency_can_run_ads(uuid, uuid) TO service_role;
+
+-- The user (not the agency) switches it. Only someone with access to that client can.
+CREATE OR REPLACE FUNCTION public.set_link_run_ads(p_client uuid, p_allow boolean)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NOT public.user_can_access_client((SELECT auth.uid()), p_client) THEN RAISE EXCEPTION 'access_denied'; END IF;
+  UPDATE public.agency_client_links SET can_run_ads = p_allow WHERE client_id = p_client AND status = 'active';
+END $$;
+REVOKE EXECUTE ON FUNCTION public.set_link_run_ads(uuid, boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_link_run_ads(uuid, boolean) TO authenticated, service_role;

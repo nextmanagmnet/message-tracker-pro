@@ -31,7 +31,7 @@ export function ClientSwitcher() {
     useAgency();
   const canManage = can("clients");
   // On a linked user's page the dropdown shows that user, so the header never names a different client than the page.
-  const linkedId = useMatch("/linked/:clientId")?.params.clientId;
+  const linkedId = useMatch({ path: "/linked/:clientId", end: false })?.params.clientId;
   const linked = linkedAccounts.find((a) => a.client_id === linkedId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");

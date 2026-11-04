@@ -1,7 +1,7 @@
 // Team invites: what an owner may ask for, validated before anything is written.
 // Roles and permission names mirror the database (team_invites, has_agency_permission).
 
-export const PERMISSIONS = ["clients", "funding", "ad_accounts"] as const;
+export const PERMISSIONS = ["clients", "funding", "ad_accounts", "campaigns"] as const;
 export type TeamPermission = (typeof PERMISSIONS)[number];
 export type TeamRole = "admin" | "viewer";
 

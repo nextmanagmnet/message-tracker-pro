@@ -11,7 +11,7 @@ import { useAgency } from "@/hooks/useAgency";
 export function LinkedUsersSection() {
   const { t } = useTranslation("agencylinks");
   const f = useFormat();
-  const { linkedAccounts } = useAgency();
+  const { linkedAccounts, can } = useAgency();
 
   if (linkedAccounts.length === 0) return null;
 
@@ -67,9 +67,16 @@ export function LinkedUsersSection() {
               </Stat>
             </div>
 
-            <Button asChild variant="outline" className="w-full">
-              <Link to={`/linked/${a.client_id}`}>{t("linked.view")}</Link>
-            </Button>
+            <div className="flex flex-col gap-2">
+              {can("campaigns") && (
+                <Button asChild variant="glow" className="w-full">
+                  <Link to={`/linked/${a.client_id}/launch`}>{t("linked.newCampaign")}</Link>
+                </Button>
+              )}
+              <Button asChild variant="outline" className="w-full">
+                <Link to={`/linked/${a.client_id}`}>{t("linked.view")}</Link>
+              </Button>
+            </div>
           </div>
         ))}
       </div>

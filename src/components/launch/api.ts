@@ -1,4 +1,5 @@
 import type { Tables } from "@/integrations/supabase/types";
+import { invokeFn } from "@/components/leads/shared";
 
 // Shapes returned by the tiktok-ads edge function.
 export type Identity = { id: string; type: string; bcId: string | null; name: string | null };
@@ -38,6 +39,15 @@ export type AdReview = {
 
 export type Launch = Tables<"ad_launches">;
 export type AdMedia = Tables<"ad_media">;
+
+// What the wizard shows from the client's own tables. Read through the server so an agency running ads for a
+// linked user never needs access to that user's data.
+export type Workspace = {
+  launches: Launch[];
+  media: AdMedia[];
+  products: { id: string; name: string; videos: string[] }[];
+};
+export const loadWorkspace = (clientId: string) => invokeFn<Workspace>("tiktok-ads", { action: "workspace", clientId });
 
 export const MIN_BUDGET = 20;
 export const MAX_TEXT = 100;

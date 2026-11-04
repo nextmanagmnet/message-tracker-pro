@@ -6,7 +6,7 @@ import { useAuth } from "./useAuth";
 export type AccountType = "individual" | "agency";
 
 /** What an admin can be limited to. Owners always have all of them. Mirrors has_agency_permission in the database. */
-export const PERMISSIONS = ["clients", "funding", "ad_accounts"] as const;
+export const PERMISSIONS = ["clients", "funding", "ad_accounts", "campaigns"] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 /** True when a Postgres error came from the plan-limits trigger (raises with a WOB_LIMIT prefix). */

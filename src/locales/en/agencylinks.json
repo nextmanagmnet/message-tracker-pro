@@ -123,7 +123,8 @@
       "own_agency": "You can't accept an invite from your own agency.",
       "already_linked": "This ad account is already linked to an agency.",
       "limit": "Your plan's ad account limit has been reached."
-    }
+    },
+    "runAds": "The agency can also create and manage ad campaigns on this ad account. You can switch that off any time in Connections."
   },
   "managed": {
     "badge": "Managed by {{agency}}",
@@ -133,7 +134,10 @@
     "leaveBody": "The agency's access stops at once. Your data stays with you, and you can connect your own TikTok account afterwards.",
     "confirm": "Leave agency",
     "left": "You left the agency.",
-    "failed": "Could not leave the agency."
+    "failed": "Could not leave the agency.",
+    "runAds": "Let the agency run ads",
+    "runAdsOn": "The agency can now create and manage campaigns on your account ({{agency}}).",
+    "runAdsOff": "The agency can no longer create or change campaigns on your account ({{agency}})."
   },
   "linked": {
     "badge": "Linked",
@@ -151,6 +155,15 @@
     "campaigns": "Campaigns",
     "count_one": "{{count}} linked user",
     "count_other": "{{count}} linked users",
-    "lastSync": "Last sync: {{when}}"
+    "lastSync": "Last sync: {{when}}",
+    "newCampaign": "New campaign",
+    "runOff": "This user has switched off campaign management for your agency. They can turn it back on in their Connections page.",
+    "noPermission": "You don't have permission to run campaigns. Ask the agency owner."
+  },
+  "campaignsPage": {
+    "title": "Campaigns",
+    "subtitle": "Choose a user to run ads for. You can also pick them from the dropdown at the top.",
+    "empty": "Invite users to link their ad account, then you can create and manage their campaigns here.",
+    "invite": "Invite users"
   }
 }

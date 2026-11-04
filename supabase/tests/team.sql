@@ -43,6 +43,9 @@ BEGIN
   END IF;
   IF public.has_agency_permission(gen_random_uuid(), ag, 'funding') THEN RAISE EXCEPTION 'a stranger holds a permission'; END IF;
 
+  IF public.has_agency_permission(uf, ag, 'campaigns') THEN RAISE EXCEPTION 'finance admin can run ads'; END IF;
+  IF NOT public.has_agency_permission(ua, ag, 'campaigns') THEN RAISE EXCEPTION 'an admin without a list lost campaigns'; END IF;
+
   -- unknown permission names are refused by the table
   BEGIN UPDATE public.agency_members SET permissions = ARRAY['everything'] WHERE user_id = uf; RAISE EXCEPTION 'bad permission stored';
   EXCEPTION WHEN check_violation THEN NULL; END;

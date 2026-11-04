@@ -4,7 +4,7 @@
   "newCampaign": "New campaign",
   "error": "Something went wrong. Please try again.",
   "selectClient": "Select a client to create a campaign.",
-  "adminsOnly": "Only agency owners and admins can launch campaigns.",
+  "adminsOnly": "You don't have permission to run campaigns for this account.",
   "reconnect": {
     "action": "Go to Connections",
     "upload": "TikTok needs a fresh permission to receive new videos. Reconnect TikTok, or pick a video already in your TikTok ad library below.",
@@ -47,7 +47,8 @@
     "number": "WhatsApp number",
     "message": "First WhatsApp message",
     "messageHint": "Prefilled for the customer when they tap the ad. They can edit it before sending.",
-    "link": "Customers land on:"
+    "link": "Customers land on:",
+    "noNumberManaged": "This user has not connected a WhatsApp number yet. Ask them to connect one in WOB, then come back."
   },
   "ai": {
     "intro": "Tell the AI what to promote and it writes the ad texts, the WhatsApp message and suggests who to target.",

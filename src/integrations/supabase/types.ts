@@ -302,6 +302,7 @@ export type Database = {
           advertiser_name: string | null
           agency_id: string
           agency_name: string
+          can_run_ads: boolean
           client_id: string
           id: string
           invite_id: string | null
@@ -328,6 +329,7 @@ export type Database = {
           advertiser_name?: string | null
           agency_id?: string
           agency_name?: string
+          can_run_ads?: boolean
           client_id?: string
           id?: string
           invite_id?: string | null
@@ -1960,6 +1962,14 @@ export type Database = {
       }
       accept_client_invite: { Args: never; Returns: string }
       accept_team_invite: { Args: never; Returns: string }
+      agency_can_run_ads: {
+        Args: { p_client: string; p_user: string }
+        Returns: boolean
+      }
+      set_link_run_ads: {
+        Args: { p_allow: boolean; p_client: string }
+        Returns: undefined
+      }
       agency_client_campaigns: {
         Args: { p_agency: string; p_client: string }
         Returns: {

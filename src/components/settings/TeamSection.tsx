@@ -27,7 +27,7 @@ type Access = { role: Role; permissions: Permission[] };
 // Quick sets for the jobs people usually hand out. They only tick boxes; every box stays editable.
 const PRESETS: { key: "full" | "media" | "finance"; permissions: Permission[] }[] = [
   { key: "full", permissions: [...PERMISSIONS] },
-  { key: "media", permissions: ["ad_accounts"] },
+  { key: "media", permissions: ["ad_accounts", "campaigns"] },
   { key: "finance", permissions: ["funding"] },
 ];
 

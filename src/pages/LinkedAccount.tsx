@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Coins, DollarSign, Eye, MessageCircle, MousePointerClick, ShoppingBag, Target } from "lucide-react";
+import {
+  ArrowLeft,
+  Coins,
+  Plus,
+  DollarSign,
+  Eye,
+  MessageCircle,
+  MousePointerClick,
+  ShoppingBag,
+  Target,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CampaignsTable, type Campaign } from "@/components/ad-accounts/CampaignsTable";
+import { RecentLaunches } from "@/components/launch/RecentLaunches";
 import { useFormat } from "@/components/leads/shared";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +29,9 @@ const LinkedAccount = () => {
   const { clientId } = useParams();
   const { t } = useTranslation("agencylinks");
   const f = useFormat();
-  const { agency, linkedAccounts, linkedLoading, refreshLinked } = useAgency();
+  const { agency, linkedAccounts, linkedLoading, refreshLinked, can } = useAgency();
+  // The user decides whether the agency may run ads on their account; the agency also needs the permission.
+  const [userAllows, setUserAllows] = useState<boolean | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
 
   const account = linkedAccounts.find((a) => a.client_id === clientId);
@@ -29,6 +42,17 @@ const LinkedAccount = () => {
   useEffect(() => {
     void refreshLinked();
   }, [refreshLinked]);
+
+  useEffect(() => {
+    if (!clientId || !found) return;
+    supabase
+      .from("agency_client_links")
+      .select("can_run_ads")
+      .eq("client_id", clientId)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => setUserAllows(data?.can_run_ads ?? false));
+  }, [clientId, found]);
 
   useEffect(() => {
     if (!agencyId || !clientId || !found) return;
@@ -64,6 +88,7 @@ const LinkedAccount = () => {
     );
   }
 
+  const mayRun = can("campaigns") && userAllows === true;
   const cur = account.currency;
   const spend = Number(account.spend);
   const cost = (n: number) => (n > 0 ? f.money(spend / n, cur) : "—");
@@ -76,6 +101,23 @@ const LinkedAccount = () => {
         {" · "}
         {t("linked.lastSync", { when: account.last_synced ? f.ago(account.last_synced) : t("perf.never") })}
       </p>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {mayRun ? (
+          <Button asChild variant="glow">
+            <Link to={`/linked/${clientId}/launch`}>
+              <Plus className="h-4 w-4" aria-hidden />
+              {t("linked.newCampaign")}
+            </Link>
+          </Button>
+        ) : (
+          userAllows !== null && (
+            <p className="rounded-lg bg-secondary/50 p-3 text-sm text-muted-foreground">
+              {can("campaigns") ? t("linked.runOff") : t("linked.noPermission")}
+            </p>
+          )
+        )}
+      </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
@@ -120,6 +162,8 @@ const LinkedAccount = () => {
           icon={<Target className={icon} />}
         />
       </div>
+
+      {mayRun && clientId && <RecentLaunches clientId={clientId} />}
 
       <div className="glass-card overflow-x-auto p-6">
         <h2 className="mb-4 text-lg font-semibold">{t("linked.campaigns")}</h2>

@@ -107,6 +107,7 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
           {lean ? (
             <>
               {agencyNav.map((i) => renderItem(i.path === "/agency" ? { ...i, key: "nav.dashboard" } : i))}
+              {can("campaigns") && renderItem({ icon: TrendingUp, key: "nav.campaigns", path: "/campaigns" })}
               {mainItems.filter((i) => i.path === "/settings").map(renderItem)}
             </>
           ) : (

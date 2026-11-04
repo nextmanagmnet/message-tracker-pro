@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeFn } from "@/components/leads/shared";
 import { cn } from "@/lib/utils";
-import type { AdMedia, Options } from "./api";
+import { loadWorkspace, type AdMedia, type Options } from "./api";
 
 const MAX_MB = 50; // Supabase Storage's default per-file limit
 type Item = { id: string; label: string; cover: string | null };
@@ -34,18 +34,13 @@ export function MediaStep({
   const blocked = options.reconnect.upload;
 
   const load = useCallback(async () => {
-    const [m, p] = await Promise.all([
-      supabase
-        .from("ad_media")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("kind", "video")
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase.from("products").select("id, name, videos").eq("client_id", clientId).limit(50),
-    ]);
-    setMedia(m.data ?? []);
-    setProducts((p.data ?? []).filter((x) => x.videos.length > 0));
+    try {
+      const w = await loadWorkspace(clientId);
+      setMedia(w.media);
+      setProducts(w.products.filter((x) => x.videos.length > 0));
+    } catch {
+      // The picker simply stays empty; uploading and the ad library still work.
+    }
   }, [clientId]);
 
   useEffect(() => {
@@ -72,14 +67,22 @@ export function MediaStep({
     if (!file) return;
     if (!file.type.startsWith("video/")) return toast.error(t("media.videoOnly"));
     if (file.size > MAX_MB * 1024 * 1024) return toast.error(t("media.tooBig", { mb: MAX_MB }));
-    const path = `${clientId}/${crypto.randomUUID()}.${file.name.split(".").pop()?.toLowerCase() || "mp4"}`;
     setBusy("upload");
-    const { error } = await supabase.storage.from("ad-media").upload(path, file, { contentType: file.type });
-    if (error) {
+    try {
+      const slot = await invokeFn<{ path: string; token: string }>("tiktok-ads", {
+        action: "upload-url",
+        clientId,
+        ext: file.name.split(".").pop(),
+      });
+      const { error } = await supabase.storage
+        .from("ad-media")
+        .uploadToSignedUrl(slot.path, slot.token, file, { contentType: file.type });
+      if (error) throw error;
+      await sendToTikTok("upload", { storagePath: slot.path, fileName: file.name });
+    } catch {
       setBusy(null);
-      return toast.error(t("media.uploadFailed"));
+      toast.error(t("media.uploadFailed"));
     }
-    await sendToTikTok("upload", { storagePath: path, fileName: file.name });
   };
 
   const items: Item[] = [
