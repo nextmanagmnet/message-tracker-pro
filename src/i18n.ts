@@ -6,6 +6,8 @@ import enFeatures from "./locales/en/features.json";
 import arFeatures from "./locales/ar/features.json";
 import enLanding from "./locales/en/landing.json";
 import arLanding from "./locales/ar/landing.json";
+import enAgencyLinks from "./locales/en/agencylinks.json";
+import arAgencyLinks from "./locales/ar/agencylinks.json";
 import enWallet from "./locales/en/wallet.json";
 import arWallet from "./locales/ar/wallet.json";
 import enTopup from "./locales/en/topup.json";
@@ -52,6 +54,7 @@ i18n.use(initReactI18next).init({
       common: enCommon,
       features: enFeatures,
       landing: enLanding,
+      agencylinks: enAgencyLinks,
       wallet: enWallet,
       topup: enTopup,
       launch: enLaunch,
@@ -66,6 +69,7 @@ i18n.use(initReactI18next).init({
       common: arCommon,
       features: arFeatures,
       landing: arLanding,
+      agencylinks: arAgencyLinks,
       wallet: arWallet,
       topup: arTopup,
       launch: arLaunch,
@@ -83,6 +87,7 @@ i18n.use(initReactI18next).init({
     "common",
     "features",
     "landing",
+    "agencylinks",
     "wallet",
     "topup",
     "launch",

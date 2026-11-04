@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.ai-agent]
 verify_jwt = false
 
+[functions.agency-join]
+verify_jwt = false
+
 [functions.weekly-report]
 verify_jwt = false
 

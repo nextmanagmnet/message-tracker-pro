@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AgencyProvider, useAgency } from "@/hooks/useAgency";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SetPasswordGate } from "@/components/SetPasswordGate";
+import { PendingJoinRedirect } from "@/components/join/PendingJoinRedirect";
 import Auth from "./pages/Auth";
 
 const Index = lazy(() => import("./pages/Index"));
@@ -27,6 +28,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Launch = lazy(() => import("./pages/Launch"));
 const WalletPage = lazy(() => import("./pages/Wallet"));
+const AdAccounts = lazy(() => import("./pages/AdAccounts"));
+const Join = lazy(() => import("./pages/Join"));
 const Audiences = lazy(() => import("./pages/Audiences"));
 const Optimizer = lazy(() => import("./pages/Optimizer"));
 const Inbox = lazy(() => import("./pages/Inbox"));
@@ -74,6 +77,7 @@ const App = () => (
           <BrowserRouter>
             <Suspense fallback={<PageFallback />}>
               <SetPasswordGate>
+                <PendingJoinRedirect />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Home />} />
@@ -216,6 +220,15 @@ const App = () => (
                       <P>
                         <WalletPage />
                       </P>
+                    }
+                  />
+                  <Route path="/join" element={<Join />} />
+                  <Route
+                    path="/ad-accounts"
+                    element={
+                      <AgencyOnly>
+                        <AdAccounts />
+                      </AgencyOnly>
                     }
                   />
                   <Route path="/feed" element={<Navigate to="/leads" replace />} />

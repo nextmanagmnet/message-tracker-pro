@@ -22,7 +22,8 @@
     "inbox": "Team inbox",
     "optimizer": "Recommendations",
     "audiences": "Audiences",
-    "wallet": "Wallet"
+    "wallet": "Wallet",
+    "adAccounts": "Ad accounts"
   },
   "theme": {
     "label": "Theme",

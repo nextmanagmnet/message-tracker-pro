@@ -39,6 +39,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_account_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          advertiser_id: string
+          advertiser_name: string | null
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          note: string | null
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          advertiser_id: string
+          advertiser_name?: string | null
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          note?: string | null
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          advertiser_id?: string
+          advertiser_name?: string | null
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          note?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_account_invites_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_clicks: {
         Row: {
           campaign_id: string | null
@@ -242,6 +295,70 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      agency_client_links: {
+        Row: {
+          advertiser_id: string
+          advertiser_name: string | null
+          agency_id: string
+          agency_name: string
+          client_id: string
+          id: string
+          invite_id: string | null
+          linked_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+        }
+        Insert: {
+          advertiser_id: string
+          advertiser_name?: string | null
+          agency_id: string
+          agency_name: string
+          client_id: string
+          id?: string
+          invite_id?: string | null
+          linked_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+        }
+        Update: {
+          advertiser_id?: string
+          advertiser_name?: string | null
+          agency_id?: string
+          agency_name?: string
+          client_id?: string
+          id?: string
+          invite_id?: string | null
+          linked_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_client_links_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_client_links_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "ad_account_invites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agency_members: {
         Row: {
@@ -1309,6 +1426,7 @@ export type Database = {
           client_id: string | null
           connected_at: string
           id: string
+          managed_by_agency_id: string | null
           refresh_token: string | null
           tenant_id: string
           token_expires_at: string | null
@@ -1321,6 +1439,7 @@ export type Database = {
           client_id?: string | null
           connected_at?: string
           id?: string
+          managed_by_agency_id?: string | null
           refresh_token?: string | null
           tenant_id: string
           token_expires_at?: string | null
@@ -1333,6 +1452,7 @@ export type Database = {
           client_id?: string | null
           connected_at?: string
           id?: string
+          managed_by_agency_id?: string | null
           refresh_token?: string | null
           tenant_id?: string
           token_expires_at?: string | null
@@ -1344,6 +1464,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiktok_accounts_managed_by_agency_id_fkey"
+            columns: ["managed_by_agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
         ]
@@ -1780,7 +1907,51 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_agency_invite: {
+        Args: {
+          p_agency_token: string
+          p_client: string
+          p_hash: string
+          p_user: string
+        }
+        Returns: string
+      }
       accept_client_invite: { Args: never; Returns: string }
+      agency_client_campaigns: {
+        Args: { p_agency: string; p_client: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          chats: number
+          clicks: number
+          impressions: number
+          orders: number
+          qualified: number
+          real_chats: number
+          revenue: number
+          spend: number
+        }[]
+      }
+      agency_client_metrics: {
+        Args: { p_agency: string }
+        Returns: {
+          advertiser_id: string
+          advertiser_name: string
+          chats: number
+          clicks: number
+          client_id: string
+          currency: string
+          impressions: number
+          last_synced: string
+          link_id: string
+          linked_at: string
+          orders: number
+          qualified: number
+          real_chats: number
+          revenue: number
+          spend: number
+        }[]
+      }
       auth_user_by_email: {
         Args: { _email: string }
         Returns: {
@@ -1801,6 +1972,10 @@ export type Database = {
           p_note: string
         }
         Returns: string
+      }
+      end_agency_link: {
+        Args: { p_by: string; p_link: string }
+        Returns: undefined
       }
       get_agency_members: {
         Args: { _agency_id: string }
