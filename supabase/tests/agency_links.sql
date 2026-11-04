@@ -86,8 +86,8 @@ BEGIN
   -- the access token copy stays hidden from browsers
   BEGIN PERFORM access_token FROM public.tiktok_accounts LIMIT 1; RAISE EXCEPTION 'agency can read tokens';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  -- the agency sees its invites; no browser can write links or invites
-  SELECT count(*) INTO n FROM public.ad_account_invites WHERE agency_id = ag; IF n < 2 THEN RAISE EXCEPTION 'agency cannot see its invites'; END IF;
+  -- invites (and their hashes) are not readable from any browser; no browser can write links or invites
+  BEGIN PERFORM 1 FROM public.ad_account_invites LIMIT 1; RAISE EXCEPTION 'browser can read invites'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN INSERT INTO public.agency_client_links (agency_id, agency_name, client_id, advertiser_id) VALUES (ag, 'x', cb, 'X'); RAISE EXCEPTION 'browser wrote a link';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
@@ -102,7 +102,7 @@ BEGIN
   SELECT count(*) INTO n FROM public.agency_client_metrics(ag);        IF n <> 0 THEN RAISE EXCEPTION 'outsider sees metrics'; END IF;
   SELECT count(*) INTO n FROM public.agency_client_campaigns(ag, cb);  IF n <> 0 THEN RAISE EXCEPTION 'outsider sees campaigns'; END IF;
   SELECT count(*) INTO n FROM public.agency_client_links;              IF n <> 0 THEN RAISE EXCEPTION 'outsider sees links'; END IF;
-  SELECT count(*) INTO n FROM public.ad_account_invites;               IF n <> 0 THEN RAISE EXCEPTION 'outsider sees invites'; END IF;
+  BEGIN PERFORM 1 FROM public.ad_account_invites LIMIT 1; RAISE EXCEPTION 'outsider can read invites'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
 
 -- ===== As the linked user: sees who manages them, and the agency can't be asked about other users =====
@@ -118,7 +118,7 @@ BEGIN
   SELECT count(*) INTO n FROM public.leads WHERE client_id = (SELECT v FROM ids WHERE k = 'cb');
   IF n <> 2 THEN RAISE EXCEPTION 'control failed: the user should see their own 2 leads, got %', n; END IF;
   SELECT count(*) INTO n FROM public.agency_client_metrics(ag);  IF n <> 0 THEN RAISE EXCEPTION 'linked user can read the agency''s metrics'; END IF;
-  SELECT count(*) INTO n FROM public.ad_account_invites;         IF n <> 0 THEN RAISE EXCEPTION 'user sees the agency''s invites'; END IF;
+  BEGIN PERFORM 1 FROM public.ad_account_invites LIMIT 1; RAISE EXCEPTION 'user can read the agency invites'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
 
 -- ===== Ending the link (as the service role): access stops at once, the user keeps their data =====

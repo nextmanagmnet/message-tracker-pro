@@ -13,11 +13,11 @@ DECLARE
   ag uuid; ws uuid; cl uuid; n int; r record; t1 uuid; t2 uuid;
 BEGIN
   INSERT INTO auth.users (id, email, email_confirmed_at, aud, role, raw_user_meta_data) VALUES
-    (uo, 'paysec-user@example.test', now(), 'authenticated', 'authenticated', '{"account_type":"individual","company_name":"PAYSEC-USER"}'),
+    (uo, 'paysec-user@example.test', now(), 'authenticated', 'authenticated', '{"account_type":"agency","company_name":"PAYSEC-USER"}'),
     (uv, 'paysec-view@example.test', now(), 'authenticated', 'authenticated', '{"account_type":"agency","company_name":"PAYSEC-V"}'),
     (ua, 'paysec-agency@example.test', now(), 'authenticated', 'authenticated', '{"account_type":"agency","company_name":"PAYSEC-AGENCY"}');
   SELECT agency_id INTO ws FROM public.agency_members WHERE user_id = uo;
-  SELECT id INTO cl FROM public.clients WHERE agency_id = ws LIMIT 1;
+  INSERT INTO public.clients (agency_id, name) VALUES (ws, 'PAYSEC-CLIENT') RETURNING id INTO cl;
   SELECT agency_id INTO ag FROM public.agency_members WHERE user_id = ua;
   DELETE FROM public.agency_members WHERE user_id = uv;
   INSERT INTO public.agency_members (user_id, agency_id, role) VALUES (uv, ws, 'viewer');
