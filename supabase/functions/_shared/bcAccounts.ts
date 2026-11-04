@@ -76,6 +76,31 @@ export async function advertiserBalance(
   return rows.find((r) => r.advertiserId === advertiserId) ?? null;
 }
 
+export type BcCredit = {
+  bcId: string;
+  name: string | null;
+  balance: number | null;
+  currency: string | null;
+  error: string | null;
+};
+
+/** Each Business Center's own available credit, without reading its ad accounts (cheap enough for a dashboard). */
+export async function loadBcCredits(token: string): Promise<{ bcs: BcCredit[]; error?: string }> {
+  const l = await tt("/bc/get/", token).catch((e) => ({ code: -1, message: String(e) }));
+  if (l.code !== 0) return { bcs: [], error: l.message ?? `TikTok error ${l.code}` };
+  const bcs = await Promise.all(
+    parseBcList(l.data).map(async (bc): Promise<BcCredit> => {
+      const base = { bcId: bc.bcId, name: bc.name, balance: null, currency: null, error: null };
+      if (!bc.canFinance) return { ...base, error: "no_finance_role" };
+      const bal = await tt("/bc/balance/get/", token, { query: { bc_id: bc.bcId } }).catch(() => null);
+      if (bal?.code !== 0) return { ...base, error: bal?.message ?? "unavailable" };
+      const available = Number(bal.data?.valid_account_balance ?? bal.data?.account_balance);
+      return { ...base, balance: Number.isFinite(available) ? available : null, currency: bal.data?.currency ?? null };
+    }),
+  );
+  return { bcs };
+}
+
 export type BcResult = BcSummary & {
   balance: number | null;
   currency: string | null;

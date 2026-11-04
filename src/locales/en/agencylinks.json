@@ -165,5 +165,15 @@
     "subtitle": "Choose a user to run ads for. You can also pick them from the dropdown at the top.",
     "empty": "Invite users to link their ad account, then you can create and manage their campaigns here.",
     "invite": "Invite users"
+  },
+  "bcBalance": {
+    "title": "Business Center credit",
+    "available": "Available to fund ad accounts",
+    "noFinance": "This login has no finance role on this Business Center",
+    "notConnected": "Connect your TikTok Business Center to see its credit and fund your users' ad accounts.",
+    "connect": "Connect",
+    "refresh": "Refresh",
+    "error": "Could not read the Business Center credit right now. Try again.",
+    "none": "No Business Center found for this login."
   }
 }

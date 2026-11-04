@@ -1,7 +1,7 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin } from "../_shared/auth.ts";
 import { checkFundAmount, extractList, parseBcList, resolveOwningBc } from "../_shared/bcFunding.ts";
-import { loadAllBcs, saveBcAccounts, TIKTOK_API, tt } from "../_shared/bcAccounts.ts";
+import { loadAllBcs, loadBcCredits, saveBcAccounts, TIKTOK_API, tt } from "../_shared/bcAccounts.ts";
 import { withCors } from "../_shared/cors.ts";
 import { mapWalletError } from "../_shared/wallet.ts";
 
@@ -187,6 +187,12 @@ Deno.serve(
           businessCenters: { code: bcs.code, message: bcs.message, list: perBc },
           authorizedAdAccounts: { code: advs.code, message: advs.message, count: (advs.data?.list ?? []).length },
         });
+      }
+
+      if (action === "bc-balances") {
+        const r = await loadBcCredits(conn.access_token);
+        if (r.error) return json({ error: r.error, code: "tiktok_error" }, 502);
+        return json({ businessCenters: r.bcs });
       }
 
       if (action === "balances") {

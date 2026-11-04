@@ -7,6 +7,7 @@ import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { getDefaultDateRange, type DateRange } from "@/components/dashboard/dateRange";
 import { Button } from "@/components/ui/button";
 import { LinkedUsersTable } from "@/components/clients/LinkedUsersSection";
+import { BcBalanceCard } from "@/components/funding/BcBalanceCard";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
 import { computeStats, downloadCsv, LeadLite } from "@/lib/metrics";
@@ -139,6 +140,8 @@ const AgencyOverview = () => {
       title={t("agency.title")}
       subtitle={t("agency.subtitle", { name: agency?.name ?? t("agency.yourAgency") })}
     >
+      <BcBalanceCard className="mb-8" />
+
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <DateRangePicker value={range} onChange={setRange} />
         <Button variant="outline" onClick={exportCsv} disabled={!rows.length}>
