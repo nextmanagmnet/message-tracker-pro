@@ -175,5 +175,23 @@
     "refresh": "Refresh",
     "error": "Could not read the Business Center credit right now. Try again.",
     "none": "No Business Center found for this login."
+  },
+  "fund": {
+    "button": "Fund",
+    "title": "Fund {{name}}",
+    "hint": "Sent from your Business Center to this ad account now. The user doesn't need to ask.",
+    "loading": "Loading",
+    "infoFailed": "Couldn't read the balances. You can still try; TikTok checks the amount.",
+    "accountCredit": "Ad account credit",
+    "bcCredit": "{{name}} available",
+    "bcFallback": "Business Center",
+    "amount": "Amount",
+    "min": "Minimum for this account: {{amount}}",
+    "bcTooLow": "That is more than the Business Center has available.",
+    "belowMin": "TikTok's minimum for this account is {{amount}}.",
+    "confirmLine": "Send {{amount}} from {{bc}} to {{name}}.",
+    "confirm": "Send money",
+    "done": "Sent {{amount}} to {{name}}.",
+    "unknown": "TikTok didn't confirm the transfer. Check the account's credit before trying again."
   }
 }

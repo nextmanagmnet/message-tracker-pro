@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useFormat } from "@/components/leads/shared";
 import { useAgency } from "@/hooks/useAgency";
+import { FundButton } from "@/components/funding/FundButton";
 
 /** Users who linked their ad account to this agency. Campaign numbers only, last 7 days. */
 export function LinkedUsersSection() {
@@ -76,6 +77,7 @@ export function LinkedUsersSection() {
               <Button asChild variant="outline" className="w-full">
                 <Link to={`/linked/${a.client_id}`}>{t("linked.view")}</Link>
               </Button>
+              <FundButton size="default" advertiserId={a.advertiser_id} name={a.advertiser_name} />
             </div>
           </div>
         ))}
@@ -140,7 +142,8 @@ export function LinkedUsersTable() {
               <TableCell className="text-end tabular-nums">
                 {cost(Number(a.spend), Number(a.orders), a.currency)}
               </TableCell>
-              <TableCell className="text-end">
+              <TableCell className="whitespace-nowrap text-end">
+                <FundButton advertiserId={a.advertiser_id} name={a.advertiser_name} />
                 <Button asChild size="sm" variant="ghost">
                   <Link to={`/linked/${a.client_id}`}>{t("linked.view")}</Link>
                 </Button>

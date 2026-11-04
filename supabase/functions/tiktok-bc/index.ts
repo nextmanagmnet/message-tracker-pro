@@ -1,7 +1,7 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin } from "../_shared/auth.ts";
 import { checkFundAmount, extractList, parseBcList, resolveOwningBc } from "../_shared/bcFunding.ts";
-import { loadAllBcs, loadBcCredits, saveBcAccounts, TIKTOK_API, tt } from "../_shared/bcAccounts.ts";
+import { advertiserBalance, loadAllBcs, loadBcCredits, saveBcAccounts, TIKTOK_API, tt } from "../_shared/bcAccounts.ts";
 import { withCors } from "../_shared/cors.ts";
 import { mapWalletError } from "../_shared/wallet.ts";
 
@@ -186,6 +186,30 @@ Deno.serve(
         return json({
           businessCenters: { code: bcs.code, message: bcs.message, list: perBc },
           authorizedAdAccounts: { code: advs.code, message: advs.message, count: (advs.data?.list ?? []).length },
+        });
+      }
+
+      // What a top-up dialog needs to show before money moves: the account's credit and its Business Center's.
+      if (action === "account-balance") {
+        const advertiserId = String(body.advertiserId ?? "");
+        const { data: row } = await supabase
+          .from("bc_accounts")
+          .select("bc_id, bc_name")
+          .eq("agency_id", agencyId)
+          .eq("advertiser_id", advertiserId)
+          .maybeSingle();
+        if (!row) return json({ error: "That ad account is not in your Business Center", code: "not_found" }, 404);
+        const [account, credits] = await Promise.all([
+          advertiserBalance(row.bc_id, conn.access_token, advertiserId).catch(() => null),
+          loadBcCredits(conn.access_token).catch(() => null),
+        ]);
+        const bc = credits?.bcs.find((b) => b.bcId === row.bc_id);
+        return json({
+          bcName: row.bc_name,
+          account: account
+            ? { balance: account.balance, currency: account.currency, minTransferable: account.minTransferable }
+            : null,
+          bc: bc ? { balance: bc.balance, currency: bc.currency, error: bc.error } : null,
         });
       }
 

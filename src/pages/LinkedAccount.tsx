@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CampaignsTable, type Campaign } from "@/components/ad-accounts/CampaignsTable";
 import { RecentLaunches } from "@/components/launch/RecentLaunches";
+import { FundButton } from "@/components/funding/FundButton";
 import { useFormat } from "@/components/leads/shared";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,6 +104,7 @@ const LinkedAccount = () => {
       </p>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
+        <FundButton size="default" advertiserId={account.advertiser_id} name={account.advertiser_name} />
         {mayRun ? (
           <Button asChild variant="glow">
             <Link to={`/linked/${clientId}/launch`}>
