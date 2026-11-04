@@ -1,153 +1,64 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Banknote, Loader2, Plug, RefreshCw, Unplug } from "lucide-react";
+import { Banknote, Loader2, Plug, Unplug } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { BcBalanceCard } from "@/components/funding/BcBalanceCard";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { invokeFn, useFormat } from "@/components/leads/shared";
 import { BC_KEY, beginOAuth } from "@/components/connections/oauth";
-import { RequestsPanel } from "@/components/funding/RequestsPanel";
-import { WalletsPanel } from "@/components/funding/WalletsPanel";
 
-type Conn = { max_transfer: number };
-type Account = {
-  advertiserId: string;
-  name: string | null;
-  balance: number | null;
-  currency: string | null;
-  minTransferable: number | null;
-  clientId: string | null;
-  bcId: string;
-  bcName: string | null;
-};
-type Bc = {
-  bcId: string;
-  name: string | null;
-  userRole: string | null;
-  financeRole: string | null;
-  canFinance: boolean;
-  balance: number | null;
-  currency: string | null;
-  error: string | null; // "no_finance_role" or TikTok's message
-  accounts: Account[];
-};
-type Balances = { maxTransfer: number; businessCenters: Bc[]; sample: unknown };
-type Diagnosis = {
-  businessCenters: {
-    code: number;
-    message: string;
-    list: {
-      id: string;
-      name: string | null;
-      role: string | null;
-      financeRole: string | null;
-      balanceList: { code: number; message: string; count: number; total: number | null } | null;
-      assets: {
-        code: number;
-        message: string;
-        total: number | null;
-        items: { id: string; name: string | null; permission: string | null }[];
-      };
-    }[];
-  };
-  authorizedAdAccounts: { code: number; message: string; count: number };
-};
-type Transfer = {
-  id: string;
-  advertiser_id: string;
-  advertiser_name: string | null;
-  bc_id: string | null;
-  bc_name: string | null;
-  amount: number;
-  status: "pending" | "sent" | "failed" | "unknown";
-  response: { message?: string } | null;
-  created_at: string;
-};
+/** What the Funding sub-pages share through the router's outlet. */
+export type FundingContext = { agencyId: string; connect: () => Promise<void>; connecting: boolean };
 
-const STATUS: Record<Transfer["status"], string> = {
-  sent: "text-success",
-  pending: "text-warning",
-  unknown: "text-warning",
-  failed: "text-destructive",
-};
+const TABS = [
+  { to: "/funding", key: "accounts", end: true },
+  { to: "/funding/requests", key: "requests", end: false },
+  { to: "/funding/payments", key: "payments", end: false },
+  { to: "/funding/history", key: "history", end: false },
+] as const;
 
+// Funding is split into sub-pages (Accounts, Requests, Payments, History); this is their shared frame:
+// who may be here, the Business Center connection, each Business Center's name and credit, and the page tabs.
 const Funding = () => {
   const { t } = useTranslation("features");
   const f = useFormat();
   const { agency, can } = useAgency();
   const canManage = can("funding");
-  const [params, setParams] = useSearchParams();
-  const wantedAdvertiser = params.get("advertiser");
-  const [conn, setConn] = useState<Conn | null | undefined>(undefined);
-  const [data, setData] = useState<Balances | null>(null);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [target, setTarget] = useState<Account | null>(null);
-  const [amount, setAmount] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [diag, setDiag] = useState<Diagnosis | null>(null);
-  const [reqKey, setReqKey] = useState(0);
-
   const agencyId = agency?.id;
+  const location = useLocation();
+  const [limit, setLimit] = useState<number | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(0);
 
   const loadConn = useCallback(async () => {
     if (!agencyId) return;
-    const { data: row } = await supabase
+    const { data } = await supabase
       .from("bc_connections")
       .select("max_transfer")
       .eq("agency_id", agencyId)
       .maybeSingle();
-    setConn((row as Conn | null) ?? null);
+    setLimit(data ? Number(data.max_transfer) : null);
   }, [agencyId]);
 
-  const loadTransfers = useCallback(async () => {
-    if (!agencyId) return;
-    const { data: rows } = await supabase
-      .from("fund_transfers")
-      .select("id, advertiser_id, advertiser_name, bc_id, bc_name, amount, status, response, created_at")
-      .eq("agency_id", agencyId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    setTransfers((rows ?? []) as unknown as Transfer[]);
-  }, [agencyId]);
-
-  const loadBalances = useCallback(async () => {
-    if (!agencyId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setData(await invokeFn<Balances>("tiktok-bc", { action: "balances", agencyId }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.error"));
-    } finally {
-      setLoading(false);
-    }
-  }, [agencyId, t]);
-
   useEffect(() => {
-    loadConn();
-    loadTransfers();
-  }, [loadConn, loadTransfers]);
+    void loadConn();
+  }, [loadConn]);
 
+  // The Requests tab shows how many are waiting; it refreshes as you move between the tabs.
   useEffect(() => {
-    if (conn) loadBalances();
-  }, [conn, loadBalances]);
+    if (!agencyId || !canManage) return;
+    supabase
+      .from("topup_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("funding_agency_id", agencyId)
+      .eq("status", "pending")
+      .then(({ count }) => setPending(count ?? 0));
+  }, [agencyId, canManage, location.pathname]);
 
   const connect = async () => {
     if (!agencyId) return;
@@ -168,135 +79,23 @@ const Funding = () => {
     }
   };
 
-  const diagnose = async () => {
-    setBusy(true);
-    try {
-      setDiag(await invokeFn<Diagnosis>("tiktok-bc", { action: "diagnose", agencyId }));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const disconnect = async () => {
     if (!confirm(t("funding.confirmDisconnect"))) return;
     await invokeFn("tiktok-bc", { action: "disconnect", agencyId }).catch(() => null);
-    setData(null);
-    setConn(null);
+    setLimit(null);
   };
 
-  const bcs = data?.businessCenters ?? [];
-  const bcOf = (a: Account | null) => bcs.find((b) => b.bcId === a?.bcId);
-  const bcEmpty = (b?: Bc) => !!b && b.balance !== null && b.balance <= 0;
-
-  // Deep link from the Top-up button: open the dialog for that account once balances are in.
-  useEffect(() => {
-    if (!wantedAdvertiser || !data) return;
-    const hit = data.businessCenters.flatMap((b) => b.accounts).find((a) => a.advertiserId === wantedAdvertiser);
-    if (hit) setTarget(hit);
-  }, [wantedAdvertiser, data]);
-
-  const closeDialog = () => {
-    setTarget(null);
-    setAmount("");
-    if (params.has("advertiser")) {
-      const next = new URLSearchParams(params);
-      next.delete("advertiser");
-      setParams(next, { replace: true });
-    }
-  };
-
-  const fund = async () => {
-    if (!target) return;
-    const value = Number(amount);
-    setBusy(true);
-    try {
-      const r = await invokeFn<{ success: boolean; status: string }>("tiktok-bc", {
-        action: "fund",
-        agencyId,
-        advertiserId: target.advertiserId, // the server finds the account's own Business Center
-        amount: value,
-      });
-      if (r.status === "unknown") toast.warning(t("funding.unknown"));
-      else
-        toast.success(
-          t("funding.done", {
-            amount: f.money(value, target.currency ?? "USD"),
-            name: target.name ?? target.advertiserId,
-          }),
-        );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
-    } finally {
-      setBusy(false);
-      closeDialog();
-      loadTransfers();
-      loadBalances();
-    }
-  };
-
-  const q = search.toLowerCase();
-  const matches = (a: Account) => `${a.name ?? ""} ${a.advertiserId}`.toLowerCase().includes(q);
-  const groups = bcs
-    .map((b) => ({ bc: b, accounts: b.accounts.filter(matches) }))
-    .filter((g) => !q || g.accounts.length > 0);
-  const shown = groups.reduce((n, g) => n + g.accounts.length, 0);
-  const amountNum = Number(amount);
-  const amountOk = amount !== "" && Number.isFinite(amountNum) && amountNum > 0;
-  const targetBc = bcOf(target);
-  const missing =
-    !!wantedAdvertiser && !!data && !bcs.some((b) => b.accounts.some((a) => a.advertiserId === wantedAdvertiser));
-
-  const diagPanel = diag && (
-    <div className="space-y-3 rounded-lg bg-secondary/50 p-3 text-start text-foreground">
-      <p>
-        {t("funding.visibleBcs")}:{" "}
-        {diag.businessCenters.list.length === 0
-          ? `${t("funding.none")} (${diag.businessCenters.message || diag.businessCenters.code})`
-          : ""}
-      </p>
-      {diag.businessCenters.list.map((b) => (
-        <div key={b.id} dir="ltr" className="space-y-1">
-          <p className="font-medium">
-            {b.name ?? "—"} · {b.id} · {b.role ?? "—"} · {t("funding.financeRole")}: {b.financeRole ?? "—"}
-          </p>
-          {b.balanceList && (
-            <p className="text-xs">
-              {t("funding.balanceListLine")}:{" "}
-              {b.balanceList.code === 0
-                ? `${b.balanceList.total ?? b.balanceList.count} account(s)`
-                : `${b.balanceList.code} ${b.balanceList.message}`}
-            </p>
-          )}
-          <p className="text-xs">
-            {t("funding.assetsLine")}:{" "}
-            {b.assets.code === 0
-              ? `${b.assets.total ?? b.assets.items.length} account(s)`
-              : `${b.assets.code} ${b.assets.message}`}
-          </p>
-          {b.assets.items.map((a) => (
-            <p key={a.id} className="text-xs text-muted-foreground">
-              {a.name ?? "—"} · {a.id}
-              {a.permission ? ` · ${a.permission}` : ""}
-            </p>
-          ))}
-        </div>
-      ))}
-      <p>{t("funding.authorizedAds", { count: diag.authorizedAdAccounts.count })}</p>
-      <p className="text-xs text-muted-foreground">{t("funding.diagnoseHint")}</p>
-    </div>
-  );
-
-  return (
-    <DashboardLayout title={t("funding.title")} subtitle={t("funding.subtitle")}>
-      {!canManage ? (
-        <div className="glass-card p-12 text-center text-muted-foreground">{t("funding.adminsOnly")}</div>
-      ) : conn === undefined ? (
+  const body = () => {
+    if (!canManage || !agencyId)
+      return <div className="glass-card p-12 text-center text-muted-foreground">{t("funding.adminsOnly")}</div>;
+    if (limit === undefined)
+      return (
         <div className="flex justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
-      ) : conn === null ? (
+      );
+    if (limit === null)
+      return (
         <div className="glass-card wob-mesh-card mx-auto max-w-xl p-8 text-center">
           <Banknote className="mx-auto mb-3 h-8 w-8 text-primary" />
           <h2 className="text-lg font-semibold text-foreground">{t("funding.connectTitle")}</h2>
@@ -305,236 +104,58 @@ const Funding = () => {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />} {t("funding.connect")}
           </Button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <section className="glass-card flex flex-wrap items-center gap-4 p-5">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">{t("funding.businessCenter")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("funding.visibleBcs")}: {bcs.length}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("funding.limit", { amount: f.money(Number(conn.max_transfer), "USD") })}
-            </p>
-            <Button variant="outline" size="sm" onClick={loadBalances} disabled={loading}>
-              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} /> {t("common.refresh")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={connect} disabled={busy}>
-              <Plug className="h-4 w-4" /> {t("funding.reconnect")}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={disconnect}>
-              <Unplug className="h-4 w-4" /> {t("funding.disconnect")}
-            </Button>
-          </section>
+      );
 
-          {agencyId && (
-            <RequestsPanel
-              agencyId={agencyId}
-              canManage={canManage}
-              reloadKey={reqKey}
-              bcNameOf={
-                data
-                  ? (id) => {
-                      const b = bcs.find((x) => x.accounts.some((a) => a.advertiserId === id));
-                      return b ? (b.name ?? b.bcId) : null;
-                    }
-                  : undefined
-              }
-              onChanged={() => {
-                loadBalances();
-                loadTransfers();
-                setReqKey((k) => k + 1);
-              }}
-            />
-          )}
+    const context: FundingContext = { agencyId, connect, connecting: busy };
+    return (
+      <div className="space-y-6">
+        <BcBalanceCard />
 
-          {agencyId && canManage && <WalletsPanel agencyId={agencyId} />}
-
-          {missing && (
-            <p className="rounded-lg border border-warning/40 p-4 text-sm text-foreground">
-              {t("funding.advertiserNotFound", { id: wantedAdvertiser })}
-            </p>
-          )}
-
-          {error ? (
-            <div className="glass-card space-y-3 border-destructive/40 p-5 text-sm">
-              <p className="text-destructive">{error}</p>
-              <p className="text-muted-foreground">{t("funding.reconnectHint")}</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="glow" onClick={connect} disabled={busy}>
-                  <Plug className="h-4 w-4" /> {t("funding.reconnect")}
-                </Button>
-                <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
-                  {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.diagnose")}
-                </Button>
-              </div>
-              {diagPanel}
-            </div>
-          ) : (
-            <section className="glass-card overflow-hidden">
-              <div className="flex items-center gap-3 border-b border-border p-4">
-                <Input
-                  className="max-w-xs"
-                  value={search}
-                  placeholder={t("funding.search")}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label={t("funding.search")}
-                />
-                <span className="text-xs text-muted-foreground">{t("funding.count", { count: shown })}</span>
-              </div>
-              {loading && !data ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {groups.map(({ bc, accounts }) => (
-                    <div key={bc.bcId}>
-                      <div className="space-y-1 bg-secondary/40 p-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <p className="min-w-0 flex-1 truncate font-semibold text-foreground" dir="auto">
-                            {bc.name ?? bc.bcId}
-                          </p>
-                          <span className="text-xs text-muted-foreground" dir="ltr">
-                            {bc.bcId}
-                          </span>
-                          {bc.balance !== null && (
-                            <span className="text-sm font-semibold text-foreground" dir="ltr">
-                              {t("funding.available", { amount: f.money(bc.balance, bc.currency ?? "USD") })}
-                            </span>
-                          )}
-                        </div>
-                        {bc.error === "no_finance_role" ? (
-                          <p className="text-xs text-warning">{t("funding.noFinance")}</p>
-                        ) : bc.error ? (
-                          <p className="text-xs text-destructive">{t("funding.bcError", { message: bc.error })}</p>
-                        ) : bcEmpty(bc) ? (
-                          <p className="text-xs text-warning">{t("funding.bcEmpty")}</p>
-                        ) : null}
-                      </div>
-                      {accounts.map((a) => (
-                        <div key={a.advertiserId} className="flex flex-wrap items-center gap-3 p-4">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-foreground" dir="auto">
-                              {a.name ?? t("funding.unnamed")}
-                            </p>
-                            <p className="text-xs text-muted-foreground" dir="ltr">
-                              {a.advertiserId}
-                            </p>
-                          </div>
-                          <span className="text-sm font-semibold text-foreground" dir="ltr">
-                            {a.balance === null ? "—" : f.money(a.balance, a.currency ?? "USD")}
-                          </span>
-                          <Button size="sm" variant="outline" onClick={() => setTarget(a)} disabled={bcEmpty(bc)}>
-                            {t("funding.fund")}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                  {groups.length === 0 && (
-                    <div className="space-y-3 p-8 text-center text-sm text-muted-foreground">
-                      <p>{bcs.length === 0 ? t("funding.noBcs") : t("funding.noAccounts")}</p>
-                      <Button size="sm" variant="outline" onClick={diagnose} disabled={busy}>
-                        {t("funding.diagnose")}
-                      </Button>
-                      {diagPanel}
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-
-          {data?.sample != null && (
-            <details className="glass-card p-4 text-xs text-muted-foreground">
-              <summary className="cursor-pointer">{t("funding.rawSample")}</summary>
-              <pre dir="ltr" className="mt-2 overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(data.sample, null, 2)}
-              </pre>
-            </details>
-          )}
-
-          <section className="glass-card overflow-hidden">
-            <h3 className="border-b border-border p-4 font-semibold text-foreground">{t("funding.history")}</h3>
-            {transfers.length === 0 ? (
-              <p className="p-8 text-center text-sm text-muted-foreground">{t("funding.noHistory")}</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {transfers.map((x) => (
-                  <div key={x.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-foreground" dir="auto">
-                        {x.advertiser_name ?? x.advertiser_id}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {f.date(x.created_at)}
-                        {(x.bc_name ?? x.bc_id) && ` · ${t("funding.fromBc", { name: x.bc_name ?? x.bc_id })}`}
-                      </p>
-                    </div>
-                    <span className="font-semibold text-foreground" dir="ltr">
-                      {f.money(Number(x.amount), "USD")}
-                    </span>
-                    <span className={cn("text-xs font-medium", STATUS[x.status])}>
-                      {t(`funding.status.${x.status}`)}
-                      {x.status === "failed" && x.response?.message ? ` · ${x.response.message}` : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="flex-1 text-xs text-muted-foreground">
+            {t("funding.limit", { amount: f.money(limit, "USD") })}
+          </p>
+          <Button variant="outline" size="sm" onClick={connect} disabled={busy}>
+            <Plug className="h-4 w-4" /> {t("funding.reconnect")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={disconnect}>
+            <Unplug className="h-4 w-4" /> {t("funding.disconnect")}
+          </Button>
         </div>
-      )}
 
-      <Dialog open={!!target} onOpenChange={(o) => !o && !busy && closeDialog()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("funding.fundTitle", { name: target?.name ?? target?.advertiserId })}</DialogTitle>
-            <DialogDescription>
-              {t("funding.fromBc", { name: target?.bcName ?? target?.bcId })}
-              {targetBc?.balance != null &&
-                ` · ${t("funding.available", { amount: f.money(targetBc.balance, targetBc.currency ?? "USD") })}`}
-              <br />
-              {t("funding.fundHint")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="fund-amount">{t("funding.amount")}</Label>
-            <Input
-              id="fund-amount"
-              type="number"
-              min="0"
-              step="0.01"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            {target?.minTransferable ? (
-              <p className="text-xs text-muted-foreground">
-                {t("funding.minimum", { amount: target.minTransferable })}
-              </p>
-            ) : null}
-            {amountOk && (
-              <p className="rounded-lg bg-secondary/60 p-3 text-sm text-foreground">
-                {t("funding.confirmLine", {
-                  amount: f.money(amountNum, target?.currency ?? "USD"),
-                  name: target?.name ?? target?.advertiserId,
-                })}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={busy}>
-              {t("catalog.cancel")}
-            </Button>
-            <Button variant="glow" onClick={fund} disabled={busy || !amountOk || bcEmpty(targetBc)}>
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.confirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label={t("funding.title")}>
+          {TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={({ isActive }) =>
+                cn(
+                  "-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )
+              }
+            >
+              {t(`funding.tabs.${tab.key}`)}
+              {tab.key === "requests" && pending > 0 && (
+                <span className="rounded-full bg-warning/20 px-2 py-0.5 text-xs font-semibold text-warning">
+                  {pending}
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        <Outlet context={context} />
+      </div>
+    );
+  };
+
+  return (
+    <DashboardLayout title={t("funding.title")} subtitle={t("funding.subtitle")}>
+      {body()}
     </DashboardLayout>
   );
 };

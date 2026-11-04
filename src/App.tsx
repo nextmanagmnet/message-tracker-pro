@@ -19,6 +19,10 @@ const Connections = lazy(() => import("./pages/Connections"));
 const AIAgent = lazy(() => import("./pages/AIAgent"));
 const Catalog = lazy(() => import("./pages/Catalog"));
 const Funding = lazy(() => import("./pages/Funding"));
+const FundingAccounts = lazy(() => import("./pages/funding/Accounts"));
+const FundingRequests = lazy(() => import("./pages/funding/Requests"));
+const FundingPayments = lazy(() => import("./pages/funding/Payments"));
+const FundingHistory = lazy(() => import("./pages/funding/History"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AgencyOverview = lazy(() => import("./pages/AgencyOverview"));
@@ -180,7 +184,12 @@ const App = () => (
                         <Funding />
                       </AgencyOnly>
                     }
-                  />
+                  >
+                    <Route index element={<FundingAccounts />} />
+                    <Route path="requests" element={<FundingRequests />} />
+                    <Route path="payments" element={<FundingPayments />} />
+                    <Route path="history" element={<FundingHistory />} />
+                  </Route>
                   <Route
                     path="/tiktok/callback"
                     element={

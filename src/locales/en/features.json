@@ -466,7 +466,17 @@
       "declined": "Declined",
       "cancelled": "Cancelled",
       "failed": "Failed"
-    }
+    },
+    "tabs": {
+      "accounts": "Ad accounts",
+      "requests": "Requests",
+      "payments": "Payments",
+      "history": "History"
+    },
+    "updating": "Updating balances…",
+    "updatedAt": "Updated {{when}}",
+    "firstLoad": "Reading your Business Centers from TikTok for the first time. This can take up to a minute.",
+    "syncFailed": "Couldn't refresh balances from TikTok: {{message}}. Showing the last saved list."
   },
   "invite": {
     "menu": "Invite client login",

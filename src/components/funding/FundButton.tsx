@@ -30,18 +30,21 @@ export function FundButton({
   advertiserId,
   name,
   size = "sm",
+  autoOpen = false,
   onDone,
 }: {
   advertiserId: string;
   name: string;
   size?: "sm" | "default";
+  /** Opens the dialog straight away (the Top-up button on a user's dashboard links here). */
+  autoOpen?: boolean;
   onDone?: () => void;
 }) {
   const { t } = useTranslation("agencylinks");
   const f = useFormat();
   const { agency, can } = useAgency();
   const agencyId = agency?.id;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [info, setInfo] = useState<Info | null>(null);
   const [infoFailed, setInfoFailed] = useState(false);
   const [amount, setAmount] = useState("");

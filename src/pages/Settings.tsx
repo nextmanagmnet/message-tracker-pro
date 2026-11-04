@@ -219,19 +219,21 @@ const Settings = () => {
         )}
 
         {/* WhatsApp numbers, ad accounts and pixels live on the Connections page */}
-        <div className="glass-card p-6">
-          <SectionHeader
-            icon={Plug}
-            title={t("settings.connectionsTitle")}
-            subtitle={t("settings.connectionsSubtitle")}
-            action={
-              <Button variant="outline" size="sm" onClick={() => navigate("/connections")}>
-                <ExternalLink className="w-4 h-4" />
-                {t("settings.openConnections")}
-              </Button>
-            }
-          />
-        </div>
+        {(isIndividual || isClientUser) && (
+          <div className="glass-card p-6">
+            <SectionHeader
+              icon={Plug}
+              title={t("settings.connectionsTitle")}
+              subtitle={t("settings.connectionsSubtitle")}
+              action={
+                <Button variant="outline" size="sm" onClick={() => navigate("/connections")}>
+                  <ExternalLink className="w-4 h-4" />
+                  {t("settings.openConnections")}
+                </Button>
+              }
+            />
+          </div>
+        )}
 
         {/* Automation */}
         <div className="glass-card p-6">

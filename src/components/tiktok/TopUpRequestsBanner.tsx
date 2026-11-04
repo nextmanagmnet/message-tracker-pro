@@ -36,7 +36,7 @@ export function TopUpRequestsBanner({ className }: { className?: string }) {
   if (!eligible || count === 0) return null;
   return (
     <Link
-      to="/funding"
+      to="/funding/requests"
       className={`flex items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-foreground hover:bg-warning/15 ${className ?? ""}`}
     >
       <Bell className="w-5 h-5 shrink-0 text-warning" />

@@ -106,8 +106,12 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
         <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
           {lean ? (
             <>
-              {agencyNav.map((i) => renderItem(i.path === "/agency" ? { ...i, key: "nav.dashboard" } : i))}
+              {/* Dashboard, Clients, then Campaigns third, then the rest */}
+              {agencyNav
+                .filter((i) => i.path === "/agency" || i.path === "/clients")
+                .map((i) => renderItem(i.path === "/agency" ? { ...i, key: "nav.dashboard" } : i))}
               {can("campaigns") && renderItem({ icon: TrendingUp, key: "nav.campaigns", path: "/campaigns" })}
+              {agencyNav.filter((i) => i.path !== "/agency" && i.path !== "/clients").map(renderItem)}
               {mainItems.filter((i) => i.path === "/settings").map(renderItem)}
             </>
           ) : (
