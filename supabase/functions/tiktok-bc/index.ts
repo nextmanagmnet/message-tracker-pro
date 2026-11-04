@@ -12,6 +12,7 @@ import {
   type BcSummary,
 } from "../_shared/bcFunding.ts";
 import { withCors } from "../_shared/cors.ts";
+import { mapWalletError } from "../_shared/wallet.ts";
 
 // Agency-level TikTok Business Center: connect it, list ad-account balances, top accounts up.
 // Body: { action, agencyId, ... }. Only agency owners/admins; the token never leaves the server.
@@ -167,6 +168,54 @@ Deno.serve(
         return json({ success: true });
       }
 
+      if (action === "resolve-request") {
+        // A request stuck in 'approving' after an unknown transfer result: staff checked TikTok and say what happened.
+        const outcome = body.outcome;
+        if (outcome !== "approved" && outcome !== "failed")
+          return json({ error: "outcome must be approved or failed" }, 400);
+        const { data: stuck } = await supabase
+          .from("topup_requests")
+          .select("id, status, funding_agency_id, fund_transfer_id")
+          .eq("id", String(body.requestId ?? ""))
+          .maybeSingle();
+        if (!stuck || stuck.funding_agency_id !== agencyId) return json({ error: "Top-up request not found" }, 404);
+        if (stuck.status !== "approving") return json({ error: "This request was already handled" }, 409);
+        if (stuck.fund_transfer_id)
+          await supabase
+            .from("fund_transfers")
+            .update({ status: outcome === "approved" ? "sent" : "failed" })
+            .eq("id", stuck.fund_transfer_id);
+        if (outcome === "approved") {
+          const { data: done } = await supabase
+            .from("topup_requests")
+            .update({ status: "approved", decided_by: userId, decided_at: new Date().toISOString(), error: null })
+            .eq("id", stuck.id)
+            .eq("status", "approving")
+            .select("id");
+          if (!done?.length) return json({ error: "This request was already handled" }, 409);
+          return json({ success: true, status: "approved" });
+        }
+        // Not sent: back to pending, then the database refunds the wallet.
+        const { data: back } = await supabase
+          .from("topup_requests")
+          .update({ status: "pending", error: "Marked as not sent after checking TikTok" })
+          .eq("id", stuck.id)
+          .eq("status", "approving")
+          .select("id");
+        if (!back?.length) return json({ error: "This request was already handled" }, 409);
+        const { error: refundErr } = await supabase.rpc("settle_topup_request", {
+          p_request: stuck.id,
+          p_outcome: "failed",
+          p_by: userId,
+        });
+        if (refundErr) {
+          const mapped = mapWalletError(refundErr);
+          if (mapped) return json({ error: mapped.error, code: mapped.code }, mapped.status);
+          throw refundErr;
+        }
+        return json({ success: true, status: "failed" });
+      }
+
       if (!conn) return json({ error: "Connect your TikTok Business Center first", code: "not_connected" }, 400);
 
       if (action === "set-bc") {
@@ -271,109 +320,151 @@ Deno.serve(
           // Approving a top-up request: it must be this agency's, still pending, for this account; its amount wins.
           const { data: req } = await supabase
             .from("topup_requests")
-            .select("funding_agency_id, advertiser_id, amount, status")
+            .select("funding_agency_id, advertiser_id, status")
             .eq("id", requestId)
             .maybeSingle();
           if (!req || req.funding_agency_id !== agencyId || req.advertiser_id !== advertiserId)
             return json({ error: "Top-up request not found" }, 404);
-          if (req.status !== "pending") return json({ error: "This request was already handled" }, 409);
-          amount = Number(req.amount);
+          // Claim it before anything else: from here nobody can cancel or decline it, and a second approve is refused.
+          const { data: claimed } = await supabase
+            .from("topup_requests")
+            .update({ status: "approving" })
+            .eq("id", requestId)
+            .eq("status", "pending")
+            .eq("funding_agency_id", agencyId)
+            .select("amount, fee");
+          if (!claimed?.length) return json({ error: "This request was already handled" }, 409);
+          amount = Number(claimed[0].amount);
         }
-        // The account's OWN Business Center, found server-side from what each BC administers; the browser sends no bc_id.
-        const all = await loadAllBcs(conn.access_token);
-        if (all.error) return json({ error: all.error }, 502);
-        const target = resolveOwningBc(
-          all.bcs.flatMap((b) => b.accounts),
-          advertiserId,
-        );
-        if (!target) return json({ error: "That ad account is not under a Business Center you can fund from" }, 400);
-        const bad = checkFundAmount(amount, Number(conn.max_transfer), target.minTransferable);
-        if (bad) return json({ error: bad }, 400);
+        // Give the claim back (still pending, so it can be retried or declined) when nothing was sent.
+        const release = async (res: Response) => {
+          if (requestId)
+            await supabase
+              .from("topup_requests")
+              .update({ status: "pending" })
+              .eq("id", requestId)
+              .eq("status", "approving");
+          return res;
+        };
+        let attempted = false;
+        try {
+          // The account's OWN Business Center, found server-side from what each BC administers; the browser sends no bc_id.
+          const all = await loadAllBcs(conn.access_token);
+          if (all.error) return release(json({ error: all.error }, 502));
+          const target = resolveOwningBc(
+            all.bcs.flatMap((b) => b.accounts),
+            advertiserId,
+          );
+          if (!target)
+            return release(json({ error: "That ad account is not under a Business Center you can fund from" }, 400));
+          const bad = checkFundAmount(amount, Number(conn.max_transfer), target.minTransferable);
+          if (bad) return release(json({ error: bad }, 400));
 
-        // A second click or retry while one is unresolved could double-fund; make staff look first.
-        const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        const { data: open } = await supabase
-          .from("fund_transfers")
-          .select("id")
-          .eq("agency_id", agencyId)
-          .eq("advertiser_id", advertiserId)
-          .in("status", ["pending", "unknown"])
-          .gte("created_at", since)
-          .limit(1);
-        if (open?.length)
+          // A second click or retry while one is unresolved could double-fund; make staff look first.
+          const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+          const { data: open } = await supabase
+            .from("fund_transfers")
+            .select("id")
+            .eq("agency_id", agencyId)
+            .eq("advertiser_id", advertiserId)
+            .in("status", ["pending", "unknown"])
+            .gte("created_at", since)
+            .limit(1);
+          if (open?.length)
+            return release(
+              json(
+                {
+                  error: "A top-up for this account is still unresolved. Check TikTok before trying again.",
+                  code: "unresolved",
+                },
+                409,
+              ),
+            );
+
+          const { data: acct } = await supabase
+            .from("tiktok_accounts")
+            .select("client_id")
+            .eq("tenant_id", agencyId)
+            .eq("advertiser_id", advertiserId)
+            .limit(1)
+            .maybeSingle();
+          const { data: row, error: insErr } = await supabase
+            .from("fund_transfers")
+            .insert({
+              agency_id: agencyId,
+              client_id: acct?.client_id ?? null,
+              advertiser_id: advertiserId,
+              advertiser_name: target.name,
+              bc_id: target.bcId,
+              bc_name: target.bcName,
+              amount,
+              type: "RECHARGE",
+              status: "pending",
+              created_by: userId,
+            })
+            .select("id, request_id")
+            .single();
+          if (insErr || !row) return release(json({ error: "Could not record the top-up, nothing was sent" }, 500));
+
+          let status: "sent" | "failed" | "unknown" = "unknown";
+          let response: { code?: number; message?: string; request_id?: string; error?: string } | null = null;
+          attempted = true;
+          try {
+            const d = await tt("/bc/transfer/", conn.access_token, {
+              method: "POST",
+              body: JSON.stringify({
+                bc_id: target.bcId,
+                advertiser_id: advertiserId,
+                transfer_type: "RECHARGE",
+                cash_amount: amount,
+                request_id: row.request_id,
+              }),
+            });
+            response = { code: d.code, message: d.message, request_id: d.request_id };
+            status = d.code === 0 ? "sent" : "failed";
+          } catch (e) {
+            // Timeout or network cut: TikTok may or may not have applied it. Never guess; never auto-retry.
+            response = { error: e instanceof Error ? e.message : String(e) };
+          }
+          await supabase.from("fund_transfers").update({ status, response }).eq("id", row.id);
+          if (requestId && status === "sent")
+            // The wallet was charged when the request was made; the fee stays with the agency.
+            await supabase
+              .from("topup_requests")
+              .update({
+                status: "approved",
+                decided_by: userId,
+                decided_at: new Date().toISOString(),
+                fund_transfer_id: row.id,
+                error: null,
+              })
+              .eq("id", requestId)
+              .eq("status", "approving");
+          else if (requestId && status === "failed")
+            // TikTok said no: back to pending so staff can retry or decline (which refunds the wallet).
+            await supabase
+              .from("topup_requests")
+              .update({ status: "pending", error: response?.message ?? "TikTok rejected the transfer" })
+              .eq("id", requestId)
+              .eq("status", "approving");
+          else if (requestId)
+            // Unknown: stays 'approving' (nobody can cancel or decline) until staff check TikTok and resolve it.
+            await supabase.from("topup_requests").update({ fund_transfer_id: row.id }).eq("id", requestId);
           return json(
             {
-              error: "A top-up for this account is still unresolved. Check TikTok before trying again.",
-              code: "unresolved",
+              success: status === "sent",
+              status,
+              message:
+                status === "unknown" && requestId
+                  ? "The result is unknown. The request stays in approving: check TikTok, then resolve it."
+                  : (response?.message ?? null),
             },
-            409,
+            status === "failed" ? 502 : 200,
           );
-
-        const { data: acct } = await supabase
-          .from("tiktok_accounts")
-          .select("client_id")
-          .eq("tenant_id", agencyId)
-          .eq("advertiser_id", advertiserId)
-          .limit(1)
-          .maybeSingle();
-        const { data: row, error: insErr } = await supabase
-          .from("fund_transfers")
-          .insert({
-            agency_id: agencyId,
-            client_id: acct?.client_id ?? null,
-            advertiser_id: advertiserId,
-            advertiser_name: target.name,
-            bc_id: target.bcId,
-            bc_name: target.bcName,
-            amount,
-            type: "RECHARGE",
-            status: "pending",
-            created_by: userId,
-          })
-          .select("id, request_id")
-          .single();
-        if (insErr || !row) return json({ error: "Could not record the top-up, nothing was sent" }, 500);
-
-        let status: "sent" | "failed" | "unknown" = "unknown";
-        let response: { code?: number; message?: string; request_id?: string; error?: string } | null = null;
-        try {
-          const d = await tt("/bc/transfer/", conn.access_token, {
-            method: "POST",
-            body: JSON.stringify({
-              bc_id: target.bcId,
-              advertiser_id: advertiserId,
-              transfer_type: "RECHARGE",
-              cash_amount: amount,
-              request_id: row.request_id,
-            }),
-          });
-          response = { code: d.code, message: d.message, request_id: d.request_id };
-          status = d.code === 0 ? "sent" : "failed";
         } catch (e) {
-          // Timeout or network cut: TikTok may or may not have applied it. Never guess; never auto-retry.
-          response = { error: e instanceof Error ? e.message : String(e) };
+          if (!attempted) await release(json({}));
+          throw e;
         }
-        await supabase.from("fund_transfers").update({ status, response }).eq("id", row.id);
-        if (requestId && status === "sent")
-          await supabase
-            .from("topup_requests")
-            .update({
-              status: "approved",
-              decided_by: userId,
-              decided_at: new Date().toISOString(),
-              fund_transfer_id: row.id,
-            })
-            .eq("id", requestId)
-            .eq("status", "pending");
-        else if (requestId && status === "failed")
-          await supabase
-            .from("topup_requests")
-            .update({ error: response?.message ?? "TikTok rejected the transfer" })
-            .eq("id", requestId); // stays pending so it can be retried
-        return json(
-          { success: status === "sent", status, message: response?.message ?? null },
-          status === "failed" ? 502 : 200,
-        );
       }
 
       return json({ error: "Unknown action" }, 400);

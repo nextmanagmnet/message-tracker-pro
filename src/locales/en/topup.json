@@ -16,8 +16,19 @@
     "approved": "Approved: funds added",
     "declined": "Declined",
     "cancelled": "Cancelled",
-    "failed": "Failed"
+    "failed": "Failed",
+    "approving": "Being sent to TikTok"
   },
   "banner": "Top-up requests waiting for your approval: {{count}}",
-  "review": "Review"
+  "review": "Review",
+  "walletBalance": "Wallet balance: {{balance}}",
+  "approving": "Being sent to TikTok: {{amount}}.",
+  "quoteLine": "{{amount}} + {{fee}} fee = {{total}} charged from your wallet",
+  "belowMin": "The minimum top-up is {{min}}.",
+  "notEnough": "Not enough in your wallet.",
+  "addFunds": "Add funds to your wallet",
+  "insufficient_funds": "Not enough in your wallet. Add funds first.",
+  "below_minimum": "That is below the minimum top-up.",
+  "currency_mismatch": "This ad account uses a different currency from your wallet.",
+  "paidFromWallet": "Paid from your wallet"
 }

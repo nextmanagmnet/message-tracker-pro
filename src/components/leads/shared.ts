@@ -44,6 +44,16 @@ export function stageOf(l: Pick<Lead, "stage" | "status">): Stage {
 
 export const atLeast = (l: Pick<Lead, "stage" | "status">, s: Stage) => RANK[stageOf(l)] >= RANK[s];
 
+// Server errors keep their machine-readable code (insufficient_funds, already_pending, ...) next to the message.
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
 export class LimitError extends Error {}
 
 /** Invoke an edge function; throws with the server's message, LimitError on 409 {code:'limit'}. */
@@ -55,11 +65,11 @@ export async function invokeFn<T = Record<string, unknown>>(name: string, body: 
       payload = await error.context.json().catch(() => null);
       if (error.context.status === 409 && payload?.code === "limit") throw new LimitError(payload.error ?? "limit");
     }
-    throw new Error(payload?.error ?? error.message);
+    throw new ApiError(payload?.error ?? error.message, payload?.code);
   }
   if (data?.error) {
     if (data.code === "limit") throw new LimitError(data.error);
-    throw new Error(data.error);
+    throw new ApiError(data.error, data.code);
   }
   return data as T;
 }

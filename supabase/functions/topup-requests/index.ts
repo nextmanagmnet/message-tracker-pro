@@ -3,9 +3,11 @@ import { corsHeaders, json } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
 import { tiktokApi } from "../_shared/tiktokApi.ts";
 import { pickFundingAgency, requestNotice, validateTopUpAmount } from "../_shared/topup.ts";
+import { mapWalletError } from "../_shared/wallet.ts";
 
 // A user asks the agency that funds their ad account to add money; the agency approves it in Funding
 // (tiktok-bc `fund` with requestId, which runs the transfer safety checks) or declines it here.
+// Creating a request charges the wallet (amount + fee) in the same database step; declining or cancelling refunds it.
 // Body: { action: "routing", clientId, advertiserId } | { action: "create", clientId, advertiserId, amount, note? }
 //     | { action: "cancel", requestId } | { action: "decline", requestId }
 
@@ -55,11 +57,16 @@ Deno.serve(
         if (auth instanceof Response) return auth;
         if (request.status !== "pending") return json({ error: "This request was already handled" }, 409);
         const status = body.action === "decline" ? "declined" : "cancelled";
-        await admin
-          .from("topup_requests")
-          .update({ status, decided_by: auth.userId, decided_at: new Date().toISOString() })
-          .eq("id", request.id)
-          .eq("status", "pending");
+        const { error } = await admin.rpc("settle_topup_request", {
+          p_request: request.id,
+          p_outcome: status,
+          p_by: auth.userId,
+        });
+        if (error) {
+          const mapped = mapWalletError(error);
+          if (mapped) return json({ error: mapped.error, code: mapped.code }, mapped.status);
+          throw error;
+        }
         return json({ success: true, status });
       }
 
@@ -102,25 +109,29 @@ Deno.serve(
         // keep USD; the transfer itself uses TikTok's real currency
       }
 
-      const { data: row, error } = await admin
-        .from("topup_requests")
-        .insert({
-          client_id: body.clientId,
-          client_name: client.name,
-          funding_agency_id: found.agencyId,
-          advertiser_id: advertiserId,
-          advertiser_name: account.advertiser_name,
-          requested_by: auth.userId,
-          amount,
-          currency,
-          note: note || null,
-        })
-        .select("id, status, amount, currency, created_at")
-        .single();
+      // One database step: the request, its fee and the wallet debit, or none of them.
+      const { data: requestId, error } = await admin.rpc("create_topup_request", {
+        p_client: body.clientId,
+        p_agency: found.agencyId,
+        p_advertiser: advertiserId,
+        p_advertiser_name: account.advertiser_name,
+        p_by: auth.userId,
+        p_amount: amount,
+        p_currency: currency,
+        p_note: note || null,
+        p_client_name: client.name,
+      });
       if (error) {
-        if (error.code === "23505") return json({ error: "A request for this ad account is already waiting" }, 409);
+        const mapped = mapWalletError(error);
+        if (mapped) return json({ error: mapped.error, code: mapped.code }, mapped.status);
         throw error;
       }
+      const { data: row, error: readErr } = await admin
+        .from("topup_requests")
+        .select("id, status, amount, fee, currency, created_at")
+        .eq("id", requestId)
+        .single();
+      if (readErr) throw readErr;
 
       const notice = requestNotice(client.name, account.advertiser_name, amount as number, currency);
       await admin.from("notifications").insert({

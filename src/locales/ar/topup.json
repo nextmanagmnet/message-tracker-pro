@@ -16,8 +16,19 @@
     "approved": "تمت الموافقة: أُضيف الرصيد",
     "declined": "مرفوض",
     "cancelled": "ملغى",
-    "failed": "فشل"
+    "failed": "فشل",
+    "approving": "قيد الإرسال إلى تيك توك"
   },
   "banner": "طلبات شحن بانتظار موافقتك: {{count}}",
-  "review": "مراجعة"
+  "review": "مراجعة",
+  "walletBalance": "رصيد المحفظة: {{balance}}",
+  "approving": "قيد الإرسال إلى تيك توك: {{amount}}.",
+  "quoteLine": "{{amount}} + رسوم {{fee}} = {{total}} تُخصم من محفظتك",
+  "belowMin": "الحد الأدنى للشحن هو {{min}}.",
+  "notEnough": "الرصيد في محفظتك غير كافٍ.",
+  "addFunds": "أضف رصيداً إلى محفظتك",
+  "insufficient_funds": "الرصيد في محفظتك غير كافٍ. أضف رصيداً أولاً.",
+  "below_minimum": "المبلغ أقل من الحد الأدنى للشحن.",
+  "currency_mismatch": "عملة هذا الحساب الإعلاني تختلف عن عملة محفظتك.",
+  "paidFromWallet": "مدفوع من محفظتك"
 }

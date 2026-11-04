@@ -21,9 +21,11 @@ type Req = {
   advertiser_name: string | null;
   client_name: string | null;
   amount: number;
+  fee: number;
+  wallet_entry_id: string | null;
   currency: string;
   note: string | null;
-  status: "pending" | "approved" | "declined" | "cancelled" | "failed";
+  status: "pending" | "approving" | "approved" | "declined" | "cancelled" | "failed";
   error: string | null;
   created_at: string;
 };
@@ -53,11 +55,13 @@ export function RequestsPanel({
   onChanged: () => void;
 }) {
   const { t } = useTranslation("features");
+  const { t: tw } = useTranslation("wallet");
   const f = useFormat();
   const [rows, setRows] = useState<Req[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Req | null>(null);
+  const [resolve, setResolve] = useState<{ req: Req; outcome: "approved" | "failed" } | null>(null);
 
   const load = useCallback(async () => {
     // client_name arrives with a later migration, so the row type is cast until types are regenerated.
@@ -76,7 +80,8 @@ export function RequestsPanel({
   }, [load, reloadKey]);
 
   const pending = rows.filter((r) => r.status === "pending");
-  const decided = rows.filter((r) => r.status !== "pending").slice(0, 10);
+  const approving = rows.filter((r) => r.status === "approving");
+  const decided = rows.filter((r) => r.status !== "pending" && r.status !== "approving").slice(0, 10);
   const bcFor = (r: Req) => (bcNameOf ? bcNameOf(r.advertiser_id) : undefined);
 
   const approve = async () => {
@@ -102,6 +107,28 @@ export function RequestsPanel({
       onChanged();
     }
   };
+
+  const resolveNow = async () => {
+    if (!resolve) return;
+    const { req, outcome } = resolve;
+    setBusyId(req.id);
+    try {
+      await invokeFn("tiktok-bc", { action: "resolve-request", agencyId, requestId: req.id, outcome });
+      toast.success(tw("requests.resolved"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setBusyId(null);
+      setResolve(null);
+      load();
+      onChanged();
+    }
+  };
+
+  const fromWallet = (r: Req) =>
+    r.wallet_entry_id
+      ? ` · ${tw("requests.fromWallet")}${r.fee > 0 ? ` · ${tw("requests.fee", { fee: f.money(Number(r.fee), r.currency) })}` : ""}`
+      : "";
 
   const decline = async (r: Req) => {
     setBusyId(r.id);
@@ -152,6 +179,7 @@ export function RequestsPanel({
                   <p className="text-xs text-muted-foreground">
                     {t("funding.requestedAgo", { time: f.ago(r.created_at) })}
                     {bc && ` · ${t("funding.fromBc", { name: bc })}`}
+                    {fromWallet(r)}
                   </p>
                   {bc === null && <p className="text-xs text-warning">{t("funding.requestNoBc")}</p>}
                   {r.error && (
@@ -179,7 +207,43 @@ export function RequestsPanel({
               </div>
             );
           })}
-          {pending.length === 0 && (
+          {approving.map((r) => (
+            <div key={r.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="truncate font-medium text-foreground" dir="auto">
+                  {r.client_name ?? "—"} · {label(r)}
+                </p>
+                <p className="text-xs text-warning">
+                  {tw("requests.inProgress")}
+                  {fromWallet(r)}
+                </p>
+              </div>
+              <span className="font-semibold text-foreground" dir="ltr">
+                {f.money(Number(r.amount), r.currency)}
+              </span>
+              {canManage && (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setResolve({ req: r, outcome: "failed" })}
+                    disabled={busyId !== null}
+                  >
+                    {tw("requests.markFailed")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="glow"
+                    onClick={() => setResolve({ req: r, outcome: "approved" })}
+                    disabled={busyId !== null}
+                  >
+                    {tw("requests.markSent")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+          {pending.length === 0 && approving.length === 0 && (
             <p className="p-5 text-center text-sm text-muted-foreground">{t("funding.requestsNonePending")}</p>
           )}
           {decided.map((r) => (
@@ -213,6 +277,29 @@ export function RequestsPanel({
             </Button>
             <Button variant="glow" onClick={approve} disabled={!!busyId}>
               {busyId && <Loader2 className="h-4 w-4 animate-spin" />} {t("funding.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!resolve} onOpenChange={(o) => !o && !busyId && setResolve(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{tw("requests.resolveTitle")}</DialogTitle>
+            <DialogDescription>
+              {resolve &&
+                tw(resolve.outcome === "approved" ? "requests.resolveSent" : "requests.resolveFailed", {
+                  amount: f.money(Number(resolve.req.amount), resolve.req.currency),
+                  name: label(resolve.req),
+                })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolve(null)} disabled={!!busyId}>
+              {tw("requests.cancel")}
+            </Button>
+            <Button variant="glow" onClick={() => void resolveNow()} disabled={!!busyId}>
+              {busyId && <Loader2 className="h-4 w-4 animate-spin" />} {tw("requests.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

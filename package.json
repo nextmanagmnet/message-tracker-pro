@@ -10,7 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:db": "npx -y supabase@2 db query --linked --project-ref oiidzysiucznvzgwrtfp -f supabase/tests/client_isolation.sql",
+    "test:db": "npx -y supabase@2 db query --linked --project-ref oiidzysiucznvzgwrtfp -f supabase/tests/client_isolation.sql && npx -y supabase@2 db query --linked --project-ref oiidzysiucznvzgwrtfp -f supabase/tests/wallet.sql",
     "preview": "vite preview",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

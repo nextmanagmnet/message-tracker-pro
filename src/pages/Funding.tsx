@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { invokeFn, useFormat } from "@/components/leads/shared";
 import { BC_KEY, beginOAuth } from "@/components/connections/oauth";
 import { RequestsPanel } from "@/components/funding/RequestsPanel";
+import { WalletsPanel } from "@/components/funding/WalletsPanel";
 
 type Conn = { max_transfer: number };
 type Account = {
@@ -346,6 +347,8 @@ const Funding = () => {
               }}
             />
           )}
+
+          {agencyId && canManage && <WalletsPanel agencyId={agencyId} />}
 
           {missing && (
             <p className="rounded-lg border border-warning/40 p-4 text-sm text-foreground">
