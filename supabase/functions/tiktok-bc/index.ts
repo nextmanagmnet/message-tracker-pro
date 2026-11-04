@@ -1,23 +1,13 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin } from "../_shared/auth.ts";
-import {
-  checkFundAmount,
-  extractList,
-  parseAdvertiserBalance,
-  parseBcList,
-  resolveOwningBc,
-  tagAccounts,
-  type BcAccount,
-  type BcAdvertiser,
-  type BcSummary,
-} from "../_shared/bcFunding.ts";
+import { checkFundAmount, extractList, parseBcList, resolveOwningBc } from "../_shared/bcFunding.ts";
+import { loadAllBcs, saveBcAccounts, TIKTOK_API, tt } from "../_shared/bcAccounts.ts";
 import { withCors } from "../_shared/cors.ts";
 import { mapWalletError } from "../_shared/wallet.ts";
 
 // Agency-level TikTok Business Center: connect it, list ad-account balances, top accounts up.
 // Body: { action, agencyId, ... }. Only agency owners/admins; the token never leaves the server.
-const API = "https://business-api.tiktok.com/open_api/v1.3";
-const PAGE_SIZE = 50; // TikTok rejects anything larger
+const API = TIKTOK_API;
 
 // Rows from /bc/asset/get/ and /bc/get/; field names vary, so every one is optional.
 type BcAsset = {
@@ -30,91 +20,6 @@ type BcAsset = {
   permission?: string;
   relation_type?: string;
 } | null;
-async function tt(
-  path: string,
-  token: string,
-  init: { method?: string; body?: string; query?: Record<string, string> } = {},
-) {
-  const url = new URL(`${API}${path}`);
-  for (const [k, v] of Object.entries(init.query ?? {})) url.searchParams.set(k, v);
-  const res = await fetch(url, {
-    method: init.method ?? "GET",
-    headers: { "Access-Token": token, "Content-Type": "application/json" },
-    body: init.body,
-    signal: AbortSignal.timeout(20000),
-  });
-  return await res.json().catch(() => ({ code: -1, message: `HTTP ${res.status}` }));
-}
-
-async function listBalances(
-  bcId: string,
-  token: string,
-): Promise<{ rows: BcAdvertiser[]; sample: unknown; error?: string }> {
-  const rows: BcAdvertiser[] = [];
-  let sample: unknown = null;
-  for (let page = 1; page <= 100; page++) {
-    const query: Record<string, string> = {
-      bc_id: bcId,
-      page: String(page),
-      page_size: String(PAGE_SIZE),
-      fields: JSON.stringify(["min_transferable_amount"]),
-    };
-    let d = await tt("/advertiser/balance/get/", token, { query });
-    if (d.code !== 0 && page === 1) {
-      delete query.fields; // retry without the optional field
-      d = await tt("/advertiser/balance/get/", token, { query });
-    }
-    if (d.code !== 0) return { rows, sample, error: d.message ?? `TikTok error ${d.code}` };
-    const list = extractList(d.data);
-    sample ??= list[0] ?? null;
-    for (const r of list) {
-      const p = parseAdvertiserBalance(r);
-      if (p) rows.push(p);
-    }
-    const totalPages = Number(d.data?.page_info?.total_page);
-    if (list.length === 0 || (Number.isFinite(totalPages) ? page >= totalPages : list.length < PAGE_SIZE)) break;
-  }
-  return { rows, sample };
-}
-
-type BcResult = BcSummary & {
-  balance: number | null;
-  currency: string | null;
-  accounts: BcAccount[];
-  error: string | null; // "no_finance_role" or TikTok's message; one failing BC never breaks the others
-};
-
-/** Every BC this login administers, each with its own ad accounts (= ownership) and available balance. */
-async function loadAllBcs(token: string): Promise<{ bcs: BcResult[]; sample: unknown; error?: string; code?: number }> {
-  const l = await tt("/bc/get/", token).catch((e) => ({ code: -1, message: String(e) }));
-  if (l.code !== 0) return { bcs: [], sample: null, error: l.message ?? `TikTok error ${l.code}`, code: l.code };
-  let sample: unknown = null;
-  const bcs = await Promise.all(
-    parseBcList(l.data).map(async (bc): Promise<BcResult> => {
-      const base = { ...bc, balance: null, currency: null, accounts: [], error: null };
-      if (!bc.canFinance) return { ...base, error: "no_finance_role" };
-      try {
-        const [acc, bal] = await Promise.all([
-          listBalances(bc.bcId, token),
-          tt("/bc/balance/get/", token, { query: { bc_id: bc.bcId } }).catch(() => null),
-        ]);
-        sample ??= acc.sample;
-        const b = bal?.code === 0 ? bal.data : null;
-        const available = Number(b?.valid_account_balance ?? b?.account_balance);
-        return {
-          ...base,
-          balance: Number.isFinite(available) ? available : null,
-          currency: b?.currency ?? null,
-          accounts: tagAccounts(bc, acc.rows),
-          error: acc.error ?? null,
-        };
-      } catch (e) {
-        return { ...base, error: e instanceof Error ? e.message : String(e) };
-      }
-    }),
-  );
-  return { bcs, sample };
-}
 
 Deno.serve(
   withCors(async (req) => {
@@ -160,10 +65,19 @@ Deno.serve(
         };
         const { error } = await supabase.from("bc_connections").upsert(row, { onConflict: "agency_id" });
         if (error) return json({ error: "Could not save the connection" }, 500);
+        // Users linked to this agency run on its login: give them the new token so they keep working.
+        await supabase.from("tiktok_accounts").update({ access_token: token }).eq("managed_by_agency_id", agencyId);
         return json({ success: true, bcId: row.bc_id, choices: [], businessCenters: bcs.length });
       }
 
       if (action === "disconnect") {
+        // Linked users run on copies of this login: end every active link first so those copies are deleted with it.
+        const { data: links } = await supabase
+          .from("agency_client_links")
+          .select("id")
+          .eq("agency_id", agencyId)
+          .eq("status", "active");
+        for (const l of links ?? []) await supabase.rpc("end_agency_link", { p_link: l.id, p_by: "agency" });
         await supabase.from("bc_connections").delete().eq("agency_id", agencyId);
         return json({ success: true });
       }
@@ -287,21 +201,7 @@ Deno.serve(
           (mine ?? []).map((m: { advertiser_id: string; client_id: string }) => [m.advertiser_id, m.client_id]),
         );
         // Remember which BC (and so which agency) funds each account, for top-up requests from other agencies.
-        const mapping = all.bcs.flatMap((bc) =>
-          bc.accounts.map((a) => ({
-            agency_id: agencyId,
-            bc_id: bc.bcId,
-            advertiser_id: a.advertiserId,
-            advertiser_name: a.name,
-            updated_at: new Date().toISOString(),
-          })),
-        );
-        for (let i = 0; i < mapping.length; i += 500) {
-          const { error: mapErr } = await supabase
-            .from("bc_accounts")
-            .upsert(mapping.slice(i, i + 500), { onConflict: "agency_id,advertiser_id" });
-          if (mapErr) console.error("bc_accounts upsert failed", mapErr.message);
-        }
+        await saveBcAccounts(supabase, agencyId, all.bcs);
         return json({
           maxTransfer: Number(conn.max_transfer),
           businessCenters: all.bcs.map((bc) => ({
