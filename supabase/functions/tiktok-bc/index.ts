@@ -27,7 +27,7 @@ Deno.serve(
     try {
       const body = await req.json().catch(() => ({}));
       const { action } = body;
-      const auth = await authorizeAgencyAdmin(req, body.agencyId);
+      const auth = await authorizeAgencyAdmin(req, body.agencyId, "funding");
       if (auth instanceof Response) return auth;
       const { supabase, userId } = auth;
       const agencyId: string = body.agencyId;

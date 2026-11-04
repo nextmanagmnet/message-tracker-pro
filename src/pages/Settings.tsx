@@ -4,24 +4,16 @@ import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { useAgency } from "@/hooks/useAgency";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Users, Shield, Bell, Plug, Activity, Loader2, ExternalLink, Trash2, Palette } from "lucide-react";
+import { Building2, Users, Shield, Plug, Activity, Loader2, ExternalLink, Palette, Wallet } from "lucide-react";
 import { setLanguage, type Language } from "@/i18n";
 import { setTheme, useTheme } from "@/components/brand/theme";
 import { cn } from "@/lib/utils";
 import { WeeklyReportSection } from "@/components/settings/WeeklyReportSection";
-
-type Member = {
-  member_id: string;
-  user_id: string;
-  role: "owner" | "admin" | "viewer";
-  email: string | null;
-  full_name: string | null;
-};
+import { TeamSection } from "@/components/settings/TeamSection";
+import { WalletSettingsCard } from "@/components/funding/WalletsPanel";
 
 type Job = {
   id: string;
@@ -30,27 +22,6 @@ type Job = {
   error_message: string | null;
   started_at: string;
 };
-
-type Prefs = {
-  new_verified: boolean;
-  daily_summary: boolean;
-  campaign_alerts: boolean;
-  number_status: boolean;
-};
-
-const DEFAULT_PREFS: Prefs = {
-  new_verified: true,
-  daily_summary: true,
-  campaign_alerts: false,
-  number_status: true,
-};
-
-const PREF_LABELS: { key: keyof Prefs; label: string }[] = [
-  { key: "new_verified", label: "settings.prefNewVerified" },
-  { key: "daily_summary", label: "settings.prefDailySummary" },
-  { key: "campaign_alerts", label: "settings.prefCampaignAlerts" },
-  { key: "number_status", label: "settings.prefNumberStatus" },
-];
 
 function Segmented<T extends string>({
   value,
@@ -110,39 +81,19 @@ const Settings = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const { user } = useAuth();
-  const { agency, canManage, isOwner, isIndividual, isClientUser } = useAgency();
+  const { agency, canManage, can, isIndividual, isClientUser } = useAgency();
 
   const [companyName, setCompanyName] = useState("");
   const [savingCompany, setSavingCompany] = useState(false);
-
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
 
   const [jobs, setJobs] = useState<Job[]>([]);
 
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
-
   useEffect(() => {
     if (agency) setCompanyName(agency.name);
   }, [agency]);
-
-  // Team members
-  const loadMembers = async () => {
-    if (!agency || isIndividual || isClientUser) return;
-    setLoadingMembers(true);
-    const { data, error } = await supabase.rpc("get_agency_members", { _agency_id: agency.id });
-    if (error) toast.error(t("settings.teamLoadFailed"));
-    setMembers((data as Member[]) ?? []);
-    setLoadingMembers(false);
-  };
-  useEffect(() => {
-    loadMembers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agency?.id, isIndividual, isClientUser]);
 
   // Background jobs
   const agencyId = agency?.id;
@@ -156,18 +107,6 @@ const Settings = () => {
       .then(({ data }) => setJobs((data as Job[]) ?? []));
   }, [agencyId]);
 
-  // Notification preferences
-  const userId = user?.id;
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("notification_preferences")
-      .select("new_verified, daily_summary, campaign_alerts, number_status")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data }) => data && setPrefs(data as Prefs));
-  }, [userId]);
-
   const saveCompany = async () => {
     if (!agency || !companyName.trim()) return;
     setSavingCompany(true);
@@ -180,20 +119,6 @@ const Settings = () => {
     }
   };
 
-  const changeRole = async (memberId: string, role: Member["role"]) => {
-    const { error } = await supabase.from("agency_members").update({ role }).eq("id", memberId);
-    if (error) return toast.error(t("settings.roleFailed"));
-    toast.success(t("settings.roleUpdated"));
-    loadMembers();
-  };
-
-  const removeMember = async (memberId: string) => {
-    const { error } = await supabase.from("agency_members").delete().eq("id", memberId);
-    if (error) return toast.error(t("settings.memberRemoveFailed"));
-    toast.success(t("settings.memberRemoved"));
-    loadMembers();
-  };
-
   const changePassword = async () => {
     if (newPassword.length < 8) return toast.error(t("settings.passwordShort"));
     setSavingPassword(true);
@@ -202,19 +127,6 @@ const Settings = () => {
     if (error) return toast.error(error.message);
     setNewPassword("");
     toast.success(t("settings.passwordUpdated"));
-  };
-
-  const togglePref = async (key: keyof Prefs, value: boolean) => {
-    if (!user) return;
-    const next = { ...prefs, [key]: value };
-    setPrefs(next);
-    const { error } = await supabase
-      .from("notification_preferences")
-      .upsert({ user_id: user.id, ...next, updated_at: new Date().toISOString() });
-    if (error) {
-      setPrefs(prefs);
-      toast.error(t("settings.prefFailed"));
-    }
   };
 
   const jobStatusClass = (s: string) =>
@@ -283,70 +195,28 @@ const Settings = () => {
         </div>
 
         {/* Team (agency accounts only) */}
-        <div className="glass-card p-6">
-          <SectionHeader icon={Users} title={t("settings.teamTitle")} subtitle={t("settings.teamSubtitle")} />
-          {isClientUser ? (
-            <p className="text-sm text-muted-foreground">{t("settings.teamClient")}</p>
-          ) : isIndividual ? (
-            <p className="text-sm text-muted-foreground">{t("settings.teamIndividual")}</p>
-          ) : loadingMembers ? (
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          ) : (
-            <div className="space-y-3">
-              {members.map((m) => {
-                const isSelf = m.user_id === user?.id;
-                const label = m.full_name || m.email || t("common.unknownUser");
-                return (
-                  <div
-                    key={m.member_id}
-                    className="flex items-center justify-between gap-3 p-4 rounded-lg bg-secondary/50"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-brand-pink to-brand-orange flex items-center justify-center text-sm font-semibold text-white">
-                        {label.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {label} {isSelf && <span className="text-xs text-muted-foreground">{t("common.you")}</span>}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate" dir="ltr">
-                          {m.email}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isOwner && !isSelf ? (
-                        <>
-                          <select
-                            value={m.role}
-                            onChange={(e) => changeRole(m.member_id, e.target.value as Member["role"])}
-                            className="px-3 py-1.5 text-sm bg-secondary border border-border rounded-lg text-foreground"
-                          >
-                            <option value="owner">{t("roles.owner")}</option>
-                            <option value="admin">{t("roles.admin")}</option>
-                            <option value="viewer">{t("roles.viewer")}</option>
-                          </select>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeMember(m.member_id)}
-                            aria-label={t("settings.removeMember")}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-secondary text-muted-foreground">
-                          {t(`roles.${m.role}`)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {isClientUser || isIndividual ? (
+          <div className="glass-card p-6">
+            <SectionHeader icon={Users} title={t("settings.teamTitle")} subtitle={t("settings.teamSubtitle")} />
+            <p className="text-sm text-muted-foreground">
+              {isClientUser ? t("settings.teamClient") : t("settings.teamIndividual")}
+            </p>
+          </div>
+        ) : (
+          <TeamSection />
+        )}
+
+        {/* What users are charged and how they pay (agency, funding permission) */}
+        {!isIndividual && !isClientUser && agency && can("funding") && (
+          <div className="glass-card p-6">
+            <SectionHeader
+              icon={Wallet}
+              title={t("settings.fundingCard.title")}
+              subtitle={t("settings.fundingCard.subtitle")}
+            />
+            <WalletSettingsCard agencyId={agency.id} />
+          </div>
+        )}
 
         {/* WhatsApp numbers, ad accounts and pixels live on the Connections page */}
         <div className="glass-card p-6">
@@ -373,9 +243,7 @@ const Settings = () => {
               {jobs.map((j) => (
                 <div key={j.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 text-sm">
                   <div className="min-w-0">
-                    <p className="text-foreground">
-                      {j.job_name === "sync-campaigns" ? t("settings.jobCampaignSync") : t("settings.jobLoginRefresh")}
-                    </p>
+                    <p className="text-foreground">{t(`settings.jobs.${j.job_name}`, { defaultValue: j.job_name })}</p>
                     {j.error_message && <p className="text-xs text-destructive truncate">{j.error_message}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -409,26 +277,6 @@ const Settings = () => {
         </div>
 
         <WeeklyReportSection />
-
-        {/* Notifications */}
-        <div className="glass-card p-6">
-          <SectionHeader
-            icon={Bell}
-            title={t("settings.notificationsTitle")}
-            subtitle={t("settings.notificationsSubtitle")}
-          />
-          <div className="space-y-3">
-            {PREF_LABELS.map(({ key, label }) => (
-              <label
-                key={key}
-                className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 cursor-pointer"
-              >
-                <span className="text-foreground">{t(label)}</span>
-                <Switch checked={prefs[key]} onCheckedChange={(v) => togglePref(key, v)} />
-              </label>
-            ))}
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );

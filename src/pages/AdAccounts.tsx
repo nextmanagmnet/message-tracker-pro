@@ -7,7 +7,7 @@ import { useAgency } from "@/hooks/useAgency";
 
 const AdAccounts = () => {
   const { t } = useTranslation("agencylinks");
-  const { agency, canManage } = useAgency();
+  const { agency, can } = useAgency();
   return (
     <DashboardLayout title={t("title")} subtitle={t("subtitle")}>
       {agency && (
@@ -17,7 +17,7 @@ const AdAccounts = () => {
             <TabsTrigger value="performance">{t("tabs.performance")}</TabsTrigger>
           </TabsList>
           <TabsContent value="accounts">
-            <AccountsTab agencyId={agency.id} agencyName={agency.name} canManage={canManage} />
+            <AccountsTab agencyId={agency.id} agencyName={agency.name} canManage={can("ad_accounts")} />
           </TabsContent>
           <TabsContent value="performance">
             <PerformanceTab agencyId={agency.id} />

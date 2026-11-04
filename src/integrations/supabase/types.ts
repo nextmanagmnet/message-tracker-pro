@@ -360,12 +360,49 @@ export type Database = {
           },
         ]
       }
+      team_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          permissions: string[]
+          role: Database["public"]["Enums"]["agency_role"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          permissions?: string[]
+          role: Database["public"]["Enums"]["agency_role"]
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          permissions?: string[]
+          role?: Database["public"]["Enums"]["agency_role"]
+        }
+        Relationships: []
+      }
       agency_members: {
         Row: {
           agency_id: string
           client_id: string | null
           created_at: string
           id: string
+          permissions: string[] | null
           role: Database["public"]["Enums"]["agency_role"]
           user_id: string
         }
@@ -374,6 +411,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          permissions?: string[] | null
           role?: Database["public"]["Enums"]["agency_role"]
           user_id: string
         }
@@ -382,6 +420,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          permissions?: string[] | null
           role?: Database["public"]["Enums"]["agency_role"]
           user_id?: string
         }
@@ -1920,6 +1959,7 @@ export type Database = {
         Returns: string
       }
       accept_client_invite: { Args: never; Returns: string }
+      accept_team_invite: { Args: never; Returns: string }
       agency_client_campaigns: {
         Args: { p_agency: string; p_client: string }
         Returns: {
@@ -1987,11 +2027,16 @@ export type Database = {
           email: string
           full_name: string
           member_id: string
+          permissions: string[] | null
           role: Database["public"]["Enums"]["agency_role"]
           user_id: string
         }[]
       }
       get_user_agency_id: { Args: { _user_id: string }; Returns: string }
+      has_agency_permission: {
+        Args: { _agency_id: string; _perm: string; _user_id: string }
+        Returns: boolean
+      }
       has_agency_role: {
         Args: {
           _agency_id: string

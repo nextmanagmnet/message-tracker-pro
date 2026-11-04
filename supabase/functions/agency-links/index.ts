@@ -11,7 +11,7 @@ Deno.serve(
     if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
     try {
       const body = await req.json().catch(() => ({}));
-      const auth = await authorizeAgencyAdmin(req, body.agencyId);
+      const auth = await authorizeAgencyAdmin(req, body.agencyId, "ad_accounts");
       if (auth instanceof Response) return auth;
       const { supabase, userId } = auth;
       const agencyId: string = body.agencyId;

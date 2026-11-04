@@ -27,16 +27,9 @@ import { Label } from "@/components/ui/label";
 export function ClientSwitcher() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const {
-    clients,
-    selectedClient,
-    setSelectedClient,
-    canManage,
-    createClient,
-    isIndividual,
-    linkedAccounts,
-    refreshLinked,
-  } = useAgency();
+  const { clients, selectedClient, setSelectedClient, can, createClient, isIndividual, linkedAccounts, refreshLinked } =
+    useAgency();
+  const canManage = can("clients");
   // On a linked user's page the dropdown shows that user, so the header never names a different client than the page.
   const linkedId = useMatch("/linked/:clientId")?.params.clientId;
   const linked = linkedAccounts.find((a) => a.client_id === linkedId);

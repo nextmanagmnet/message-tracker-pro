@@ -48,16 +48,9 @@ import {
 export default function ClientsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const {
-    clients,
-    canManage,
-    createClient,
-    updateClient,
-    deleteClient,
-    setSelectedClient,
-    linkedAccounts,
-    refreshLinked,
-  } = useAgency();
+  const { clients, can, createClient, updateClient, deleteClient, setSelectedClient, linkedAccounts, refreshLinked } =
+    useAgency();
+  const canManage = can("clients");
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

@@ -20,7 +20,8 @@ import { feeFor, validateSettings, type SettingsForm } from "@/lib/wallet";
 
 type Found = { clientName: string; balance: number; currency: string };
 
-function SettingsCard({ agencyId }: { agencyId: string }) {
+/** Fees and payment instructions. Shown in Settings; the Funding page keeps the day-to-day tools. */
+export function WalletSettingsCard({ agencyId }: { agencyId: string }) {
   const { t } = useTranslation("wallet");
   const f = useFormat();
   const [form, setForm] = useState<SettingsForm>({ commission: "0", flatFee: "0", minTopup: "10", instructions: "" });
@@ -302,13 +303,12 @@ function RecordCard({ agencyId }: { agencyId: string }) {
   );
 }
 
-/** Agency owner/admin: what users are charged and how they pay, and crediting a wallet when a payment arrives. */
+/** Agency owner/admin: crediting a wallet when a payment arrives. Fees live in Settings. */
 export function WalletsPanel({ agencyId }: { agencyId: string }) {
   const { t } = useTranslation("wallet");
   return (
     <section className="glass-card overflow-hidden">
       <h3 className="border-b border-border p-4 font-semibold text-foreground">{t("title")}</h3>
-      <SettingsCard agencyId={agencyId} />
       <RecordCard agencyId={agencyId} />
     </section>
   );

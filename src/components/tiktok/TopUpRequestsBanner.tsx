@@ -8,7 +8,8 @@ import { useAgency } from "@/hooks/useAgency";
 // Tells the agency that clients are waiting for a top-up approval. Only for staff who can approve in Funding.
 export function TopUpRequestsBanner({ className }: { className?: string }) {
   const { t } = useTranslation("topup");
-  const { agency, canManage, isIndividual, isClientUser } = useAgency();
+  const { agency, can, isIndividual, isClientUser } = useAgency();
+  const canManage = can("funding");
   const [count, setCount] = useState(0);
   const eligible = canManage && !isIndividual && !isClientUser && !!agency?.id;
 

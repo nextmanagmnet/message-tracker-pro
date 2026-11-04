@@ -169,7 +169,7 @@ Deno.serve(
       }
 
       if (body.action === "lookup" || body.action === "record-payment") {
-        const auth = await authorizeAgencyAdmin(req, body.agencyId);
+        const auth = await authorizeAgencyAdmin(req, body.agencyId, "funding");
         if (auth instanceof Response) return auth;
         if (!isReferenceCode(body.referenceCode)) return fail("Enter a reference code like W-A1B2C3", "invalid");
         const found = await walletByCode(admin, body.agencyId, body.referenceCode);

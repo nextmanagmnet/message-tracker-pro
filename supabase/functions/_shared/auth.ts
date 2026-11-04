@@ -26,10 +26,14 @@ export async function authorizeClient(
   return { userId, supabase };
 }
 
-// Like authorizeClient, but for agency-level actions: the caller must be an owner or admin of agencyId.
+// What an admin can be limited to (owners always have all of them). Mirrors has_agency_permission in the database.
+export type AgencyPermission = "clients" | "funding" | "ad_accounts";
+
+// Like authorizeClient, but for agency-level actions: the caller must be an owner, or an admin holding `permission`.
 export async function authorizeAgencyAdmin(
   req: Request,
   agencyId: unknown,
+  permission: AgencyPermission = "clients",
 ): Promise<{ userId: string; supabase: SupabaseClient } | Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
@@ -42,12 +46,12 @@ export async function authorizeAgencyAdmin(
 
   const supabase = serviceClient();
   const userId = data.claims.sub as string;
-  const [owner, admin] = await Promise.all(
-    ["owner", "admin"].map((role) =>
-      supabase.rpc("has_agency_role", { _user_id: userId, _agency_id: agencyId, _role: role }),
-    ),
-  );
-  if (!owner.data && !admin.data) return json({ error: "Only agency owners and admins can do this" }, 403);
+  const { data: allowed } = await supabase.rpc("has_agency_permission", {
+    _user_id: userId,
+    _agency_id: agencyId,
+    _perm: permission,
+  });
+  if (!allowed) return json({ error: "You don't have permission to do this", code: "no_permission" }, 403);
   return { userId, supabase };
 }
 

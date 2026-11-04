@@ -32,7 +32,8 @@ export function TopUpButton({
   const { t } = useTranslation("features");
   const { t: tt } = useTranslation("topup");
   const navigate = useNavigate();
-  const { agency, selectedClient, canManage, isIndividual, isClientUser } = useAgency();
+  const { agency, selectedClient, can, isIndividual, isClientUser } = useAgency();
+  const canManage = can("funding");
   const [hasBc, setHasBc] = useState(false);
   const [open, setOpen] = useState(false);
   const [routed, setRouted] = useState(false);

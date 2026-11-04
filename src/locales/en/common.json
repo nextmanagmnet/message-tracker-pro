@@ -12,7 +12,7 @@
     "aiAgent": "AI Agent",
     "reports": "Reports",
     "settings": "Settings",
-    "allClients": "All clients",
+    "allClients": "Agency dashboard",
     "clients": "Clients",
     "collapse": "Collapse",
     "expand": "Expand",
@@ -121,8 +121,8 @@
     "deleteFailed": "Couldn't delete the client"
   },
   "agency": {
-    "title": "All clients",
-    "subtitle": "How every client of {{name}} is performing",
+    "title": "Dashboard",
+    "subtitle": "How every client and linked user of {{name}} is performing",
     "yourAgency": "your agency",
     "activeClients": "Active clients",
     "totalSpend": "Total spend",
@@ -230,14 +230,59 @@
     "passwordUpdated": "Password updated",
     "preferencesTitle": "Preferences",
     "preferencesSubtitle": "Language and appearance",
-    "notificationsTitle": "Notifications",
-    "notificationsSubtitle": "Choose what you want to be notified about",
-    "prefNewVerified": "New real conversation",
-    "prefDailySummary": "Daily summary report",
-    "prefCampaignAlerts": "Campaign performance alerts",
-    "prefNumberStatus": "WhatsApp number status changes",
-    "prefFailed": "Couldn't save preference",
-    "teamClient": "Your agency manages the team. You only see your own business here."
+    "teamClient": "Your agency manages the team. You only see your own business here.",
+    "team": {
+      "add": "Add member",
+      "addTitle": "Add a team member",
+      "addDesc": "They get a one-time sign-in link. Choose what they can do.",
+      "email": "Email",
+      "access": "Access",
+      "roleAdmin": "Admin (you choose what they can do)",
+      "roleViewer": "Viewer (can look, can't change anything)",
+      "permsLabel": "They can",
+      "quickSet": "Quick set",
+      "perm": {
+        "clients": "Manage your own clients",
+        "funding": "Fund accounts, approve top-ups, set fees",
+        "ad_accounts": "Invite users and manage linked ad accounts"
+      },
+      "permShort": {
+        "clients": "Clients",
+        "funding": "Funding",
+        "ad_accounts": "Ad accounts"
+      },
+      "preset": {
+        "full": "Full admin",
+        "media": "Media buyer",
+        "finance": "Finance"
+      },
+      "create": "Create invite",
+      "linkTitle": "Invite ready",
+      "linkHint": "Send this link to {{email}}. It works once and creates their login.",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "pending": "Pending invites",
+      "revoke": "Cancel invite",
+      "revoked": "Invite cancelled",
+      "edit": "Edit access",
+      "saved": "Access updated",
+      "saveFailed": "Could not save. Try again.",
+      "ownerOnly": "Only the owner can add or change team members.",
+      "everything": "Everything",
+      "viewerNote": "Can look, can't change",
+      "pickOne": "Choose at least one permission",
+      "inviteFailed": "Could not create the invite"
+    },
+    "fundingCard": {
+      "title": "Funding and payments",
+      "subtitle": "What your users are charged and how they pay you. Used by their Wallet."
+    },
+    "jobs": {
+      "sync-campaigns": "Campaign sync",
+      "refresh-tokens": "Login refresh",
+      "ad-optimizer": "Ad optimizer",
+      "weekly-report": "Weekly report"
+    }
   },
   "notFound": {
     "title": "404",

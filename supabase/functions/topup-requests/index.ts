@@ -52,7 +52,7 @@ Deno.serve(
         if (!request) return json({ error: "Request not found" }, 404);
         const auth =
           body.action === "decline"
-            ? await authorizeAgencyAdmin(req, request.funding_agency_id)
+            ? await authorizeAgencyAdmin(req, request.funding_agency_id, "funding")
             : await authorizeClient(req, request.client_id);
         if (auth instanceof Response) return auth;
         if (request.status !== "pending") return json({ error: "This request was already handled" }, 409);

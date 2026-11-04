@@ -21,7 +21,7 @@ import {
   Link2,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import { useAgency } from "@/hooks/useAgency";
+import { useAgency, type Permission } from "@/hooks/useAgency";
 import { cn } from "@/lib/utils";
 
 const mainItems = [
@@ -39,11 +39,13 @@ const mainItems = [
   { icon: Settings, key: "nav.settings", path: "/settings" },
 ];
 
-const agencyItems = [
+type NavItem = { icon: typeof Users; key: string; path: string; permission?: Permission };
+
+const agencyItems: NavItem[] = [
   { icon: Building2, key: "nav.allClients", path: "/agency" },
   { icon: Users, key: "nav.clients", path: "/clients" },
-  { icon: Link2, key: "nav.adAccounts", path: "/ad-accounts" },
-  { icon: Wallet, key: "nav.funding", path: "/funding" },
+  { icon: Link2, key: "nav.adAccounts", path: "/ad-accounts", permission: "ad_accounts" },
+  { icon: Wallet, key: "nav.funding", path: "/funding", permission: "funding" },
 ];
 
 interface SidebarProps {
@@ -54,12 +56,16 @@ interface SidebarProps {
 export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { isIndividual, isClientUser, clients, loading } = useAgency();
+  const { isIndividual, isClientUser, clients, loading, can, isOwner, isAdmin } = useAgency();
+  // Admins only see the agency pages their permissions allow; viewers see the read-only ones.
+  const allowed = (i: NavItem) =>
+    !i.permission || can(i.permission) || (!isOwner && !isAdmin && i.permission === "ad_accounts");
+  const agencyNav = agencyItems.filter(allowed);
   // An agency with no clients of its own works only through linked users, so the per-client pages would all be empty.
   const lean = !loading && !isIndividual && !isClientUser && clients.length === 0;
   const rtl = i18n.dir() === "rtl";
 
-  const renderItem = (item: (typeof mainItems)[number]) => {
+  const renderItem = (item: NavItem) => {
     const isActive = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
     const label = t(item.key);
     return (
@@ -100,7 +106,7 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
         <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
           {lean ? (
             <>
-              {agencyItems.map(renderItem)}
+              {agencyNav.map((i) => renderItem(i.path === "/agency" ? { ...i, key: "nav.dashboard" } : i))}
               {mainItems.filter((i) => i.path === "/settings").map(renderItem)}
             </>
           ) : (
@@ -114,7 +120,7 @@ export const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
                   {t("nav.agencySection")}
                 </p>
               )}
-              <div className="space-y-1">{agencyItems.map(renderItem)}</div>
+              <div className="space-y-1">{agencyNav.map(renderItem)}</div>
             </div>
           )}
         </nav>

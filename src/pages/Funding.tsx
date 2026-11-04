@@ -88,7 +88,8 @@ const STATUS: Record<Transfer["status"], string> = {
 const Funding = () => {
   const { t } = useTranslation("features");
   const f = useFormat();
-  const { agency, canManage } = useAgency();
+  const { agency, can } = useAgency();
+  const canManage = can("funding");
   const [params, setParams] = useSearchParams();
   const wantedAdvertiser = params.get("advertiser");
   const [conn, setConn] = useState<Conn | null | undefined>(undefined);

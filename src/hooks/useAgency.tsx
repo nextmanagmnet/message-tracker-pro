@@ -5,6 +5,10 @@ import { useAuth } from "./useAuth";
 
 export type AccountType = "individual" | "agency";
 
+/** What an admin can be limited to. Owners always have all of them. Mirrors has_agency_permission in the database. */
+export const PERMISSIONS = ["clients", "funding", "ad_accounts"] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+
 /** True when a Postgres error came from the plan-limits trigger (raises with a WOB_LIMIT prefix). */
 function isPlanLimitError(message: string | null | undefined): boolean {
   return !!message && message.includes("WOB_LIMIT");
@@ -24,6 +28,8 @@ interface AgencyMember {
   agency_id: string;
   role: "owner" | "admin" | "viewer" | "client";
   client_id?: string | null;
+  /** Admins only. null = every permission (admins from before permissions existed). */
+  permissions?: string[] | null;
 }
 
 /** A user who linked their ad account to this agency. The agency sees campaign numbers only. */
@@ -48,6 +54,8 @@ interface AgencyContextType {
   isOwner: boolean;
   isAdmin: boolean;
   canManage: boolean;
+  /** Owners, or admins holding this permission. Hides the control; the server checks it again. */
+  can: (permission: Permission) => boolean;
   /** A login that belongs to one client (invited by the agency), not agency staff. */
   isClientUser: boolean;
   /** Staff with edit rights, or the client user for their own client. */
@@ -90,6 +98,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   const isOwner = membership?.role === "owner";
   const isAdmin = membership?.role === "admin";
   const canManage = isOwner || isAdmin;
+  const can = (permission: Permission) =>
+    isOwner || (isAdmin && (membership?.permissions == null || membership.permissions.includes(permission)));
   const isClientUser = membership?.role === "client";
   const canManageClient = canManage || isClientUser;
   // Rows created before account types existed are agencies.
@@ -161,7 +171,9 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
           // A client the agency invited has no membership until their invite is accepted.
           const { data: acceptedClient } = await supabase.rpc("accept_client_invite");
           if (cancelled) return;
-          if (acceptedClient) {
+          const { data: acceptedTeam } = acceptedClient ? { data: null } : await supabase.rpc("accept_team_invite");
+          if (cancelled) return;
+          if (acceptedClient || acceptedTeam) {
             ({ data: membershipData, error: membershipError } = await fetchMembership());
             if (cancelled) return;
             if (membershipError) {
@@ -218,7 +230,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   };
 
   const createClient = async (name: string): Promise<CreateClientResult> => {
-    if (!agency || !canManage) return { client: null, limitReached: false };
+    if (!agency || !can("clients")) return { client: null, limitReached: false };
 
     const { data, error } = await supabase
       .from("clients")
@@ -239,7 +251,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   };
 
   const updateClient = async (clientId: string, name: string): Promise<boolean> => {
-    if (!canManage) return false;
+    if (!can("clients")) return false;
 
     const { error } = await supabase.from("clients").update({ name }).eq("id", clientId);
 
@@ -253,7 +265,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteClient = async (clientId: string): Promise<boolean> => {
-    if (!canManage) return false;
+    if (!can("clients")) return false;
 
     const { error } = await supabase.from("clients").delete().eq("id", clientId);
 
@@ -285,6 +297,7 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
         isOwner,
         isAdmin,
         canManage,
+        can,
         isClientUser,
         canManageClient,
         refreshClients,
