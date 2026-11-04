@@ -59,20 +59,12 @@ async function settingsOf(admin: Admin, agencyId: string | null) {
   return data ?? null;
 }
 
-// Agency staff may only see wallets of clients they serve: their own clients, or clients whose ad account
-// sits in one of their Business Centers.
+// Agency staff may only touch wallets of clients they serve: their own clients, or clients this agency funds
+// (the same agency a top-up request would be routed to). An agency that merely shares a client's ad account
+// cannot add credit that another agency would later pay out in real money.
 async function agencyServes(admin: Admin, agencyId: string, clientId: string, clientAgencyId: string) {
   if (clientAgencyId === agencyId) return true;
-  const { data: accts } = await admin.from("tiktok_accounts").select("advertiser_id").eq("client_id", clientId);
-  const ids = (accts ?? []).map((r: { advertiser_id: string }) => r.advertiser_id);
-  if (ids.length === 0) return false;
-  const { data } = await admin
-    .from("bc_accounts")
-    .select("advertiser_id")
-    .eq("agency_id", agencyId)
-    .in("advertiser_id", ids)
-    .limit(1);
-  return (data ?? []).length > 0;
+  return (await fundingAgencyOf(admin, clientId, clientAgencyId)) === agencyId;
 }
 
 // The wallet behind a reference code, only when this agency serves its client.
@@ -208,7 +200,7 @@ Deno.serve(
       return fail("Unknown action", "invalid");
     } catch (e) {
       console.error("wallet error", e);
-      return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
+      return json({ error: "Something went wrong. Nothing was changed; try again." }, 500);
     }
   }),
 );

@@ -145,7 +145,7 @@ Deno.serve(
       return json({ routed: true, request: row });
     } catch (e) {
       console.error("topup-requests error", e);
-      return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
+      return json({ error: "Something went wrong. Check your wallet before trying again." }, 500);
     }
   }),
 );

@@ -290,17 +290,26 @@ Deno.serve(
           const bad = checkFundAmount(amount, Number(conn.max_transfer), target.minTransferable);
           if (bad) return release(json({ error: bad }, 400));
 
-          // A second click or retry while one is unresolved could double-fund; make staff look first.
-          const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-          const { data: open } = await supabase
-            .from("fund_transfers")
-            .select("id")
-            .eq("agency_id", agencyId)
+          // Checking for an unresolved transfer and recording this one is a single locked database step, so two
+          // simultaneous clicks (or two staff) can never both send. Staff must look at TikTok before retrying.
+          const { data: acct } = await supabase
+            .from("tiktok_accounts")
+            .select("client_id")
+            .eq("tenant_id", agencyId)
             .eq("advertiser_id", advertiserId)
-            .in("status", ["pending", "unknown"])
-            .gte("created_at", since)
-            .limit(1);
-          if (open?.length)
+            .limit(1)
+            .maybeSingle();
+          const { data: begun, error: insErr } = await supabase.rpc("begin_fund_transfer", {
+            p_agency: agencyId,
+            p_client: acct?.client_id ?? null,
+            p_advertiser: advertiserId,
+            p_name: target.name,
+            p_bc_id: target.bcId,
+            p_bc_name: target.bcName,
+            p_amount: amount,
+            p_by: userId,
+          });
+          if (insErr?.message?.includes("unresolved"))
             return release(
               json(
                 {
@@ -310,30 +319,7 @@ Deno.serve(
                 409,
               ),
             );
-
-          const { data: acct } = await supabase
-            .from("tiktok_accounts")
-            .select("client_id")
-            .eq("tenant_id", agencyId)
-            .eq("advertiser_id", advertiserId)
-            .limit(1)
-            .maybeSingle();
-          const { data: row, error: insErr } = await supabase
-            .from("fund_transfers")
-            .insert({
-              agency_id: agencyId,
-              client_id: acct?.client_id ?? null,
-              advertiser_id: advertiserId,
-              advertiser_name: target.name,
-              bc_id: target.bcId,
-              bc_name: target.bcName,
-              amount,
-              type: "RECHARGE",
-              status: "pending",
-              created_by: userId,
-            })
-            .select("id, request_id")
-            .single();
+          const row = (begun as { out_id: string; out_request_id: string }[] | null)?.[0];
           if (insErr || !row) return release(json({ error: "Could not record the top-up, nothing was sent" }, 500));
 
           let status: "sent" | "failed" | "unknown" = "unknown";
@@ -347,7 +333,7 @@ Deno.serve(
                 advertiser_id: advertiserId,
                 transfer_type: "RECHARGE",
                 cash_amount: amount,
-                request_id: row.request_id,
+                request_id: row.out_request_id,
               }),
             });
             response = { code: d.code, message: d.message, request_id: d.request_id };
@@ -356,7 +342,7 @@ Deno.serve(
             // Timeout or network cut: TikTok may or may not have applied it. Never guess; never auto-retry.
             response = { error: e instanceof Error ? e.message : String(e) };
           }
-          await supabase.from("fund_transfers").update({ status, response }).eq("id", row.id);
+          await supabase.from("fund_transfers").update({ status, response }).eq("id", row.out_id);
           if (requestId && status === "sent")
             // The wallet was charged when the request was made; the fee stays with the agency.
             await supabase
@@ -365,7 +351,7 @@ Deno.serve(
                 status: "approved",
                 decided_by: userId,
                 decided_at: new Date().toISOString(),
-                fund_transfer_id: row.id,
+                fund_transfer_id: row.out_id,
                 error: null,
               })
               .eq("id", requestId)
@@ -379,7 +365,7 @@ Deno.serve(
               .eq("status", "approving");
           else if (requestId)
             // Unknown: stays 'approving' (nobody can cancel or decline) until staff check TikTok and resolve it.
-            await supabase.from("topup_requests").update({ fund_transfer_id: row.id }).eq("id", requestId);
+            await supabase.from("topup_requests").update({ fund_transfer_id: row.out_id }).eq("id", requestId);
           return json(
             {
               success: status === "sent",
@@ -400,7 +386,8 @@ Deno.serve(
       return json({ error: "Unknown action" }, 400);
     } catch (e) {
       console.error("tiktok-bc error", e);
-      return json({ error: e instanceof Error ? e.message : "Internal error" }, 500);
+      // Details stay in the server log; the browser never sees internal error text.
+      return json({ error: "Something went wrong. Check the transfer history before trying again." }, 500);
     }
   }),
 );
