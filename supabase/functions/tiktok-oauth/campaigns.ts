@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { adminClient } from "../_shared/db.ts";
 import { authorizeClient } from "../_shared/auth.ts";
 import { json } from "../_shared/cron.ts";
 import type { TikTokContext } from "./types.ts";
@@ -14,7 +14,7 @@ export async function fetchCampaigns({
   const auth = await authorizeClient(req, clientId);
   if (auth instanceof Response) return auth;
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = adminClient(supabaseUrl, supabaseServiceKey);
 
   // Get client info
   const { data: client, error: clientError } = await supabase

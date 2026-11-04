@@ -1,6 +1,7 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeClient, serviceClient } from "../_shared/auth.ts";
 import { withCors } from "../_shared/cors.ts";
+import { sealToken } from "../_shared/db.ts";
 import { ensurePixel } from "../_shared/tiktokPixel.ts";
 import { hashToken, INVITE_INVALID, isTokenShape, mapJoinError } from "../_shared/agencyLinks.ts";
 
@@ -63,7 +64,7 @@ Deno.serve(
           p_hash: hash,
           p_client: clientId,
           p_user: userId,
-          p_agency_token: conn.access_token,
+          p_agency_token: await sealToken(conn.access_token),
         });
         if (error) {
           const mapped = mapJoinError(error);

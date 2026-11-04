@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { adminClient, sealStoredTokens } from "../_shared/db.ts";
 import { corsHeaders, isAuthorizedCron, json, logJob } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
 
@@ -14,10 +14,12 @@ Deno.serve(
     if (req.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });
     }
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const supabase = adminClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     if (!(await isAuthorizedCron(req, supabase))) {
       return json({ error: "Unauthorized" }, 401);
     }
+    // Encrypts any token still stored in plain text (does nothing until TOKEN_ENCRYPTION_KEY is set).
+    await sealStoredTokens().catch((e) => console.error("sealStoredTokens failed", e));
 
     let onlyClientId: string | null = null;
     let days = 7;

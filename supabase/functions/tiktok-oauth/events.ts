@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authorizeClient } from "../_shared/auth.ts";
+import { adminClient } from "../_shared/db.ts";
 import { json } from "../_shared/cron.ts";
 import { ensurePixel } from "../_shared/tiktokPixel.ts";
 import type { TikTokContext } from "./types.ts";
@@ -23,7 +24,7 @@ export async function testEvent({
   if (!visible) {
     return json({ error: "Not allowed for this client" }, 403);
   }
-  const admin = createClient(supabaseUrl, supabaseServiceKey);
+  const admin = adminClient(supabaseUrl, supabaseServiceKey);
   const { data: account } = await admin
     .from("tiktok_accounts")
     .select("access_token")
@@ -74,7 +75,7 @@ export async function ensurePixelAction({
   const auth = await authorizeClient(req, clientId);
   if (auth instanceof Response) return auth;
   try {
-    const pixel = await ensurePixel(createClient(supabaseUrl, supabaseServiceKey), clientId as string); // authorizeClient checked it
+    const pixel = await ensurePixel(adminClient(supabaseUrl, supabaseServiceKey), clientId as string); // authorizeClient checked it
     return json({ success: true, ...pixel });
   } catch (e) {
     // 200 + error so the UI can show TikTok's message and offer the manual pixel field

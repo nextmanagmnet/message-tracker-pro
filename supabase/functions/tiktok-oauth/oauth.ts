@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { adminClient } from "../_shared/db.ts";
 import { authorizeClient, limitError } from "../_shared/auth.ts";
 import { appOrigins } from "../_shared/cors.ts";
 import { json } from "../_shared/cron.ts";
@@ -81,7 +81,7 @@ export async function callback(ctx: TikTokContext): Promise<Response> {
     });
   }
 
-  const supabase = createClient(ctx.supabaseUrl, ctx.supabaseServiceKey);
+  const supabase = adminClient(ctx.supabaseUrl, ctx.supabaseServiceKey);
   const { data: client, error: clientError } = await supabase
     .from("clients")
     .select("id, agency_id")
