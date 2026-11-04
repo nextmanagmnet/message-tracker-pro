@@ -362,6 +362,68 @@ export type Database = {
           },
         ]
       }
+      wallet_payments: {
+        Row: {
+          agency_id: string
+          amount: number
+          client_id: string
+          client_name: string | null
+          created_at: string
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          entry_id: string | null
+          id: string
+          note: string | null
+          recorded_by: string
+          reference: string
+          status: string
+        }
+        Insert: {
+          agency_id: string
+          amount: number
+          client_id: string
+          client_name?: string | null
+          created_at?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          entry_id?: string | null
+          id?: string
+          note?: string | null
+          recorded_by: string
+          reference: string
+          status?: string
+        }
+        Update: {
+          status?: string
+        }
+        Relationships: []
+      }
+      agency_limits: {
+        Row: {
+          agency_id: string
+          max_daily_transfer: number
+          payment_approval_over: number
+          payment_daily_cap: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          max_daily_transfer?: number
+          payment_approval_over?: number
+          payment_daily_cap?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          max_daily_transfer?: number
+          payment_approval_over?: number
+          payment_daily_cap?: number
+        }
+        Relationships: []
+      }
       team_invites: {
         Row: {
           accepted_at: string | null

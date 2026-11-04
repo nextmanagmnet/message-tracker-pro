@@ -139,7 +139,7 @@ export function WalletSettingsCard({ agencyId }: { agencyId: string }) {
   );
 }
 
-function RecordCard({ agencyId }: { agencyId: string }) {
+function RecordCard({ agencyId, onRecorded }: { agencyId: string; onRecorded?: () => void }) {
   const { t } = useTranslation("wallet");
   const f = useFormat();
   const [code, setCode] = useState("");
@@ -173,7 +173,7 @@ function RecordCard({ agencyId }: { agencyId: string }) {
     if (!found) return;
     setBusy(true);
     try {
-      const res = await invokeFn<{ balance: number; duplicate: boolean }>("wallet", {
+      const res = await invokeFn<{ balance: number; duplicate: boolean; pendingApproval?: boolean }>("wallet", {
         action: "record-payment",
         agencyId,
         referenceCode: code.trim().toUpperCase(),
@@ -184,7 +184,9 @@ function RecordCard({ agencyId }: { agencyId: string }) {
       });
       const balance = f.money(res.balance, found.currency);
       if (res.duplicate) toast.warning(t("agency.duplicate", { balance }));
+      else if (res.pendingApproval) toast.success(t("payments.pendingSent"));
       else toast.success(t("agency.recorded", { balance }));
+      onRecorded?.();
       setCode("");
       setFound(null);
       setAmount("");
@@ -304,12 +306,12 @@ function RecordCard({ agencyId }: { agencyId: string }) {
 }
 
 /** Agency owner/admin: crediting a wallet when a payment arrives. Fees live in Settings. */
-export function WalletsPanel({ agencyId }: { agencyId: string }) {
+export function WalletsPanel({ agencyId, onRecorded }: { agencyId: string; onRecorded?: () => void }) {
   const { t } = useTranslation("wallet");
   return (
     <section className="glass-card overflow-hidden">
       <h3 className="border-b border-border p-4 font-semibold text-foreground">{t("title")}</h3>
-      <RecordCard agencyId={agencyId} />
+      <RecordCard agencyId={agencyId} onRecorded={onRecorded} />
     </section>
   );
 }

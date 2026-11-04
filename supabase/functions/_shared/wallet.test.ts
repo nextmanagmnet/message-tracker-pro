@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feeFor, isReferenceCode, mapWalletError, validatePaymentAmount } from "./wallet";
+import { feeFor, isReferenceCode, mapWalletError, validateLimits, validatePaymentAmount } from "./wallet";
 import { creditArgs, WALLET_PROVIDERS } from "./walletProviders";
 
 describe("feeFor (mirrors SQL round(amount * pct / 100 + flat, 2))", () => {
@@ -66,5 +66,22 @@ describe("providers", () => {
     expect(creditArgs({ ...pay, providerRef: " " }, "USD").error).toBeTruthy();
     expect(creditArgs({ ...pay, amount: 0 }, "USD").error).toBeTruthy();
     expect(creditArgs(pay, "SAR").error).toBeTruthy();
+  });
+});
+
+describe("validateLimits", () => {
+  const ok = { maxDailyTransfer: 5000, paymentApprovalOver: 500, paymentDailyCap: 10000 };
+  it("accepts sane limits, including an approval threshold of 0", () => {
+    expect(validateLimits(ok)).toEqual({ ok: true, value: ok });
+    expect(validateLimits({ ...ok, paymentApprovalOver: 0 }).ok).toBe(true);
+  });
+  it("refuses zero, negative, huge or non-numeric daily limits", () => {
+    for (const bad of [0, -5, 2_000_000, NaN, Infinity, "5000", null, undefined])
+      expect(validateLimits({ ...ok, maxDailyTransfer: bad }).ok).toBe(false);
+    expect(validateLimits({ ...ok, paymentDailyCap: 0 }).ok).toBe(false);
+  });
+  it("refuses a negative threshold and more than two decimals", () => {
+    expect(validateLimits({ ...ok, paymentApprovalOver: -1 }).ok).toBe(false);
+    expect(validateLimits({ ...ok, maxDailyTransfer: 10.123 }).ok).toBe(false);
   });
 });

@@ -319,6 +319,18 @@ Deno.serve(
                 409,
               ),
             );
+          if (insErr?.message?.includes("daily_limit")) {
+            const [used, cap] = String(insErr.details ?? "").split("/");
+            return release(
+              json(
+                {
+                  error: `The daily transfer limit would be exceeded (${used || "?"} of ${cap || "?"} used in the last 24 hours). Ask the agency owner to raise it in Settings, or try again later.`,
+                  code: "daily_limit",
+                },
+                409,
+              ),
+            );
+          }
           const row = (begun as { out_id: string; out_request_id: string }[] | null)?.[0];
           if (insErr || !row) return release(json({ error: "Could not record the top-up, nothing was sent" }, 500));
 

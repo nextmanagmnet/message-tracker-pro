@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { WeeklyReportSection } from "@/components/settings/WeeklyReportSection";
 import { TeamSection } from "@/components/settings/TeamSection";
 import { WalletSettingsCard } from "@/components/funding/WalletsPanel";
+import { SafetyLimitsCard } from "@/components/funding/SafetyLimitsCard";
 
 type Job = {
   id: string;
@@ -215,6 +216,9 @@ const Settings = () => {
               subtitle={t("settings.fundingCard.subtitle")}
             />
             <WalletSettingsCard agencyId={agency.id} />
+            <div className="mt-6 border-t border-border pt-6">
+              <SafetyLimitsCard agencyId={agency.id} />
+            </div>
           </div>
         )}
 

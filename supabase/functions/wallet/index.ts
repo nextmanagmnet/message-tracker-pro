@@ -2,13 +2,20 @@ import { authorizeAgencyAdmin, authorizeClient, serviceClient } from "../_shared
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
 import { pickFundingAgency, validateTopUpAmount } from "../_shared/topup.ts";
-import { isReferenceCode, mapWalletError, validatePaymentAmount, type WalletErrorCode } from "../_shared/wallet.ts";
-import { WALLET_PROVIDERS } from "../_shared/walletProviders.ts";
+import {
+  isReferenceCode,
+  mapWalletError,
+  validateLimits,
+  validatePaymentAmount,
+  type WalletErrorCode,
+} from "../_shared/wallet.ts";
 
 // A user's wallet: balance, how to pay in, a fee quote, and (for agency staff) recording a bank payment.
 // Body: { action: "info", clientId } | { action: "quote", clientId, advertiserId, amount }
 //     | { action: "lookup", agencyId, referenceCode }
 //     | { action: "record-payment", agencyId, referenceCode, amount, bankReference?, idempotencyKey, note? }
+//     | { action: "decide-payment", agencyId, paymentId, approve }   (owner only)
+//     | { action: "set-limits", agencyId, maxDailyTransfer, paymentApprovalOver, paymentDailyCap }   (owner only)
 // Errors: { error, code? } with a 4xx status. Money only moves through the wallet_apply database function.
 
 type Admin = ReturnType<typeof serviceClient>;
@@ -160,6 +167,58 @@ Deno.serve(
         });
       }
 
+      // Owner-only: approving a large payment someone else recorded, and the safety limits themselves.
+      if (body.action === "decide-payment" || body.action === "set-limits") {
+        const auth = await authorizeAgencyAdmin(req, body.agencyId, "funding");
+        if (auth instanceof Response) return auth;
+        const { data: owner } = await admin.rpc("has_agency_role", {
+          _user_id: auth.userId,
+          _agency_id: body.agencyId,
+          _role: "owner",
+        });
+        if (!owner) return fail("Only the agency owner can do this", undefined, 403);
+
+        if (body.action === "set-limits") {
+          const v = validateLimits(body);
+          if (!v.ok) return fail(v.error, "invalid");
+          const { error } = await admin.from("agency_limits").upsert({
+            agency_id: body.agencyId,
+            max_daily_transfer: v.value.maxDailyTransfer,
+            payment_approval_over: v.value.paymentApprovalOver,
+            payment_daily_cap: v.value.paymentDailyCap,
+            updated_by: auth.userId,
+            updated_at: new Date().toISOString(),
+          });
+          if (error) throw error;
+          return json({ success: true });
+        }
+
+        if (typeof body.paymentId !== "string" || typeof body.approve !== "boolean")
+          return fail("Choose a payment and a decision", "invalid");
+        // The payment must belong to this agency, whatever id was sent.
+        const { data: payment } = await admin
+          .from("wallet_payments")
+          .select("agency_id")
+          .eq("id", body.paymentId)
+          .maybeSingle();
+        if (!payment || payment.agency_id !== body.agencyId) return fail("Payment not found", "not_found", 404);
+        const { data: outcome, error } = await admin.rpc("decide_wallet_payment", {
+          p_id: body.paymentId,
+          p_approve: body.approve,
+          p_by: auth.userId,
+        });
+        if (error) {
+          if (error.message?.includes("self_approval"))
+            return fail("Someone else must approve a payment you recorded", undefined, 403);
+          if (error.message?.includes("duplicate_reference"))
+            return fail("That bank reference was already credited. Reject this payment.", undefined, 409);
+          const mapped = mapWalletError(error);
+          if (mapped) return fail(mapped.error, mapped.code, mapped.status);
+          throw error;
+        }
+        return json({ status: outcome });
+      }
+
       if (body.action === "lookup" || body.action === "record-payment") {
         const auth = await authorizeAgencyAdmin(req, body.agencyId, "funding");
         if (auth instanceof Response) return auth;
@@ -178,23 +237,61 @@ Deno.serve(
         const bank = typeof body.bankReference === "string" ? body.bankReference.trim() : "";
         if (bank.length > 100) return fail("The bank reference is too long", "invalid");
         const note = typeof body.note === "string" ? body.note.trim().slice(0, 300) : "";
-        const { data, error } = await admin.rpc("wallet_apply", {
+        // Everything about a manual payment happens in one database step: the daily cap, the owner-approval rule,
+        // the register entry and (when allowed) the wallet credit.
+        const { data: isOwner } = await admin.rpc("has_agency_role", {
+          _user_id: auth.userId,
+          _agency_id: body.agencyId,
+          _role: "owner",
+        });
+        const { data, error } = await admin.rpc("record_wallet_payment", {
+          p_agency: body.agencyId,
           p_client: found.client_id,
+          p_client_name: found.clientName,
           p_amount: body.amount,
-          p_kind: "topup",
-          p_provider: WALLET_PROVIDERS.manual.id,
-          p_provider_ref: bank || key,
+          p_currency: found.currency,
+          p_bank_ref: bank || null,
+          p_key: key,
           p_note: note || null,
           p_by: auth.userId,
-          p_request: null,
+          p_is_owner: isOwner === true,
         });
         if (error) {
+          if (error.message?.includes("payment_cap"))
+            return fail(
+              "The daily limit for recorded payments has been reached. Try again later or ask the owner.",
+              "invalid",
+              409,
+            );
           const mapped = mapWalletError(error);
           if (mapped) return fail(mapped.error, mapped.code, mapped.status);
           throw error;
         }
-        const row = (data as { out_balance: number | string; out_duplicate: boolean }[])[0];
-        return json({ balance: Number(row.out_balance), duplicate: row.out_duplicate });
+        const row = (
+          data as { out_id: string; out_status: string; out_balance: number | string; out_duplicate: boolean }[]
+        )[0];
+
+        // Everything staff record is visible to the owner; a payment waiting for approval says so.
+        if (!isOwner && !row.out_duplicate) {
+          const { data: who } = await admin.from("profiles").select("email").eq("id", auth.userId).maybeSingle();
+          const pending = row.out_status === "pending";
+          await admin.from("notifications").insert({
+            agency_id: body.agencyId,
+            client_id: found.client_id,
+            type: pending ? "payment_approval" : "payment_recorded",
+            title: pending
+              ? `Payment waiting for your approval: ${body.amount} ${found.currency}`
+              : `Payment recorded: ${body.amount} ${found.currency}`,
+            body: `${found.clientName}. Recorded by ${who?.email ?? "a team member"}.`,
+            data: { paymentId: row.out_id },
+          });
+        }
+        return json({
+          balance: Number(row.out_balance),
+          duplicate: row.out_duplicate,
+          status: row.out_status,
+          pendingApproval: row.out_status === "pending",
+        });
       }
 
       return fail("Unknown action", "invalid");

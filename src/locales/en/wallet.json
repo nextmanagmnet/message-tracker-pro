@@ -14,14 +14,22 @@
   "creditNote": "Your wallet is credited once your agency confirms the payment. Top-up requests are then paid from the wallet.",
   "history": "History",
   "historyEmpty": "No wallet activity yet.",
-  "col": { "date": "Date", "kind": "Type", "amount": "Amount", "balance": "Balance after", "note": "Note" },
+  "col": {
+    "date": "Date",
+    "kind": "Type",
+    "amount": "Amount",
+    "balance": "Balance after",
+    "note": "Note"
+  },
   "kind": {
     "topup": "Payment received",
     "request": "Top-up request",
     "refund": "Refund",
     "adjustment": "Adjustment"
   },
-  "requestStatus": { "approving": "Transfer in progress" },
+  "requestStatus": {
+    "approving": "Transfer in progress"
+  },
   "requests": {
     "fee": "Fee {{fee}}",
     "fromWallet": "Paid from wallet",
@@ -69,5 +77,36 @@
     "recorded": "Payment recorded. New balance: {{balance}}",
     "duplicate": "This payment was already recorded. Balance: {{balance}}",
     "recordFailed": "Could not record the payment"
+  },
+  "payments": {
+    "title": "Recorded payments",
+    "empty": "No payments recorded yet.",
+    "status": {
+      "pending": "Waiting for owner",
+      "approved": "Credited",
+      "rejected": "Rejected"
+    },
+    "by": "Recorded by {{who}}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approved": "Payment approved and credited.",
+    "rejected": "Payment rejected.",
+    "decideFailed": "Could not save the decision",
+    "waitingHint": "Payments above {{amount}} from team members wait here for the owner.",
+    "pendingSent": "Sent for the owner's approval. The wallet is credited once they approve it.",
+    "approveTitle": "Approve this payment?",
+    "approveLine": "Credit {{amount}} to {{name}}'s wallet.",
+    "rejectLine": "Reject this payment? Nothing is credited."
+  },
+  "limits": {
+    "title": "Safety limits",
+    "hint": "These protect your money if a login is misused. Only the owner can change them.",
+    "dailyTransfer": "Most that can be sent to ad accounts in 24 hours",
+    "approvalOver": "Payments above this need the owner's approval",
+    "dailyPayments": "Most payments that can be recorded in 24 hours",
+    "save": "Save limits",
+    "saved": "Limits saved",
+    "saveFailed": "Could not save the limits",
+    "readOnly": "Only the owner can change these."
   }
 }

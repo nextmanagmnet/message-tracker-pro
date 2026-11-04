@@ -28,6 +28,30 @@ export function validatePaymentAmount(amount: unknown): string | null {
   return null;
 }
 
+export interface Limits {
+  maxDailyTransfer: number;
+  paymentApprovalOver: number;
+  paymentDailyCap: number;
+}
+
+const money2 = (v: unknown): v is number =>
+  typeof v === "number" && Number.isFinite(v) && Math.abs(Math.round(v * 100) - v * 100) < 1e-6;
+
+// The safety limits an owner sets. Bounds keep a typo (or a hijacked session) from "limiting" itself into nothing:
+// the daily numbers must be positive and sane; the approval threshold may be 0 (everything needs the owner).
+export function validateLimits(
+  b: Partial<Record<keyof Limits, unknown>>,
+): { ok: true; value: Limits } | { ok: false; error: string } {
+  const { maxDailyTransfer: t, paymentApprovalOver: a, paymentDailyCap: c } = b;
+  if (!money2(t) || t <= 0 || t > 1_000_000)
+    return { ok: false, error: "The daily transfer limit must be between 0.01 and 1,000,000" };
+  if (!money2(a) || a < 0 || a > 100_000)
+    return { ok: false, error: "The approval threshold must be between 0 and 100,000" };
+  if (!money2(c) || c <= 0 || c > 1_000_000)
+    return { ok: false, error: "The daily payment limit must be between 0.01 and 1,000,000" };
+  return { ok: true, value: { maxDailyTransfer: t, paymentApprovalOver: a, paymentDailyCap: c } };
+}
+
 export const isReferenceCode = (v: unknown): v is string => typeof v === "string" && REFERENCE_CODE.test(v);
 
 interface Mapped {
