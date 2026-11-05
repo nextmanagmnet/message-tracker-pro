@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, Package, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Globe, ImagePlus, Loader2, Package, Pencil, Plus, Trash2, X } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useFormat } from "@/components/leads/shared";
+import { ImportDialog } from "@/components/catalog/ImportDialog";
 
 type Product = Tables<"products">;
 type Draft = {
@@ -36,6 +37,7 @@ const Catalog = () => {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const load = useCallback(async () => {
     if (!selectedClient) return;
@@ -135,7 +137,10 @@ const Catalog = () => {
       ) : (
         <>
           {canManage && (
-            <div className="mb-6 flex justify-end">
+            <div className="mb-6 flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={() => setImporting(true)}>
+                <Globe className="h-4 w-4" /> {t("catalog.import.button")}
+              </Button>
               <Button variant="glow" onClick={() => setDraft({ ...EMPTY })}>
                 <Plus className="h-4 w-4" /> {t("catalog.add")}
               </Button>
@@ -146,6 +151,11 @@ const Catalog = () => {
               <Package className="mx-auto mb-3 h-8 w-8 text-primary" />
               <p className="font-medium text-foreground">{t("catalog.empty")}</p>
               <p className="mt-1 text-sm text-muted-foreground">{t("catalog.emptyHint")}</p>
+              {canManage && (
+                <Button variant="glow" className="mt-4" onClick={() => setImporting(true)}>
+                  <Globe className="h-4 w-4" /> {t("catalog.import.button")}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -204,6 +214,13 @@ const Catalog = () => {
           )}
         </>
       )}
+
+      <ImportDialog
+        clientId={selectedClient?.id ?? ""}
+        open={importing && !!selectedClient}
+        onClose={() => setImporting(false)}
+        onDone={load}
+      />
 
       <Dialog open={!!draft} onOpenChange={(o) => !o && !busy && setDraft(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

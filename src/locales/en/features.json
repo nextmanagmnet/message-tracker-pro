@@ -395,7 +395,23 @@
     "tooBig": "{{name}} is larger than {{mb}} MB",
     "uploadFailed": "Upload failed",
     "confirmDelete": "Delete {{name}}?",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "import": {
+      "button": "Import from website",
+      "title": "Import products from your website",
+      "hint": "WOB reads the products, prices and photos from your online shop and adds them here. Products already in your catalog are not duplicated. Works with Shopify, WooCommerce and most shops that show their products to Google.",
+      "url": "Website address",
+      "action": "Import products",
+      "working": "Reading your website and copying photos. This can take up to a minute.",
+      "done_one": "{{count}} product imported",
+      "done_other": "{{count}} products imported",
+      "skipped_one": "{{count}} was already in your catalog.",
+      "skipped_other": "{{count}} were already in your catalog.",
+      "nothingNew": "All {{found}} products found were already in your catalog.",
+      "none_found": "No products were found on that website. If the shop is built with a custom system, add the products by hand or send us the link.",
+      "bad_url": "Enter a valid website address, for example myshop.com.",
+      "failed": "The import did not work. Check the address and try again."
+    }
   },
   "funding": {
     "title": "Funding",
