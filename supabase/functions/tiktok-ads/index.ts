@@ -1,4 +1,6 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authorizeCampaigns } from "../_shared/auth.ts";
+import { parseReview, reviewPlan, REVIEW_SCHEMA } from "../_shared/adReview.ts";
 import { advertiserBalance } from "../_shared/bcAccounts.ts";
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { withCors } from "../_shared/cors.ts";
@@ -17,6 +19,7 @@ import {
   MAX_AD_TEXT,
   MAX_ADS,
   MAX_DAILY_BUDGET,
+  MIN_DAILY_BUDGET,
   parseSuggestion,
   reviewSummary,
   SUGGESTION_SCHEMA,
@@ -45,6 +48,33 @@ async function attempt<T>(fn: () => Promise<T>): Promise<{ data: T | null; recon
     const reconnect = e instanceof TikTokApiError && isScopeError(e.code);
     return { data: null, reconnect, error: reconnect ? RECONNECT : errorText(e) };
   }
+}
+
+// What the account's own TikTok ads achieved in the last week: the facts an experienced media buyer starts from.
+async function accountHistory(supabase: SupabaseClient, clientId: string) {
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const [{ data: campaigns }, { count: chats }] = await Promise.all([
+    supabase
+      .from("tiktok_campaigns")
+      .select("campaign_name, spend, clicks, impressions, real_conversations")
+      .eq("client_id", clientId)
+      .order("spend", { ascending: false })
+      .limit(5),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .eq("ad_platform", "tiktok")
+      .gte("created_at", since),
+  ]);
+  const spend = (campaigns ?? []).reduce((n, c) => n + (Number(c.spend) || 0), 0);
+  const total = chats ?? 0;
+  return {
+    campaigns: campaigns ?? [],
+    chats: total,
+    // Only trusted with enough chats behind it.
+    costPerChat: total >= 5 && spend > 0 ? Math.round((spend / total) * 100) / 100 : null,
+  };
 }
 
 Deno.serve(
@@ -372,7 +402,7 @@ Deno.serve(
 
       if (action === "ai-suggest") {
         if (!hasLlm()) return json({ error: "AI is not configured" }, 503);
-        const [{ data: settings }, { data: products }, { data: client }] = await Promise.all([
+        const [{ data: settings }, { data: products }, { data: client }, past] = await Promise.all([
           supabase
             .from("ai_agent_settings")
             .select("business_knowledge, tone, tone_profile")
@@ -385,6 +415,7 @@ Deno.serve(
             .order("created_at", { ascending: false })
             .limit(15),
           supabase.from("clients").select("name").eq("id", clientId).maybeSingle(),
+          accountHistory(supabase, clientId),
         ]);
         const product = (products ?? []).find((p) => p.id === body.productId);
         const language = body.language === "ar" ? "Arabic" : "English";
@@ -399,19 +430,70 @@ Deno.serve(
             `Return exactly 3 different ad texts in ${language}, each at most ${MAX_AD_TEXT} characters, no hashtags, no emojis, ` +
             `no prices or claims that are not in the business info. Also return the short first WhatsApp message the customer sends ` +
             `(in ${language}, written as the customer, e.g. asking about the product), the most likely target country as an ` +
-            `ISO 3166-1 alpha-2 code, an age range (18 or older) and a gender (GENDER_UNLIMITED unless the product is clearly for one gender).`,
+            `ISO 3166-1 alpha-2 code, an age range (18 or older) and a gender (GENDER_UNLIMITED unless the product is clearly for one gender). ` +
+            `Think like an experienced media buyer: also choose a daily budget in USD (between ${MIN_DAILY_BUDGET} and ${MAX_DAILY_BUDGET}; ` +
+            `if past results show a cost per chat, size it so the ad can get about 50 chats a week, and keep it affordable for the given balance), ` +
+            `the best call-to-action, and a one or two sentence rationale for the audience, budget and angle. ` +
+            `Use the account's past results when given: repeat what worked, do not copy it word for word.`,
           user: JSON.stringify({
             business: client?.name ?? "",
             about: settings?.business_knowledge ?? "",
             tone: settings?.tone_profile ?? settings?.tone ?? "",
             goal,
             promote: product ?? null,
+            balance: typeof body.balance === "number" ? body.balance : null,
+            pastWeek: past,
             catalog: (products ?? []).map((p) => ({ name: p.name, price: p.price, currency: p.currency })),
           }),
         });
         const suggestion = parseSuggestion(raw);
         if (!suggestion) return json({ error: "The AI could not suggest an ad; try again or write your own" }, 502);
         return json({ suggestion });
+      }
+
+      if (action === "ai-review") {
+        const num = (v: unknown, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+        const texts = (Array.isArray(body.texts) ? body.texts : []).filter(
+          (t: unknown): t is string => typeof t === "string" && t.trim() !== "",
+        );
+        const past = await accountHistory(supabase, clientId);
+        const plan = {
+          dailyBudget: num(body.dailyBudget),
+          ageMin: num(body.ageMin, 18),
+          ageMax: num(body.ageMax, 65),
+          mediaCount: num(body.mediaCount),
+          texts,
+          message: typeof body.message === "string" ? body.message : "",
+          balance: typeof body.balance === "number" ? body.balance : null,
+          costPerChat: past.costPerChat,
+        };
+        const issues = reviewPlan(plan);
+        const cap = Number(Deno.env.get("LAUNCH_MAX_DAILY_BUDGET")) || MAX_DAILY_BUDGET;
+        let advice = null;
+        if (hasLlm()) {
+          const language = body.language === "ar" ? "Arabic" : "English";
+          const raw = await jsonCompletion({
+            model: REPLY_MODEL,
+            effort: "low",
+            maxTokens: 1024,
+            schema: REVIEW_SCHEMA,
+            system:
+              `You are a senior TikTok media buyer reviewing a small business's campaign before it goes live. People tap the ad ` +
+              `and land in a WhatsApp chat. Write in ${language}. "summary": 2-3 plain sentences: the verdict, the biggest risk and ` +
+              `the single best improvement, using only the numbers given (the checks already found: ${JSON.stringify(issues)}). ` +
+              `"texts": up to 3 improved versions of the ad texts (at most ${MAX_AD_TEXT} characters each, no hashtags, no emojis, ` +
+              `no invented prices or claims; empty list if the current ones are good). "message": a better first WhatsApp message ` +
+              `written as the customer, or an empty string to keep the current one. "daily_budget": a daily USD budget between ` +
+              `${MIN_DAILY_BUDGET} and ${cap} if the current one should change, else the current one. Never promise results.`,
+            user: JSON.stringify({
+              plan,
+              goal: typeof body.goal === "string" ? body.goal.slice(0, 300) : "",
+              pastWeek: past,
+            }),
+          });
+          advice = parseReview(raw, cap);
+        }
+        return json({ issues, advice, history: { costPerChat: past.costPerChat, chats: past.chats } });
       }
 
       if (action === "launch") {

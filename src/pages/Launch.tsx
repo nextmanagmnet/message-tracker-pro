@@ -28,6 +28,7 @@ import {
 } from "@/components/launch/api";
 import { LaunchStatus } from "@/components/launch/LaunchStatus";
 import { MediaStep } from "@/components/launch/MediaStep";
+import { AiReview } from "@/components/launch/AiReview";
 
 const STEPS = ["target", "contact", "cta", "media", "text", "review"] as const;
 type Step = (typeof STEPS)[number];
@@ -103,6 +104,7 @@ const Launch = () => {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState<"ai" | "launch" | null>(null);
   const [result, setResult] = useState<LaunchRow | null>(null);
+  const [rationale, setRationale] = useState("");
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
 
@@ -193,6 +195,7 @@ const Launch = () => {
         goal: draft.goal,
         productId: draft.productId || undefined,
         language: lang,
+        balance: options?.balance?.amount,
       });
       const country = s.countryCode && countries.some((c) => c.code === s.countryCode) ? s.countryCode : draft.country;
       patch({
@@ -201,8 +204,11 @@ const Launch = () => {
         gender: s.gender,
         ageMin: String(s.ageMin),
         ageMax: String(s.ageMax),
+        ...(s.dailyBudget ? { dailyBudget: String(Math.min(s.dailyBudget, maxBudget)) } : {}),
+        ...(s.cta && options?.ctas.includes(s.cta) ? { cta: s.cta } : {}),
         ...(country !== draft.country ? { country, regionIds: [] } : {}),
       });
+      setRationale(s.rationale);
       toast.success(t("ai.done"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("error"));
@@ -333,6 +339,13 @@ const Launch = () => {
 
         <div className="glass-card space-y-5 p-6">
           <h2 className="text-lg font-semibold text-foreground">{t(`steps.${step}`)}</h2>
+          {rationale && step !== "review" && (
+            <p className="rounded-lg bg-primary/5 p-3 text-sm text-muted-foreground" dir="auto">
+              <Sparkles className="me-1 inline h-3.5 w-3.5 text-primary" aria-hidden />
+              <span className="font-medium text-foreground">{t("aiReview.rationale")}</span>
+              {rationale}
+            </p>
+          )}
 
           {step === "target" && (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -599,6 +612,30 @@ const Launch = () => {
 
           {step === "review" && (
             <div className="space-y-4">
+              {clientId && (
+                <AiReview
+                  clientId={clientId}
+                  language={lang}
+                  plan={{
+                    dailyBudget: budget,
+                    ageMin,
+                    ageMax,
+                    mediaCount: draft.mediaIds.length,
+                    texts,
+                    message: draft.message.trim(),
+                    goal: draft.goal,
+                    balance: options?.balance?.amount ?? null,
+                  }}
+                  onApply={(a) => {
+                    patch({
+                      ...(a.texts ? { texts: a.texts } : {}),
+                      ...(a.message ? { message: a.message } : {}),
+                      ...(a.dailyBudget ? { dailyBudget: String(Math.min(a.dailyBudget, maxBudget)) } : {}),
+                    });
+                    toast.success(t("aiReview.applied"));
+                  }}
+                />
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">{t("review.name")}</Label>
                 <Input

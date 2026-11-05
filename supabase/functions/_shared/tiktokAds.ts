@@ -229,6 +229,10 @@ export interface Suggestion {
   ageMin: number;
   ageMax: number;
   gender: Gender;
+  dailyBudget: number | null;
+  cta: Cta | null;
+  /** One or two sentences on why, shown to the person. */
+  rationale: string;
 }
 
 export const SUGGESTION_SCHEMA = {
@@ -240,8 +244,11 @@ export const SUGGESTION_SCHEMA = {
     age_min: { type: "integer" },
     age_max: { type: "integer" },
     gender: { type: "string", enum: [...GENDERS] },
+    daily_budget: { type: "number" },
+    cta: { type: "string", enum: [...CTAS] },
+    rationale: { type: "string" },
   },
-  required: ["texts", "message", "country_code", "age_min", "age_max", "gender"],
+  required: ["texts", "message", "country_code", "age_min", "age_max", "gender", "daily_budget", "cta", "rationale"],
   additionalProperties: false,
 };
 
@@ -262,6 +269,7 @@ export function parseSuggestion(raw: string | null): Suggestion | null {
   const code = str(d.country_code).toUpperCase();
   const lo = Math.max(18, Math.min(100, Math.round(Number(d.age_min)) || 18));
   const hi = Math.max(lo, Math.min(100, Math.round(Number(d.age_max)) || 100));
+  const budget = Number(d.daily_budget);
   return {
     texts,
     message,
@@ -269,6 +277,10 @@ export function parseSuggestion(raw: string | null): Suggestion | null {
     ageMin: lo,
     ageMax: hi,
     gender: (GENDERS as readonly string[]).includes(str(d.gender)) ? (str(d.gender) as Gender) : "GENDER_UNLIMITED",
+    dailyBudget:
+      Number.isFinite(budget) && budget >= MIN_DAILY_BUDGET && budget <= MAX_DAILY_BUDGET ? Math.round(budget) : null,
+    cta: (CTAS as readonly string[]).includes(str(d.cta)) ? (str(d.cta) as Cta) : null,
+    rationale: str(d.rationale).slice(0, 500),
   };
 }
 

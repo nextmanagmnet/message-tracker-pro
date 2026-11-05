@@ -27,6 +27,9 @@ export type Suggestion = {
   ageMin: number;
   ageMax: number;
   gender: Gender;
+  dailyBudget: number | null;
+  cta: string | null;
+  rationale: string;
 };
 
 export type AdReview = {

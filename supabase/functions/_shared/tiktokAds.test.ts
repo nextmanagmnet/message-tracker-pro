@@ -130,6 +130,9 @@ describe("parseSuggestion", () => {
         age_min: 10,
         age_max: 40,
         gender: "GENDER_FEMALE",
+        daily_budget: 35.4,
+        cta: "ORDER_NOW",
+        rationale: "  Women 18-40 buy this most.  ",
       }),
     );
     expect(s).toEqual({
@@ -139,7 +142,13 @@ describe("parseSuggestion", () => {
       ageMin: 18,
       ageMax: 40,
       gender: "GENDER_FEMALE",
+      dailyBudget: 35,
+      cta: "ORDER_NOW",
+      rationale: "Women 18-40 buy this most.",
     });
+    // an out-of-range budget and an unknown CTA are dropped, not guessed
+    const bad = parseSuggestion(JSON.stringify({ texts: ["a"], message: "m", daily_budget: 3, cta: "BUY_IT" }));
+    expect(bad).toMatchObject({ dailyBudget: null, cta: null, rationale: "" });
   });
 
   it("returns null for junk", () => {

@@ -133,5 +133,30 @@
       "launched": "Launched",
       "failed": "Failed"
     }
+  },
+  "aiReview": {
+    "title": "AI media buyer review",
+    "loading": "Looking at your plan and your account's results…",
+    "failed": "The review is not available right now. You can still launch.",
+    "again": "Review again",
+    "clean": "Nothing to fix. The plan follows good practice.",
+    "basis": "Based on your last 7 days: {{chats}} chats at about {{cost}} each.",
+    "apply": "Apply AI improvements",
+    "applied": "Improvements applied. Check them above before launching.",
+    "changeTexts": "{{n}} ad texts",
+    "changeMessage": "first message",
+    "changeBudget": "budget {{from}} → {{to}}",
+    "rationale": "Why this plan: ",
+    "issues": {
+      "budget_low": "A daily budget under $30 teaches TikTok slowly. {{budget}} a day can take weeks to give steady results.",
+      "learning_slow": "At your usual cost per chat, this budget brings about {{chatsPerWeek}} chats a week. TikTok learns best with about {{needed}}: around {{budgetNeeded}} a day would get there.",
+      "too_many_ads": "{{ads}} ads share this budget, only {{perAd}} a day each. Fewer videos or texts give each a fair test.",
+      "few_videos": "Test at least 2 videos. The video is the biggest lever on results.",
+      "few_texts": "Add a second ad text to find out which wording works.",
+      "audience_narrow": "Your age range spans only {{span}} years. A narrow audience gets expensive; widen it unless the product is very specific.",
+      "balance_short": "The ad account balance covers about {{days}} day(s) at this budget. Add funds so delivery does not stop.",
+      "text_style": "Hashtags and repeated exclamation marks lower trust. Plain text works better.",
+      "message_short": "The first WhatsApp message is very short. A specific message tells you what the customer wants."
+    }
   }
 }
