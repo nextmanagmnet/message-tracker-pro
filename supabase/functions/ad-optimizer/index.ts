@@ -35,7 +35,7 @@ type Rec = {
 async function analyze(supabase: SupabaseClient, clientId: string, lang: Lang) {
   const acc = await getAccount(supabase, clientId);
   if (!acc) return { noAccount: true, created: 0 };
-  const allHits = await findHits(supabase, acc, clientId);
+  const { hits: allHits, summary } = await findHits(supabase, acc, clientId);
 
   const { data: pending } = await supabase
     .from("ad_recommendations")
@@ -44,7 +44,7 @@ async function analyze(supabase: SupabaseClient, clientId: string, lang: Lang) {
     .eq("status", "pending");
   const seen = new Set((pending ?? []).map(dedupeKey));
   const hits = allHits.filter((h) => !seen.has(dedupeKey({ level: h.level, target_id: h.targetId, kind: h.kind })));
-  if (hits.length === 0) return { created: 0, found: allHits.length };
+  if (hits.length === 0) return { created: 0, found: allHits.length, summary };
 
   const raw = hasLlm()
     ? await jsonCompletion({
@@ -95,7 +95,7 @@ async function analyze(supabase: SupabaseClient, clientId: string, lang: Lang) {
     }),
   );
   if (error) throw new Error(error.message);
-  return { created: hits.length, found: allHits.length };
+  return { created: hits.length, found: allHits.length, summary };
 }
 
 /** Executes a stored recommendation on TikTok. Guidance-only kinds are refused: they need a new ad group or video. */

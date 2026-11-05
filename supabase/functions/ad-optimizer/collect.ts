@@ -4,9 +4,11 @@ import {
   funnelBy,
   parseReport,
   ruleHits,
+  summarize,
   type Entity,
   type Funnel,
   type Hit,
+  type Summary,
 } from "../_shared/optimizer.ts";
 import { tiktokApi } from "../_shared/tiktokApi.ts";
 
@@ -69,7 +71,11 @@ const sumFunnels = (fs: Funnel[]): Funnel | null =>
         revenue: a.revenue + f.revenue,
       }));
 
-export async function findHits(supabase: SupabaseClient, acc: Account, clientId: string): Promise<Hit[]> {
+export async function findHits(
+  supabase: SupabaseClient,
+  acc: Account,
+  clientId: string,
+): Promise<{ hits: Hit[]; summary: Summary }> {
   // Last 7 full-ish days (today included) and the 7 before, for week-over-week change.
   const [l7, p7] = [
     [day(6), day(0)],
@@ -150,7 +156,9 @@ export async function findHits(supabase: SupabaseClient, acc: Account, clientId:
     h.level === "adgroup"
       ? groupCampaign.get(h.targetId)
       : groupCampaign.get(adEntities.find((a) => a.id === h.targetId)?.parentId ?? "");
-  return ruleHits([...groupEntities, ...adEntities]).map((h) => {
+  const entities = [...groupEntities, ...adEntities];
+  const chats = (leads ?? []).length;
+  const hits = ruleHits(entities, chats).map((h) => {
     const cid = campaignOf(h) ?? "";
     return {
       ...h,
@@ -160,4 +168,5 @@ export async function findHits(supabase: SupabaseClient, acc: Account, clientId:
       },
     };
   });
+  return { hits, summary: summarize(entities, chats) };
 }

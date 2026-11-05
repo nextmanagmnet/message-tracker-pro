@@ -9,6 +9,7 @@ import {
   parseCopy,
   parseReport,
   ruleHits,
+  summarize,
   type Entity,
   type Metrics,
 } from "./optimizer";
@@ -158,5 +159,39 @@ describe("helpers", () => {
     ]);
     expect(fallbackCopy(hit, "en").title).toContain("Not yet");
     expect(fallbackCopy(hit, "ar").title).toContain("Beirut");
+  });
+});
+
+describe("early warnings", () => {
+  const ad = (p: Partial<Entity>) => entity({ level: "ad", id: "a", parentId: "g", ...p });
+  const group = (p: Partial<Entity>) => entity({ level: "adgroup", id: "g", ...p });
+  const topics = (es: Entity[], chats: number | null = null) =>
+    ruleHits(es, chats).map((h) => `${h.action.topic ?? h.kind}:${h.targetId}`);
+
+  it("flags an ad group that was showing and stopped", () => {
+    expect(topics([group({ prev7: m({ impressions: 5000 }) })])).toContain("not_delivering:g");
+    // a brand-new group has no history: not flagged
+    expect(topics([group({})])).toEqual([]);
+    // a paused one is not flagged
+    expect(topics([group({ active: false, prev7: m({ impressions: 5000 }) })])).toEqual([]);
+  });
+
+  it("flags clicks that bring no chats, once, only when chats are known to be zero", () => {
+    const g = group({ last7: m({ spend: 18, clicks: 60, impressions: 4000 }) });
+    expect(topics([g], 0)).toContain("no_chats:g");
+    expect(topics([g], 3)).not.toContain("no_chats:g");
+    expect(topics([g], null)).not.toContain("no_chats:g");
+    expect(topics([group({ last7: m({ spend: 5, clicks: 60 }) })], 0)).toEqual([]);
+  });
+
+  it("flags a video that is weak outright, even with no history", () => {
+    expect(topics([ad({ last7: m({ impressions: 5000, clicks: 5 }) })])).toContain("refresh_creative:a");
+    expect(topics([ad({ last7: m({ impressions: 5000, clicks: 80 }) })])).toEqual([]);
+    expect(topics([ad({ last7: m({ impressions: 500, clicks: 0 }) })])).toEqual([]);
+  });
+
+  it("summarizes what was looked at", () => {
+    const s = summarize([group({ last7: m({ spend: 25, clicks: 10, impressions: 900 }) }), ad({})], 4);
+    expect(s).toMatchObject({ activeGroups: 1, activeAds: 1, spend: 25, chats: 4, judged: 1 });
   });
 });

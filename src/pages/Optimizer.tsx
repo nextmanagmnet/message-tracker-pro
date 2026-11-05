@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -15,16 +15,32 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { invokeFn } from "@/components/leads/shared";
+import { invokeFn, useFormat } from "@/components/leads/shared";
 import { RecommendationCard, type Recommendation } from "@/components/optimizer/RecommendationCard";
 import { useAgency } from "@/hooks/useAgency";
 
 type ListResponse = { recommendations: Recommendation[]; hasAccount: boolean };
-type ActionResponse = { reconnect?: boolean; noAccount?: boolean; created?: number; error?: string };
+type Summary = {
+  activeGroups: number;
+  activeAds: number;
+  spend: number;
+  clicks: number;
+  chats: number;
+  judged: number;
+  minSpend: number;
+};
+type ActionResponse = {
+  reconnect?: boolean;
+  noAccount?: boolean;
+  created?: number;
+  error?: string;
+  summary?: Summary;
+};
 type Pending = { rec: Recommendation; action: "apply" | "dismiss" };
 
 const Optimizer = () => {
   const { t, i18n } = useTranslation("optimizer");
+  const f = useFormat();
   const { selectedClient, canManage } = useAgency();
   const [recs, setRecs] = useState<Recommendation[] | null>(null);
   const [hasAccount, setHasAccount] = useState(true);
@@ -32,6 +48,8 @@ const Optimizer = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Pending | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const autoRan = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!selectedClient) return;
@@ -48,6 +66,7 @@ const Optimizer = () => {
   useEffect(() => {
     setRecs(null);
     setReconnect(false);
+    setSummary(null);
     load();
   }, [load]);
 
@@ -58,7 +77,7 @@ const Optimizer = () => {
     return !res.reconnect && !res.noAccount;
   };
 
-  const analyze = async () => {
+  const analyze = async (quiet = false) => {
     if (!selectedClient) return;
     setAnalyzing(true);
     try {
@@ -69,14 +88,23 @@ const Optimizer = () => {
       });
       if (handle(res)) {
         setReconnect(false);
-        toast.success(res.created ? t("created", { count: res.created }) : t("noneNew"));
+        if (res.summary) setSummary(res.summary);
+        if (!quiet) toast.success(res.created ? t("created", { count: res.created }) : t("noneNew"));
       }
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("error"));
+      if (!quiet) toast.error(e instanceof Error ? e.message : t("error"));
     }
     setAnalyzing(false);
   };
+
+  // Look once when the page opens, so it never sits empty just because nobody pressed the button.
+  useEffect(() => {
+    if (!selectedClient || recs === null || !hasAccount || autoRan.current === selectedClient.id) return;
+    autoRan.current = selectedClient.id;
+    analyze(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClient, recs, hasAccount]);
 
   const decide = async ({ rec, action }: Pending) => {
     setConfirm(null);
@@ -102,7 +130,7 @@ const Optimizer = () => {
         selectedClient &&
         canManage &&
         hasAccount && (
-          <Button variant="glow" onClick={analyze} disabled={analyzing}>
+          <Button variant="glow" onClick={() => analyze()} disabled={analyzing}>
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {analyzing ? t("analyzing") : t("analyze")}
           </Button>
@@ -135,6 +163,7 @@ const Optimizer = () => {
                 <Lightbulb className="mx-auto mb-3 h-8 w-8 text-primary" />
                 <p className="font-medium text-foreground">{t("empty")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("emptyHint")}</p>
+                {analyzing && !summary && <Loader2 className="mx-auto mt-4 h-5 w-5 animate-spin text-primary" />}
               </div>
             ) : (
               <div className="space-y-4">
@@ -151,6 +180,29 @@ const Optimizer = () => {
               </div>
             )}
           </section>
+
+          {summary && (
+            <section className="rounded-xl border border-border bg-card p-5 text-sm">
+              <h2 className="mb-2 font-semibold text-foreground">{t("summary.title")}</h2>
+              <p className="text-muted-foreground">
+                {summary.activeGroups === 0
+                  ? t("summary.none")
+                  : t("summary.line", {
+                      spend: f.money(summary.spend),
+                      clicks: f.num(summary.clicks),
+                      chats: f.num(summary.chats),
+                      groups: summary.activeGroups,
+                      judged: summary.judged,
+                    })}
+              </p>
+              {summary.activeGroups > 0 && (
+                <p className="mt-2 text-muted-foreground">{t("summary.why", { min: f.money(summary.minSpend) })}</p>
+              )}
+              {pending.length === 0 && summary.activeGroups > 0 && (
+                <p className="mt-2 font-medium text-foreground">{t("summary.fine")}</p>
+              )}
+            </section>
+          )}
 
           {history.length > 0 && (
             <section>

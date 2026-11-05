@@ -41,7 +41,9 @@
     "switch_event": "Optimize for purchases",
     "switch_event_not_yet": "Purchases: not yet",
     "refresh_creative": "New video",
-    "other": "Tip"
+    "other": "Tip",
+    "not_delivering": "Not showing",
+    "no_chats": "No chats"
   },
   "level": {
     "campaign": "Campaign",
@@ -67,7 +69,10 @@
     "currentEvent": "Optimizing for",
     "ctr": "Click rate now",
     "previousCtr": "Click rate last week",
-    "impressions": "Views (7 days)"
+    "impressions": "Views (7 days)",
+    "previousImpressions": "Views last week",
+    "clicks": "Clicks (7 days)",
+    "chats": "Chats started (7 days)"
   },
   "expected": {
     "pause": "the money this ad spends moves to the ads in the same ad group that bring qualified leads.",
@@ -76,6 +81,17 @@
     "switch_event": "TikTok shows your ads to people likely to buy. This needs a new ad group optimized for Purchase, because TikTok does not allow changing it on a running one.",
     "switch_event_not_yet": "none yet. Keep optimizing for qualified leads until this ad group gets about 50 purchases a week.",
     "refresh_creative": "a fresh video usually brings the click rate back up. Create one, then pause the tired ad.",
-    "other": "information only."
+    "other": "information only.",
+    "not_delivering": "your ads show again once the cause is fixed. Check that the ad account has balance and the ads were not rejected in TikTok Ads Manager.",
+    "no_chats": "clicks that start chats. Check that your WhatsApp number is connected, the first message is right and the ad opens WhatsApp."
+  },
+  "openConnections": "Check WhatsApp",
+  "openCampaigns": "Open campaigns",
+  "summary": {
+    "title": "What was checked",
+    "line": "Last 7 days: {{spend}} spent, {{clicks}} clicks, {{chats}} chats started. {{groups}} active ad groups, {{judged}} spent enough to be judged.",
+    "none": "No active ad groups found, so there is nothing to judge yet.",
+    "why": "A budget change or a pause is only suggested after an ad group spends {{min}} in 7 days, so small tests are left alone. Warnings (ad stopped, clicks without chats, weak video) appear sooner.",
+    "fine": "Nothing needs changing right now."
   }
 }

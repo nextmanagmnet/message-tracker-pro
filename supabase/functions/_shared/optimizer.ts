@@ -61,6 +61,9 @@ export const MIN_DAILY_BUDGET = 20; // TikTok's minimum ad group daily budget (U
 export const PURCHASES_TO_SWITCH = 50; // TikTok needs ~50 conversions a week to learn an event
 export const MIN_IMPRESSIONS_FOR_CTR = 3000;
 export const CTR_DROP = 0.4; // CTR fell by 40% or more week over week
+export const LOW_CTR = 0.003; // an ad seen 3000+ times and clicked under 0.3% is weak whatever last week looked like
+export const MIN_SPEND_NO_CHATS = 15; // clicks that bought nothing are worth a warning earlier than a full judgement
+export const MIN_CLICKS_NO_CHATS = 40;
 
 const PURCHASE_EVENTS = new Set(["SHOPPING", "COMPLETE_PAYMENT"]);
 
@@ -135,7 +138,37 @@ export function accountCpq(adgroups: Entity[]): number | null {
   return qualified > 0 ? spend / qualified : null;
 }
 
-export function ruleHits(entities: Entity[]): Hit[] {
+/** What the analysis looked at, so an empty result can say why it is empty. */
+export interface Summary {
+  activeGroups: number;
+  activeAds: number;
+  spend: number;
+  clicks: number;
+  impressions: number;
+  /** Chats WOB read from TikTok ads in the same 7 days. */
+  chats: number;
+  /** Active ad groups that spent enough to be judged. */
+  judged: number;
+  minSpend: number;
+}
+
+export function summarize(entities: Entity[], chats: number): Summary {
+  const groups = entities.filter((e) => e.level === "adgroup");
+  const active = groups.filter((g) => g.active);
+  return {
+    activeGroups: active.length,
+    activeAds: entities.filter((e) => e.level === "ad" && e.active).length,
+    spend: round2(groups.reduce((n, g) => n + g.last7.spend, 0)),
+    clicks: groups.reduce((n, g) => n + g.last7.clicks, 0),
+    impressions: groups.reduce((n, g) => n + g.last7.impressions, 0),
+    chats,
+    judged: active.filter((g) => g.last7.spend >= MIN_SPEND).length,
+    minSpend: MIN_SPEND,
+  };
+}
+
+/** `accountChats`: chats WOB read from this account's ads in the last 7 days (null = unknown, skip that rule). */
+export function ruleHits(entities: Entity[], accountChats: number | null = null): Hit[] {
   const hits: Hit[] = [];
   const adgroups = entities.filter((e) => e.level === "adgroup");
   const ads = entities.filter((e) => e.level === "ad");
@@ -223,13 +256,48 @@ export function ruleHits(entities: Entity[]): Hit[] {
     }
   }
 
-  // Refresh a creative whose click-through rate fell sharply week over week.
+  // An ad group that was delivering and stopped: usually an empty balance, a rejected ad or an ended schedule.
+  for (const g of adgroups) {
+    if (!g.active || g.last7.impressions > 0 || g.prev7.impressions === 0) continue;
+    hits.push({
+      level: "adgroup",
+      targetId: g.id,
+      name: g.name,
+      kind: "other",
+      action: {
+        type: "guidance",
+        topic: "not_delivering",
+        numbers: { previousImpressions: g.prev7.impressions, impressions: 0, budget: g.budget },
+      },
+    });
+  }
+
+  // People click but nobody starts a chat: the problem is after the click (link, WhatsApp number, first message).
+  if (accountChats === 0) {
+    const top = adgroups
+      .filter((g) => g.active && g.last7.spend >= MIN_SPEND_NO_CHATS && g.last7.clicks >= MIN_CLICKS_NO_CHATS)
+      .sort((a, b) => b.last7.spend - a.last7.spend)[0];
+    if (top)
+      hits.push({
+        level: "adgroup",
+        targetId: top.id,
+        name: top.name,
+        kind: "other",
+        action: {
+          type: "guidance",
+          topic: "no_chats",
+          numbers: { spend: round2(top.last7.spend), clicks: top.last7.clicks, chats: 0 },
+        },
+      });
+  }
+
+  // Refresh a creative that is weak outright, or whose click-through rate fell sharply week over week.
   for (const ad of ads) {
-    if (!ad.active || ad.last7.impressions < MIN_IMPRESSIONS_FOR_CTR || ad.prev7.impressions < MIN_IMPRESSIONS_FOR_CTR)
-      continue;
+    if (!ad.active || ad.last7.impressions < MIN_IMPRESSIONS_FOR_CTR) continue;
     const now = ctr(ad.last7);
-    const before = ctr(ad.prev7);
-    if (before <= 0 || now > (1 - CTR_DROP) * before) continue;
+    const before = ad.prev7.impressions >= MIN_IMPRESSIONS_FOR_CTR ? ctr(ad.prev7) : 0;
+    const dropped = before > 0 && now <= (1 - CTR_DROP) * before;
+    if (!dropped && now >= LOW_CTR) continue;
     hits.push({
       level: "ad",
       targetId: ad.id,
@@ -238,7 +306,11 @@ export function ruleHits(entities: Entity[]): Hit[] {
       action: {
         type: "guidance",
         topic: "refresh_creative",
-        numbers: { ctr: round2(now * 100), previousCtr: round2(before * 100), impressions: ad.last7.impressions },
+        numbers: {
+          ctr: round2(now * 100),
+          previousCtr: before > 0 ? round2(before * 100) : null,
+          impressions: ad.last7.impressions,
+        },
       },
     });
   }
@@ -286,6 +358,8 @@ const TITLES: Record<Lang, Record<string, string>> = {
     switch_event: "Optimize “{name}” for purchases",
     switch_event_not_yet: "Not yet time to optimize “{name}” for purchases",
     refresh_creative: "Refresh the video of “{name}”",
+    not_delivering: "“{name}” stopped showing",
+    no_chats: "Clicks on “{name}” are not turning into chats",
   },
   ar: {
     pause: "إيقاف الإعلان «{name}»",
@@ -294,6 +368,8 @@ const TITLES: Record<Lang, Record<string, string>> = {
     switch_event: "تحسين «{name}» للمشتريات",
     switch_event_not_yet: "لم يحن الوقت بعد لتحسين «{name}» للمشتريات",
     refresh_creative: "تجديد فيديو «{name}»",
+    not_delivering: "«{name}» توقف عن الظهور",
+    no_chats: "النقرات على «{name}» لا تتحول إلى محادثات",
   },
 };
 

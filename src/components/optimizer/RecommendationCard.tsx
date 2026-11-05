@@ -115,6 +115,12 @@ export function RecommendationCard({
                   <ExternalLink className="h-4 w-4" /> {t("openLauncher")}
                 </Link>
               </Button>
+            ) : topic === "no_chats" || topic === "not_delivering" ? (
+              <Button asChild variant="glow" size="sm">
+                <Link to={topic === "no_chats" ? "/connections" : "/campaigns"}>
+                  <ExternalLink className="h-4 w-4" /> {t(topic === "no_chats" ? "openConnections" : "openCampaigns")}
+                </Link>
+              </Button>
             ) : null
           ) : (
             canAct && (
