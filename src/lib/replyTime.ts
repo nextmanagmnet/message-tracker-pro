@@ -71,15 +71,18 @@ export type InboxSort = "recent" | "waiting";
 
 export function filterChats<T extends Pick<ChatTimes, "assigned_to">>(
   rows: T[],
-  opts: { tab: InboxTab; me: string | null; stage: string; query: string },
+  opts: { tab: InboxTab; me: string | null; stage: string; query: string; platform?: string },
   stageOf: (r: T) => string,
   textOf: (r: T) => string,
+  platformOf: (r: T) => string | null = () => null,
 ): T[] {
   const q = opts.query.trim().toLowerCase();
   return rows.filter((r) => {
     if (opts.tab === "mine" && (!opts.me || r.assigned_to !== opts.me)) return false;
     if (opts.tab === "unassigned" && r.assigned_to) return false;
     if (opts.stage !== "all" && stageOf(r) !== opts.stage) return false;
+    const source = opts.platform ?? "all";
+    if (source !== "all" && (platformOf(r) ?? "none") !== source) return false;
     return !q || textOf(r).toLowerCase().includes(q);
   });
 }

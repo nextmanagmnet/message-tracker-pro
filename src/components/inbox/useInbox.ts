@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { cleanMessage } from "@/lib/messageText";
 import type { DateRange } from "@/components/dashboard/dateRange";
 import { db, invokeFn, type Lead, LEAD_COLUMNS } from "@/components/leads/shared";
 import type { ChatTimes } from "@/lib/replyTime";
@@ -69,7 +70,7 @@ export function useInbox(clientId: string | undefined, range: DateRange) {
           rows.map(({ leads, messages, ...c }) => ({
             ...c,
             lead: leads,
-            preview: messages[0]?.text ?? leads.first_message,
+            preview: cleanMessage(messages[0]?.text ?? leads.first_message),
           })),
         );
       }

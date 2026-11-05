@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { cleanMessage } from "@/lib/messageText";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { MessageCircle, Plus } from "lucide-react";
@@ -63,7 +64,7 @@ export function WhatsAppSection({
       const s = map.get(l.whatsapp_number_id) ?? { leads: 0, sales: 0 };
       if (l.stage === "client") s.sales++;
       if (l.stage !== "not_lead" && !(l.stage == null && l.status === "trash")) s.leads++;
-      s.last ??= l.first_message; // leads are newest-first
+      s.last ??= cleanMessage(l.first_message); // leads are newest-first
       map.set(l.whatsapp_number_id, s);
     }
     return map;

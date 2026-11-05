@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { cleanMessage } from "@/lib/messageText";
 import { TikTokBalanceCard } from "@/components/tiktok/TikTokBalanceCard";
 import { WalletCard } from "@/components/wallet/WalletCard";
 import { TopUpRequestsBanner } from "@/components/tiktok/TopUpRequestsBanner";
@@ -153,7 +154,7 @@ const Index = () => {
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">{t("dashboard.recentLeads")}</h3>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/leads")}>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/inbox")}>
                   {t("common.viewAll")}
                 </Button>
               </div>
@@ -165,7 +166,7 @@ const Index = () => {
                     <li key={l.id}>
                       <button
                         type="button"
-                        onClick={() => navigate("/leads")}
+                        onClick={() => navigate("/inbox")}
                         className="w-full rounded-xl bg-secondary/50 p-3 text-start hover:bg-secondary transition-colors"
                       >
                         <div className="flex flex-wrap items-center gap-2">
@@ -176,7 +177,7 @@ const Index = () => {
                           <PlatformChip platform={l.ad_platform} />
                           <span className="ms-auto text-xs text-muted-foreground">{f.ago(l.created_at)}</span>
                         </div>
-                        <p className="mt-1 truncate text-sm text-muted-foreground">{l.first_message}</p>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">{cleanMessage(l.first_message)}</p>
                       </button>
                     </li>
                   ))}

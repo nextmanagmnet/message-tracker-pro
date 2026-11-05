@@ -28,6 +28,7 @@ const Inbox = () => {
   const { chats, started, members, loading, failed, reload } = useInbox(selectedClient?.id, range);
   const [tab, setTab] = useState<InboxTab>("all");
   const [stage, setStage] = useState("all");
+  const [platform, setPlatform] = useState("all");
   const [sort, setSort] = useState<InboxSort>("recent");
   const [query, setQuery] = useState("");
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
@@ -45,9 +46,10 @@ const Inbox = () => {
   const visible = sortChats(
     filterChats(
       chats,
-      { tab, me, stage, query },
+      { tab, me, stage, query, platform },
       (c) => stageOf(c.lead),
       (c) => `${maskHash(c.lead.sender_phone_hash)} ${c.preview} ${nameOf(c.assigned_to)}`,
+      (c) => c.lead.ad_platform,
     ),
     sort,
     now,
@@ -123,6 +125,22 @@ const Inbox = () => {
                   {STAGES.map((s) => (
                     <SelectItem key={s} value={s}>
                       {t(`features:stage.${s}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={platform} onValueChange={setPlatform}>
+                <SelectTrigger
+                  className="w-[150px] bg-secondary border-border"
+                  aria-label={t("features:leads.filter.allSources")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("features:leads.filter.allSources")}</SelectItem>
+                  {(["tiktok", "meta", "none"] as const).map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {t(`features:platform.${p}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>

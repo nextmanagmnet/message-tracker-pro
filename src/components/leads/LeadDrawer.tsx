@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cleanMessage } from "@/lib/messageText";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -349,7 +350,7 @@ export function LeadDrawer({
               ) : messages.length === 0 ? (
                 <div className="rounded-lg bg-secondary/50 p-3 text-sm">
                   <p className="text-xs text-muted-foreground mb-1">{t("leads.firstMessage")}</p>
-                  <p className="text-foreground">{lead.first_message}</p>
+                  <p className="text-foreground">{cleanMessage(lead.first_message)}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -366,7 +367,7 @@ export function LeadDrawer({
                           <p className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                             <Icon className="w-3 h-3" /> {label} · {f.ago(m.created_at)}
                           </p>
-                          <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                          <p className="whitespace-pre-wrap break-words">{cleanMessage(m.text)}</p>
                         </div>
                       </div>
                     );

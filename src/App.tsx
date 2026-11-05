@@ -12,7 +12,6 @@ import { PendingJoinRedirect } from "@/components/join/PendingJoinRedirect";
 import Auth from "./pages/Auth";
 
 const Index = lazy(() => import("./pages/Index"));
-const Leads = lazy(() => import("./pages/Leads"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const AgencyCampaigns = lazy(() => import("./pages/AgencyCampaigns"));
 const Connections = lazy(() => import("./pages/Connections"));
@@ -95,14 +94,7 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Home />} />
                   <Route path="/welcome" element={<Landing />} />
-                  <Route
-                    path="/leads"
-                    element={
-                      <P>
-                        <Leads />
-                      </P>
-                    }
-                  />
+                  <Route path="/leads" element={<Navigate to="/inbox" replace />} />
                   <Route
                     path="/campaigns"
                     element={
@@ -265,7 +257,7 @@ const App = () => (
                       </AgencyOnly>
                     }
                   />
-                  <Route path="/feed" element={<Navigate to="/leads" replace />} />
+                  <Route path="/feed" element={<Navigate to="/inbox" replace />} />
                   <Route path="/tiktok" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/whatsapp" element={<Navigate to="/connections" replace />} />
 
