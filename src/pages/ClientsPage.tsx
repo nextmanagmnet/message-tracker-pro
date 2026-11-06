@@ -58,6 +58,8 @@ export default function ClientsPage() {
   const [selectedClientForAction, setSelectedClientForAction] = useState<{ id: string; name: string } | null>(null);
   const [clientName, setClientName] = useState("");
   const [inviteFor, setInviteFor] = useState<{ id: string; name: string } | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // A freshly accepted invite shows up as soon as the page opens.
@@ -71,6 +73,12 @@ export default function ClientsPage() {
       return;
     }
 
+    const email = newEmail.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      toast.error(t("invite.badEmail", { ns: "features" }));
+      return;
+    }
+
     setIsLoading(true);
     const { client, limitReached } = await createClient(clientName.trim());
     setIsLoading(false);
@@ -78,7 +86,13 @@ export default function ClientsPage() {
     if (client) {
       toast.success(t("clientSwitcher.created"));
       setClientName("");
+      setNewEmail("");
       setIsCreateDialogOpen(false);
+      if (email) {
+        // the client's login invite is made right away; the link to send shows in the next window
+        setInviteEmail(email);
+        setInviteFor({ id: client.id, name: client.name });
+      }
     } else {
       toast.error(limitReached ? t("errors.limitClient") : t("clientSwitcher.failed"));
     }
@@ -248,7 +262,14 @@ export default function ClientsPage() {
 
       <LinkedUsersSection />
 
-      <InviteClientDialog client={inviteFor} onClose={() => setInviteFor(null)} />
+      <InviteClientDialog
+        client={inviteFor}
+        initialEmail={inviteEmail}
+        onClose={() => {
+          setInviteFor(null);
+          setInviteEmail("");
+        }}
+      />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
@@ -257,6 +278,18 @@ export default function ClientsPage() {
             <DialogDescription>{t("clientSwitcher.createDesc")}</DialogDescription>
           </DialogHeader>
           {nameField("createName", handleCreate)}
+          <div className="space-y-2">
+            <Label htmlFor="createEmail">{t("invite.newClientEmail", { ns: "features" })}</Label>
+            <Input
+              id="createEmail"
+              type="email"
+              dir="ltr"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+            <p className="text-xs text-muted-foreground">{t("invite.newClientHint", { ns: "features" })}</p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
               {t("common.cancel")}

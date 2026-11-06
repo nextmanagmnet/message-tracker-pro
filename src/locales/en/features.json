@@ -504,6 +504,9 @@
     "noFinanceRole": "No Finance Manager role: can't fund"
   },
   "invite": {
+    "newClientEmail": "Client email (optional)",
+    "newClientHint": "Enter the client's email and WOB makes their login link right away, ready to send on WhatsApp. Leave it empty to invite later from the ⋯ menu.",
+    "badEmail": "Enter a valid email address",
     "menu": "Invite client login",
     "dialogTitle": "Client login for {{name}}",
     "dialogHint": "Give this client their own login. They see only their own leads, chats, campaigns and connections, never your other clients.",

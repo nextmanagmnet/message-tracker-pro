@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Copy, Loader2, MessageCircle, Trash2 } from "lucide-react";
@@ -15,9 +15,12 @@ type ClientUser = { user_id: string; email: string | null };
 // Give a client their own login (one client only). The agency sends the link however it likes.
 export function InviteClientDialog({
   client,
+  initialEmail,
   onClose,
 }: {
   client: { id: string; name: string } | null;
+  /** Typed when the client was added: the invite is created straight away. */
+  initialEmail?: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation("features");
@@ -43,17 +46,17 @@ export function InviteClientDialog({
     setUsers(ids.map((id) => ({ user_id: id, email: profiles.find((p) => p.id === id)?.email ?? null })));
   }, [client]);
 
-  useEffect(() => {
-    setLink(null);
-    setEmail("");
-    load();
-  }, [load]);
+  const autoFor = useRef<string | null>(null);
 
-  const create = async () => {
+  const create = async (address = email) => {
     if (!client) return;
     setBusy(true);
     try {
-      const d = await invokeFn<{ link: string }>("client-invite", { action: "create", clientId: client.id, email });
+      const d = await invokeFn<{ link: string }>("client-invite", {
+        action: "create",
+        clientId: client.id,
+        email: address,
+      });
       setLink(d.link);
       setEmail("");
       load();
@@ -63,6 +66,18 @@ export function InviteClientDialog({
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    setLink(null);
+    setEmail("");
+    load();
+    if (client && initialEmail && autoFor.current !== client.id) {
+      autoFor.current = client.id;
+      void create(initialEmail);
+    }
+    // create() reads only its arguments and the client; run when the dialog opens for a client
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
 
   const revoke = async (id: string) => {
     try {
@@ -94,7 +109,7 @@ export function InviteClientDialog({
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !busy && email && create()}
             />
-            <Button variant="glow" onClick={create} disabled={busy || !email.trim()}>
+            <Button variant="glow" onClick={() => create()} disabled={busy || !email.trim()}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("invite.create")}
             </Button>
           </div>
