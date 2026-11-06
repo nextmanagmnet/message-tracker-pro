@@ -3,6 +3,26 @@ import { Button } from "@/components/ui/button";
 import i18n from "@/i18n";
 import { captureError } from "@/lib/monitoring";
 
+/**
+ * After a new version is published, a tab still running the old one asks for page files that no longer exist, so
+ * moving to another page fails. Reload once to pick up the new version; the guard stops a reload loop if the
+ * failure has another cause.
+ */
+export function reloadForNewVersion(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem("wob-version-reload") ?? 0);
+    if (Date.now() - last < 15_000) return false;
+    sessionStorage.setItem("wob-version-reload", String(Date.now()));
+  } catch {
+    // no storage: still reload once
+  }
+  window.location.reload();
+  return true;
+}
+
+const STALE_FILE =
+  /dynamically imported module|Importing a module script failed|error loading dynamically|Failed to fetch module|not a valid JavaScript MIME type/i;
+
 interface Props {
   children: ReactNode;
 }
@@ -19,6 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    if (STALE_FILE.test(error?.message ?? "") && reloadForNewVersion()) return;
     console.error("Unhandled render error:", error, info.componentStack);
     captureError(error, info.componentStack);
   }
