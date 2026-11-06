@@ -186,9 +186,28 @@ export function TikTokSection({
   };
 
   const connected = accounts === null ? null : accounts.length > 0;
-  // Individuals keep one ad account: once connected, the button re-authorizes it (new TikTok permissions,
+  // A business uses one ad account: once connected, the button re-authorizes it (new TikTok permissions,
   // expired login) instead of adding another.
-  const atLimit = isIndividual && (accounts?.length ?? 0) >= 1;
+  const atLimit = (accounts?.length ?? 0) >= 1;
+  // Several accounts came in from one TikTok login (or from before this rule): the person picks the one to keep.
+  const choices = (accounts ?? []).filter((a) => !managedFor(a));
+  const mustChoose = canManage && choices.length > 1;
+  const [keepId, setKeepId] = useState<string | null>(null);
+  const [keeping, setKeeping] = useState(false);
+  const keepAccount = async () => {
+    if (!keepId) return;
+    setKeeping(true);
+    try {
+      await invokeFn("tiktok-oauth", { action: "keep-account", clientId, accountId: keepId });
+      toast.success(t("connections.tiktok.kept"));
+      setKeepId(null);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setKeeping(false);
+    }
+  };
   // A managed account uses the agency's login, so there is nothing to reconnect until the user leaves.
   const allManaged = !!accounts?.length && accounts.every((a) => managedFor(a));
   const canConnect = canManage && !allManaged;
@@ -218,8 +237,40 @@ export function TikTokSection({
         </>
       }
     >
-      {connected && <TikTokBalanceCard clientId={clientId} className="mb-4" />}
-      {accounts && accounts.length > 0 && (
+      {mustChoose && (
+        <div className="mb-4 space-y-3 rounded-lg border border-primary/40 p-4">
+          <div>
+            <p className="font-medium text-foreground">{t("connections.tiktok.chooseTitle")}</p>
+            <p className="text-sm text-muted-foreground">{t("connections.tiktok.chooseHint")}</p>
+          </div>
+          <ul className="max-h-72 space-y-1 overflow-y-auto">
+            {choices.map((a) => (
+              <li key={a.id}>
+                <label className="flex cursor-pointer items-center gap-3 rounded-md bg-secondary/50 px-3 py-2 text-sm">
+                  <input
+                    type="radio"
+                    name="keep-account"
+                    checked={keepId === a.id}
+                    onChange={() => setKeepId(a.id)}
+                    className="accent-primary"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-foreground">
+                    {a.advertiser_name ?? t("connections.tiktok.unnamed")}
+                  </span>
+                  <span className="text-xs text-muted-foreground" dir="ltr">
+                    {a.advertiser_id}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <Button variant="glow" onClick={keepAccount} disabled={!keepId || keeping}>
+            {keeping && <Loader2 className="w-4 h-4 animate-spin" />} {t("connections.tiktok.keepThis")}
+          </Button>
+        </div>
+      )}
+      {connected && !mustChoose && <TikTokBalanceCard clientId={clientId} className="mb-4" />}
+      {accounts && accounts.length > 0 && !mustChoose && (
         <ul className="mb-4 space-y-1 text-sm">
           {accounts.map((a) => {
             const m = managedFor(a);
@@ -307,7 +358,7 @@ export function TikTokSection({
         </div>
         <p className="text-xs text-muted-foreground">{t("connections.tiktok.pixelHint")}</p>
       </details>
-      {isIndividual && (accounts?.length ?? 0) >= 1 && (
+      {isIndividual && atLimit && !mustChoose && (
         <p className="mt-3 text-xs text-muted-foreground">{t("limits.tiktok")}</p>
       )}
       <AlertDialog open={!!leaving} onOpenChange={(o) => !o && setLeaving(null)}>

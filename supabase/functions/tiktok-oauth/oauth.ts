@@ -1,3 +1,4 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { adminClient } from "../_shared/db.ts";
 import { authorizeClient, limitError } from "../_shared/auth.ts";
 import { appOrigins } from "../_shared/cors.ts";
@@ -21,6 +22,39 @@ export async function getAuthUrl({ req, parsedBody, tiktokAppId }: TikTokContext
   console.log("Generated TikTok auth URL");
 
   return json({ authUrl: authUrl.toString() });
+}
+
+// A business uses ONE ad account. After a login with several, the person picks it here; the others (and their
+// synced campaign numbers) leave this business. The deletes run with the caller's own login, so the same rules
+// as "Disconnect" decide who may do it; accounts an agency manages are never touched.
+export async function keepAccount({ req, parsedBody }: TikTokContext): Promise<Response> {
+  const { clientId, accountId } = parsedBody ?? {};
+  const auth = await authorizeClient(req, clientId);
+  if (auth instanceof Response) return auth;
+  if (typeof accountId !== "string") return json({ error: "Choose an ad account" }, 400);
+
+  const { data: keep } = await auth.supabase
+    .from("tiktok_accounts")
+    .select("id")
+    .eq("id", accountId)
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (!keep) return json({ error: "That ad account is not connected to this business" }, 404);
+
+  const asUser = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: req.headers.get("Authorization")! } },
+  });
+  const { data: removed, error } = await asUser
+    .from("tiktok_accounts")
+    .delete()
+    .eq("client_id", clientId)
+    .neq("id", accountId)
+    .is("managed_by_agency_id", null)
+    .select("id");
+  if (error) return json({ error: "Could not remove the other ad accounts" }, 403);
+  const ids = (removed ?? []).map((r: { id: string }) => r.id);
+  if (ids.length) await auth.supabase.from("tiktok_campaigns").delete().eq("client_id", clientId).in("tiktok_account_id", ids);
+  return json({ success: true, removed: ids.length });
 }
 
 // Handle OAuth callback - exchange code for tokens
@@ -99,6 +133,14 @@ export async function callback(ctx: TikTokContext): Promise<Response> {
 
   if (clientError || !client) {
     return json({ error: "Client not found" }, 404);
+  }
+
+  // Reconnecting a business that already has its ad account only refreshes that account's login,
+  // instead of pulling in every other account the TikTok login can open.
+  const { data: current } = await supabase.from("tiktok_accounts").select("advertiser_id").eq("client_id", clientId);
+  const kept = new Set((current ?? []).map((r: { advertiser_id: string }) => r.advertiser_id));
+  if ([...advertisers.keys()].some((id) => kept.has(id))) {
+    for (const id of [...advertisers.keys()]) if (!kept.has(id)) advertisers.delete(id);
   }
 
   let saved = 0;

@@ -3,7 +3,7 @@ import { withCors } from "../_shared/cors.ts";
 import { balance } from "./balance.ts";
 import { fetchCampaigns } from "./campaigns.ts";
 import { ensurePixelAction, testEvent } from "./events.ts";
-import { callback, getAuthUrl } from "./oauth.ts";
+import { callback, getAuthUrl, keepAccount } from "./oauth.ts";
 import type { TikTokContext } from "./types.ts";
 
 Deno.serve(
@@ -53,6 +53,8 @@ Deno.serve(
           return await getAuthUrl(ctx);
         case "callback":
           return await callback(ctx);
+        case "keep-account":
+          return await keepAccount(ctx);
         case "balance":
           return await balance(ctx);
         case "fetch-campaigns":
