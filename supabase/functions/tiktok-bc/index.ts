@@ -1,6 +1,6 @@
 import { corsHeaders, json } from "../_shared/cron.ts";
 import { authorizeAgencyAdmin } from "../_shared/auth.ts";
-import { checkFundAmount, extractList, parseBcList, resolveOwningBc } from "../_shared/bcFunding.ts";
+import { checkFundAmount, extractList, parseBcList, resolveOwningBc, scopeBcs } from "../_shared/bcFunding.ts";
 import { advertiserBalance, loadAllBcs, loadBcCredits, saveBcAccounts, TIKTOK_API, tt } from "../_shared/bcAccounts.ts";
 import { withCors } from "../_shared/cors.ts";
 import { mapWalletError } from "../_shared/wallet.ts";
@@ -51,8 +51,12 @@ Deno.serve(
         // Business Centers this login can see (all of them are used for funding).
         const list = await tt("/bc/get/", token).catch(() => null);
         const bcs = parseBcList(list?.data);
+        // Several Business Centers: the agency picks which to use (kept when a reconnect still has them), never "all".
+        const kept = ((conn?.selected_bc_ids ?? []) as string[]).filter((id) => bcs.some((b) => b.bcId === id));
+        const selected = kept.length ? kept : bcs.length > 1 ? [] : null;
         const row = {
           agency_id: agencyId,
+          selected_bc_ids: selected,
           access_token: token,
           refresh_token: t.data.refresh_token ?? null,
           token_expires_at: t.data.access_token_expire_in
@@ -67,7 +71,12 @@ Deno.serve(
         if (error) return json({ error: "Could not save the connection" }, 500);
         // Users linked to this agency run on its login: give them the new token so they keep working.
         await supabase.from("tiktok_accounts").update({ access_token: token }).eq("managed_by_agency_id", agencyId);
-        return json({ success: true, bcId: row.bc_id, choices: [], businessCenters: bcs.length });
+        return json({
+          success: true,
+          bcId: row.bc_id,
+          businessCenters: bcs.length,
+          needsChoice: selected?.length === 0,
+        });
       }
 
       if (action === "disconnect") {
@@ -131,6 +140,54 @@ Deno.serve(
       }
 
       if (!conn) return json({ error: "Connect your TikTok Business Center first", code: "not_connected" }, 400);
+
+      // The Business Centers this login can see, with which ones the agency uses (for the chooser).
+      if (action === "list-bcs") {
+        const l = await tt("/bc/get/", conn.access_token).catch((e) => ({ code: -1, message: String(e) }));
+        if (l.code !== 0) return json({ error: l.message ?? "TikTok error", code: "tiktok_error" }, 502);
+        const chosen: string[] | null = conn.selected_bc_ids ?? null;
+        return json({
+          pending: chosen?.length === 0,
+          businessCenters: parseBcList(l.data).map((b) => ({
+            bcId: b.bcId,
+            name: b.name,
+            canFinance: b.canFinance,
+            selected: chosen === null ? true : chosen.includes(b.bcId),
+          })),
+        });
+      }
+
+      if (action === "select-bcs") {
+        const ids: unknown = body.bcIds;
+        if (!Array.isArray(ids) || !ids.length || !ids.every((i) => typeof i === "string"))
+          return json({ error: "Choose at least one Business Center" }, 400);
+        const l = await tt("/bc/get/", conn.access_token).catch((e) => ({ code: -1, message: String(e) }));
+        if (l.code !== 0) return json({ error: l.message ?? "TikTok error", code: "tiktok_error" }, 502);
+        // Only Business Centers this login really administers can be picked.
+        const valid = new Set(parseBcList(l.data).map((b) => b.bcId));
+        const picked = [...new Set(ids as string[])].filter((i) => valid.has(i));
+        if (!picked.length) return json({ error: "Choose at least one Business Center" }, 400);
+        const first = parseBcList(l.data).find((b) => b.bcId === picked[0]);
+        await supabase
+          .from("bc_connections")
+          .update({
+            selected_bc_ids: picked,
+            bc_id: picked.length === 1 ? picked[0] : null,
+            bc_name: picked.length === 1 ? (first?.name ?? null) : null,
+          })
+          .eq("agency_id", agencyId);
+        // Top-up requests from other agencies find their funder through this table: drop the BCs no longer used.
+        await supabase
+          .from("bc_accounts")
+          .delete()
+          .eq("agency_id", agencyId)
+          .not("bc_id", "in", `(${picked.join(",")})`);
+        return json({ success: true });
+      }
+
+      // Everything below moves or reads money: it waits until the agency has chosen its Business Centers.
+      if (["account-balance", "bc-balances", "balances", "fund"].includes(action) && conn.selected_bc_ids?.length === 0)
+        return json({ error: "Choose which Business Centers to use first", code: "choose_bc" }, 409);
 
       if (action === "set-bc") {
         const bcId = String(body.bcId ?? "").trim();
@@ -201,7 +258,7 @@ Deno.serve(
         if (!row) return json({ error: "That ad account is not in your Business Center", code: "not_found" }, 404);
         const [account, credits] = await Promise.all([
           advertiserBalance(row.bc_id, conn.access_token, advertiserId).catch(() => null),
-          loadBcCredits(conn.access_token).catch(() => null),
+          loadBcCredits(conn.access_token, conn.selected_bc_ids).catch(() => null),
         ]);
         const bc = credits?.bcs.find((b) => b.bcId === row.bc_id);
         return json({
@@ -214,13 +271,13 @@ Deno.serve(
       }
 
       if (action === "bc-balances") {
-        const r = await loadBcCredits(conn.access_token);
+        const r = await loadBcCredits(conn.access_token, conn.selected_bc_ids);
         if (r.error) return json({ error: r.error, code: "tiktok_error" }, 502);
         return json({ businessCenters: r.bcs });
       }
 
       if (action === "balances") {
-        const all = await loadAllBcs(conn.access_token);
+        const all = await loadAllBcs(conn.access_token, conn.selected_bc_ids);
         if (all.error) return json({ error: all.error, code: "tiktok_error", tiktokCode: all.code }, 502);
         // Match ad accounts to WOB clients where the client connected the same advertiser.
         const { data: mine } = await supabase
@@ -279,7 +336,7 @@ Deno.serve(
         let attempted = false;
         try {
           // The account's OWN Business Center, found server-side from what each BC administers; the browser sends no bc_id.
-          const all = await loadAllBcs(conn.access_token);
+          const all = await loadAllBcs(conn.access_token, conn.selected_bc_ids);
           if (all.error) return release(json({ error: all.error }, 502));
           const target = resolveOwningBc(
             all.bcs.flatMap((b) => b.accounts),

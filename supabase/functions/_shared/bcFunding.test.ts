@@ -6,6 +6,7 @@ import {
   parseAdvertiserBalance,
   parseBcList,
   resolveOwningBc,
+  scopeBcs,
 } from "./bcFunding";
 
 describe("checkFundAmount", () => {
@@ -65,6 +66,15 @@ describe("TikTok's real balance response shape", () => {
   it("still finds a plain list, and returns [] for nothing", () => {
     expect(extractList({ list: [1, 2] })).toEqual([1, 2]);
     expect(extractList(undefined)).toEqual([]);
+  });
+});
+
+describe("scopeBcs", () => {
+  const all = [{ bcId: "1" }, { bcId: "2" }, { bcId: "3" }];
+  it("keeps only the chosen Business Centers; no choice means all", () => {
+    expect(scopeBcs(all, ["2", "9"])).toEqual([{ bcId: "2" }]);
+    expect(scopeBcs(all, null)).toHaveLength(3);
+    expect(scopeBcs(all, undefined)).toHaveLength(3);
   });
 });
 

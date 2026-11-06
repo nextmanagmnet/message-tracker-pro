@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Banknote, Loader2, Plug, Unplug } from "lucide-react";
+import { Banknote, Landmark, Loader2, Plug, Unplug } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { BcBalanceCard } from "@/components/funding/BcBalanceCard";
+import { BcPicker } from "@/components/funding/BcPicker";
 import { Button } from "@/components/ui/button";
 import { useAgency } from "@/hooks/useAgency";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,15 +35,18 @@ const Funding = () => {
   const [limit, setLimit] = useState<number | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState(0);
+  const [choosing, setChoosing] = useState(false); // the Business Center chooser
+  const [needsChoice, setNeedsChoice] = useState(false); // several Business Centers and none chosen yet
 
   const loadConn = useCallback(async () => {
     if (!agencyId) return;
     const { data } = await supabase
       .from("bc_connections")
-      .select("max_transfer")
+      .select("max_transfer, selected_bc_ids")
       .eq("agency_id", agencyId)
       .maybeSingle();
     setLimit(data ? Number(data.max_transfer) : null);
+    setNeedsChoice(data?.selected_bc_ids?.length === 0);
   }, [agencyId]);
 
   useEffect(() => {
@@ -83,6 +87,8 @@ const Funding = () => {
     if (!confirm(t("funding.confirmDisconnect"))) return;
     await invokeFn("tiktok-bc", { action: "disconnect", agencyId }).catch(() => null);
     setLimit(null);
+    setNeedsChoice(false);
+    setChoosing(false);
   };
 
   const body = () => {
@@ -106,6 +112,19 @@ const Funding = () => {
         </div>
       );
 
+    if (needsChoice || choosing)
+      return (
+        <BcPicker
+          agencyId={agencyId}
+          first={needsChoice}
+          onCancel={() => setChoosing(false)}
+          onSaved={() => {
+            setChoosing(false);
+            void loadConn();
+          }}
+        />
+      );
+
     const context: FundingContext = { agencyId, connect, connecting: busy };
     return (
       <div className="space-y-6">
@@ -115,6 +134,9 @@ const Funding = () => {
           <p className="flex-1 text-xs text-muted-foreground">
             {t("funding.limit", { amount: f.money(limit, "USD") })}
           </p>
+          <Button variant="outline" size="sm" onClick={() => setChoosing(true)}>
+            <Landmark className="h-4 w-4" /> {t("funding.chooseBcs")}
+          </Button>
           <Button variant="outline" size="sm" onClick={connect} disabled={busy}>
             <Plug className="h-4 w-4" /> {t("funding.reconnect")}
           </Button>

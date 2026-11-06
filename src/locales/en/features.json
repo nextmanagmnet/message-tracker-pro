@@ -492,7 +492,12 @@
     "updating": "Updating balances…",
     "updatedAt": "Updated {{when}}",
     "firstLoad": "Reading your Business Centers from TikTok for the first time. This can take up to a minute.",
-    "syncFailed": "Couldn't refresh balances from TikTok: {{message}}. Showing the last saved list."
+    "syncFailed": "Couldn't refresh balances from TikTok: {{message}}. Showing the last saved list.",
+    "pickTitle": "Choose the Business Centers to use",
+    "pickHint": "This TikTok login manages more than one Business Center. Pick the ones WOB should use for funding. You can change this later.",
+    "pickSave": "Use {{count}} selected",
+    "chooseBcs": "Choose Business Centers",
+    "noFinanceRole": "No Finance Manager role: can't fund"
   },
   "invite": {
     "menu": "Invite client login",

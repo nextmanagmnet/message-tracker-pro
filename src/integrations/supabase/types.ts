@@ -651,6 +651,7 @@ export type Database = {
           id: string
           max_transfer: number
           refresh_token: string | null
+          selected_bc_ids: string[] | null
           token_expires_at: string | null
         }
         Insert: {
@@ -663,6 +664,7 @@ export type Database = {
           id?: string
           max_transfer?: number
           refresh_token?: string | null
+          selected_bc_ids?: string[] | null
           token_expires_at?: string | null
         }
         Update: {
@@ -675,6 +677,7 @@ export type Database = {
           id?: string
           max_transfer?: number
           refresh_token?: string | null
+          selected_bc_ids?: string[] | null
           token_expires_at?: string | null
         }
         Relationships: [

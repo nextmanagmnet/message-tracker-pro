@@ -3,6 +3,7 @@ import {
   extractList,
   parseAdvertiserBalance,
   parseBcList,
+  scopeBcs,
   tagAccounts,
   type BcAccount,
   type BcAdvertiser,
@@ -85,11 +86,14 @@ export type BcCredit = {
 };
 
 /** Each Business Center's own available credit, without reading its ad accounts (cheap enough for a dashboard). */
-export async function loadBcCredits(token: string): Promise<{ bcs: BcCredit[]; error?: string }> {
+export async function loadBcCredits(
+  token: string,
+  only: string[] | null = null,
+): Promise<{ bcs: BcCredit[]; error?: string }> {
   const l = await tt("/bc/get/", token).catch((e) => ({ code: -1, message: String(e) }));
   if (l.code !== 0) return { bcs: [], error: l.message ?? `TikTok error ${l.code}` };
   const bcs = await Promise.all(
-    parseBcList(l.data).map(async (bc): Promise<BcCredit> => {
+    scopeBcs(parseBcList(l.data), only).map(async (bc): Promise<BcCredit> => {
       const base = { bcId: bc.bcId, name: bc.name, balance: null, currency: null, error: null };
       if (!bc.canFinance) return { ...base, error: "no_finance_role" };
       const bal = await tt("/bc/balance/get/", token, { query: { bc_id: bc.bcId } }).catch(() => null);
@@ -111,12 +115,13 @@ export type BcResult = BcSummary & {
 /** Every BC this login administers, each with its own ad accounts (= ownership) and available balance. */
 export async function loadAllBcs(
   token: string,
+  only: string[] | null = null,
 ): Promise<{ bcs: BcResult[]; sample: unknown; error?: string; code?: number }> {
   const l = await tt("/bc/get/", token).catch((e) => ({ code: -1, message: String(e) }));
   if (l.code !== 0) return { bcs: [], sample: null, error: l.message ?? `TikTok error ${l.code}`, code: l.code };
   let sample: unknown = null;
   const bcs = await Promise.all(
-    parseBcList(l.data).map(async (bc): Promise<BcResult> => {
+    scopeBcs(parseBcList(l.data), only).map(async (bc): Promise<BcResult> => {
       const base = { ...bc, balance: null, currency: null, accounts: [], error: null };
       if (!bc.canFinance) return { ...base, error: "no_finance_role" };
       try {

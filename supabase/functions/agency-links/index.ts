@@ -45,11 +45,13 @@ Deno.serve(
       if (body.action === "refresh") {
         const { data: conn } = await supabase
           .from("bc_connections")
-          .select("access_token")
+          .select("access_token, selected_bc_ids")
           .eq("agency_id", agencyId)
           .maybeSingle();
         if (!conn) return json({ error: "Connect your TikTok Business Center first", code: "not_connected" }, 400);
-        const all = await loadAllBcs(conn.access_token);
+        if (conn.selected_bc_ids?.length === 0)
+          return json({ error: "Choose which Business Centers to use first", code: "choose_bc" }, 409);
+        const all = await loadAllBcs(conn.access_token, conn.selected_bc_ids);
         if (all.error) return json({ error: all.error, code: "tiktok_error" }, 502);
         return json({ accounts: await saveBcAccounts(supabase, agencyId, all.bcs) });
       }

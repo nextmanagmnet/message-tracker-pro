@@ -92,6 +92,11 @@ export function parseBcList(data: unknown): BcSummary[] {
   return out;
 }
 
+/** The Business Centers an agency chose to use. `only` null/empty = no restriction (the callers lock "empty" earlier). */
+export function scopeBcs<T extends { bcId: string }>(list: T[], only: string[] | null | undefined): T[] {
+  return only?.length ? list.filter((b) => only.includes(b.bcId)) : list;
+}
+
 export interface BcAccount extends BcAdvertiser {
   bcId: string;
   bcName: string | null;
