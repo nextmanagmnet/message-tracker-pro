@@ -1,4 +1,4 @@
-import { FunctionsHttpError } from "@supabase/supabase-js";
+import { FunctionRegion, FunctionsHttpError } from "@supabase/supabase-js";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -57,8 +57,12 @@ export class ApiError extends Error {
 export class LimitError extends Error {}
 
 /** Invoke an edge function; throws with the server's message, LimitError on 409 {code:'limit'}. */
-export async function invokeFn<T = Record<string, unknown>>(name: string, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
+export async function invokeFn<T = Record<string, unknown>>(
+  name: string,
+  body: Record<string, unknown>,
+  region?: FunctionRegion,
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body, region });
   if (error) {
     let payload: { error?: string; code?: string } | null = null;
     if (error instanceof FunctionsHttpError) {

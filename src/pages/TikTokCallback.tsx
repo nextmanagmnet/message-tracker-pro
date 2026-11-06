@@ -3,8 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { FunctionRegion } from "@supabase/supabase-js";
 import { invokeFn, isLimitError } from "@/components/leads/shared";
 import { BC_KEY, readPending, TIKTOK_KEY } from "@/components/connections/oauth";
+
+// TikTok refuses token requests from servers in some countries ("Client IP address is in banned Country list").
+// Supabase runs a function near the caller, so the code exchange is pinned to the US.
+const TIKTOK_REGION = FunctionRegion.UsEast1;
 
 const TikTokCallback = () => {
   const { t } = useTranslation("features");
@@ -26,7 +31,7 @@ const TikTokCallback = () => {
       const bc = readPending(BC_KEY);
       if (code && state && bc && bc.state === state) {
         try {
-          await invokeFn("tiktok-bc", { action: "callback", code, agencyId: bc.clientId });
+          await invokeFn("tiktok-bc", { action: "callback", code, agencyId: bc.clientId }, TIKTOK_REGION);
           sessionStorage.removeItem(BC_KEY);
           toast.success(t("funding.connected"));
         } catch (e) {
@@ -39,11 +44,11 @@ const TikTokCallback = () => {
       if (!code || !state || !pending) return done(false, t("callback.noPending"));
       if (pending.state !== state) return done(false, t("callback.stateMismatch"));
       try {
-        const d = await invokeFn<{ advertiserCount?: number }>("tiktok-oauth", {
-          action: "callback",
-          code,
-          clientId: pending.clientId,
-        });
+        const d = await invokeFn<{ advertiserCount?: number }>(
+          "tiktok-oauth",
+          { action: "callback", code, clientId: pending.clientId },
+          TIKTOK_REGION,
+        );
         sessionStorage.removeItem(TIKTOK_KEY);
         if (!d.advertiserCount) return done(false, t("callback.noAdAccounts"));
         done(true, t("callback.tiktokConnected", { count: d.advertiserCount }));
