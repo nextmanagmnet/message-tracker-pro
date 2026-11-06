@@ -60,7 +60,9 @@ export class LimitError extends Error {}
 export async function invokeFn<T = Record<string, unknown>>(
   name: string,
   body: Record<string, unknown>,
-  region?: FunctionRegion,
+  // Supabase runs a function near the caller; for Saudi users that is India, where TikTok refuses every request
+  // ("Client IP address is in banned Country list"). Pin all calls to the US.
+  region: FunctionRegion = FunctionRegion.UsEast1,
 ): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body, region });
   if (error) {
