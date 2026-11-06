@@ -43,7 +43,16 @@ Deno.serve(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ app_id: appId, secret, auth_code: body.code }),
         });
-        const t = await res.json();
+        // TikTok sometimes answers with plain text (for example when it blocks the server's address): show that.
+        const raw = await res.text();
+        // deno-lint-ignore no-explicit-any
+        let t: any;
+        try {
+          t = JSON.parse(raw);
+        } catch {
+          console.error("TikTok token exchange returned non-JSON:", res.status, raw.slice(0, 300));
+          return json({ error: `TikTok refused the connection: ${raw.slice(0, 200)}`, code: "tiktok_refused" }, 502);
+        }
         if (t.code !== 0)
           return json({ error: "TikTok rejected the login. Try connecting again.", details: t.message }, 400);
         const token: string = t.data.access_token;

@@ -45,7 +45,16 @@ export async function callback(ctx: TikTokContext): Promise<Response> {
     }),
   });
 
-  const tokenData = await tokenResponse.json();
+  // TikTok sometimes answers with plain text (for example when it blocks the server's address): show that, not a crash.
+  const rawToken = await tokenResponse.text();
+  // deno-lint-ignore no-explicit-any
+  let tokenData: any;
+  try {
+    tokenData = JSON.parse(rawToken);
+  } catch {
+    console.error("TikTok token exchange returned non-JSON:", tokenResponse.status, rawToken.slice(0, 300));
+    return json({ error: `TikTok refused the connection: ${rawToken.slice(0, 200)}`, code: "tiktok_refused" }, 502);
+  }
 
   if (tokenData.code !== 0) {
     console.error("TikTok token exchange failed:", tokenData);
